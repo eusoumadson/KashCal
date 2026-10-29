@@ -400,6 +400,10 @@ class AccountSettingsViewModel @Inject constructor(
     private val _hasTasksOrgPermission = MutableStateFlow(false)
     val hasTasksOrgPermission: StateFlow<Boolean> = _hasTasksOrgPermission.asStateFlow()
 
+    /** Whether KashCal may complete Tasks.org tasks; reading them needs only [hasTasksOrgPermission]. */
+    private val _hasTasksOrgWritePermission = MutableStateFlow(false)
+    val hasTasksOrgWritePermission: StateFlow<Boolean> = _hasTasksOrgWritePermission.asStateFlow()
+
     private val _tasksOrgLists = MutableStateFlow<List<org.onekash.kashcal.data.tasks_org.TasksOrgList>>(emptyList())
     val tasksOrgLists: StateFlow<List<org.onekash.kashcal.data.tasks_org.TasksOrgList>> = _tasksOrgLists.asStateFlow()
 
@@ -826,6 +830,7 @@ class AccountSettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _tasksOrgInstalled.value = coordinator.isInstalled()
             _hasTasksOrgPermission.value = coordinator.hasReadPermission()
+            _hasTasksOrgWritePermission.value = coordinator.hasWritePermission()
             _tasksOrgLists.value = if (_tasksOrgEnabled.value && _hasTasksOrgPermission.value) {
                 coordinator.getLists()
             } else {

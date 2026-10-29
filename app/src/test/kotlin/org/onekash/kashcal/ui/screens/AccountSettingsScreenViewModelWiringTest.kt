@@ -147,6 +147,7 @@ class AccountSettingsScreenViewModelWiringTest {
         every { vm.tasksOrgInstalled } returns MutableStateFlow(false)
         every { vm.tasksOrgEnabled } returns MutableStateFlow(false)
         every { vm.hasTasksOrgPermission } returns MutableStateFlow(false)
+        every { vm.hasTasksOrgWritePermission } returns MutableStateFlow(false)
         every { vm.tasksOrgLists } returns MutableStateFlow(emptyList<org.onekash.kashcal.data.tasks_org.TasksOrgList>())
         every { vm.hiddenTasksOrgListIds } returns MutableStateFlow(emptySet<Long>())
         every { vm.backupRestoreState } returns MutableStateFlow(BackupRestoreUiState.Idle)

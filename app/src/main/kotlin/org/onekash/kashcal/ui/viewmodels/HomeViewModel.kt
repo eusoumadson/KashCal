@@ -94,7 +94,12 @@ import org.onekash.kashcal.ui.components.toStartEndTs
 import org.onekash.kashcal.ui.components.SyncBannerState
 import org.onekash.kashcal.ui.components.attendees.AttendeeStatus
 import org.onekash.kashcal.ui.components.attendees.AttendeeUiModel
+import kotlinx.coroutines.sync.withLock
 import org.onekash.kashcal.ui.components.generateSnackbarMessage
+import org.onekash.kashcal.data.tasks_org.TasksOrgTask
+import org.onekash.kashcal.domain.tasks.TaskCompletionResult
+import org.onekash.kashcal.domain.tasks.TaskCompletionUndo
+import org.onekash.kashcal.domain.tasks.TasksOrgCoordinator
 import org.onekash.kashcal.ui.components.hub.normalizeInitials
 import org.onekash.kashcal.ui.components.weekview.WeekViewUtils
 import org.onekash.kashcal.ui.model.CalendarGroup
@@ -867,6 +872,10 @@ class HomeViewModel(
 
     // On-demand month dots load; cancelled by the next one on a fast swipe.
     private var loadDotsJob: Job? = null
+    private var buildDotsJob: Job? = null
+
+    /** Orders Tasks.org writes, so a quick reopen can't reach Tasks.org before its completion. */
+    private val tasksOrgWriteMutex = kotlinx.coroutines.sync.Mutex()
 
     // Debounced occurrence extension; cancelled by the next one on a rapid swipe.
     private var extensionJob: Job? = null
@@ -1289,19 +1298,26 @@ class HomeViewModel(
             )
                 .collect { signal ->
                     if (signal > 0) {
-                        _uiState.update {
-                            it.copy(
-                                loadedMonths = persistentSetOf(),
-                                eventDots = persistentMapOf()
-                            )
-                        }
-                        // Rebuild around the viewing month.
+                        // Keep the current dots until the rebuild replaces them in one update
+                        // (dots and loaded months together); clearing them first made the
+                        // month grid's dots blink on every change.
                         buildEventDots(
                             _uiState.value.viewingYear,
                             _uiState.value.viewingMonth
                         )
                     }
                 }
+        }
+        // Search results are a snapshot; re-run an open search when Tasks.org tasks change, so
+        // a task completed from the results shows its new state (or its next date).
+        val tasksSignal = tasksOrgCoordinator?.changeSignal ?: return
+        viewModelScope.launch {
+            tasksSignal.collect { signal ->
+                val state = _uiState.value
+                if (signal > 0 && state.isSearchActive && state.searchQuery.isNotEmpty()) {
+                    performSearch(state.searchQuery)
+                }
+            }
         }
     }
 
@@ -1680,7 +1696,9 @@ class HomeViewModel(
      * the loaded-months set.
      */
     private fun buildEventDots(year: Int, month: Int) {
-        viewModelScope.launch {
+        // A newer rebuild replaces the whole map, so an older one finishing last would win.
+        buildDotsJob?.cancel()
+        buildDotsJob = viewModelScope.launch {
             try {
                 val dots = mutableMapOf<String, MutableMap<Int, MutableList<Int>>>()
 
@@ -4423,19 +4441,64 @@ class HomeViewModel(
     }
 
     /**
-     * Completes the Tasks.org task [taskId] or reopens it, without waiting. Tasks.org moves a
-     * repeating task to its next occurrence instead of completing it. A refused write (the write
-     * permission was revoked, the task is gone) shows a snackbar.
+     * Completes the Tasks.org task [task] or reopens it, without waiting, then shows a snackbar
+     * with Undo. Tasks.org moves a repeating task to its next occurrence instead of completing
+     * it; Undo moves it back. A refused write (the write permission was revoked, the task is
+     * gone) shows a failure snackbar instead.
+     *
+     * @param onResult called on the main thread with whether Tasks.org took the write, so a
+     *   checkbox that flipped ahead of the write can flip back
      */
-    fun setTasksOrgTaskCompleted(taskId: Long, completed: Boolean) {
+    fun setTasksOrgTaskCompleted(
+        task: TasksOrgTask,
+        completed: Boolean,
+        onResult: (Boolean) -> Unit = {}
+    ) {
         val coordinator = tasksOrgCoordinator ?: return
         viewModelScope.launch {
-            val written = try {
-                withContext(ioDispatcher) { coordinator.setCompleted(taskId, completed) }
+            val result = try {
+                tasksOrgWriteMutex.withLock {
+                    withContext(ioDispatcher) { coordinator.setCompleted(task, completed) }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Error updating Tasks.org task", e)
+                TaskCompletionResult.Refused
+            }
+            when (result) {
+                is TaskCompletionResult.Refused -> {
+                    onResult(false)
+                    showSnackbar(context.getString(R.string.snackbar_task_update_failed))
+                }
+                is TaskCompletionResult.Written -> {
+                    onResult(true)
+                    val message = context.getString(
+                        if (completed) R.string.snackbar_task_completed else R.string.snackbar_task_reopened
+                    )
+                    val undo = result.undo
+                    if (undo == null) {
+                        showSnackbar(message)
+                    } else {
+                        showSnackbar(message, context.getString(R.string.snackbar_action_undo)) {
+                            undoTasksOrgCompletion(coordinator, undo)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun undoTasksOrgCompletion(coordinator: TasksOrgCoordinator, undo: TaskCompletionUndo) {
+        viewModelScope.launch {
+            val written = try {
+                tasksOrgWriteMutex.withLock {
+                    withContext(ioDispatcher) { coordinator.undo(undo) }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Error undoing Tasks.org task change", e)
                 false
             }
             if (!written) showSnackbar(context.getString(R.string.snackbar_task_update_failed))

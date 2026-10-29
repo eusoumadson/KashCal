@@ -96,6 +96,15 @@ class AndroidTasksOrgRepositoryTest {
     }
 
     @Test
+    fun `a task read twice across pages is returned once`() = runTest {
+        val due = at(2026, 10, 29, 9)
+        provider.tasks += FakeTasksOrgProvider.TaskRow(id = 1, title = "Once", due = due, listId = 1)
+        provider.tasks += FakeTasksOrgProvider.TaskRow(id = 1, title = "Once", due = due, listId = 1)
+
+        assertEquals(listOf(1L), repository.getTasksDueInRange(due - 1, due + 1, emptySet()).map { it.id })
+    }
+
+    @Test
     fun `undated tasks, hidden lists and completion are mapped`() = runTest {
         val due = at(2026, 10, 29, 9)
         provider.tasks += FakeTasksOrgProvider.TaskRow(id = 1, title = "No date", due = 0, listId = 1)
@@ -135,6 +144,36 @@ class AndroidTasksOrgRepositoryTest {
     }
 
     @Test
+    fun `getSchedule reads the task's dates, flags and rule`() = runTest {
+        provider.tasks += FakeTasksOrgProvider.TaskRow(
+            id = 4, title = "Water plants", due = 5000L, listId = 1, recurrence = "FREQ=DAILY;COUNT=2",
+            allDay = true, startDate = 4000L, startAllDay = true
+        )
+
+        assertEquals(
+            TasksOrgSchedule(dueDate = 5000L, dueAllDay = true, startDate = 4000L, startAllDay = true, recurrence = "FREQ=DAILY;COUNT=2"),
+            repository.getSchedule(4L)
+        )
+        assertNull(repository.getSchedule(99L))
+    }
+
+    @Test
+    fun `restoreSchedule writes the dates with their flags and the rule in one update`() = runTest {
+        val schedule = TasksOrgSchedule(dueDate = 5000L, dueAllDay = false, startDate = 0L, startAllDay = false, recurrence = "FREQ=WEEKLY")
+
+        assertTrue(repository.restoreSchedule(4L, schedule))
+
+        val (uri, values) = provider.updates.single()
+        assertEquals("4", uri.lastPathSegment)
+        assertEquals(5000L, values.getAsLong(TasksOrgContract.Tasks.DUE_DATE))
+        assertEquals(0, values.getAsInteger(TasksOrgContract.Tasks.DUE_ALL_DAY))
+        assertEquals(0L, values.getAsLong(TasksOrgContract.Tasks.START_DATE))
+        assertEquals(0, values.getAsInteger(TasksOrgContract.Tasks.START_ALL_DAY))
+        assertEquals("FREQ=WEEKLY", values.getAsString(TasksOrgContract.Tasks.RECURRENCE))
+        assertFalse(values.containsKey(TasksOrgContract.Tasks.COMPLETED_AT))
+    }
+
+    @Test
     fun `without permissions nothing is queried or written`() = runTest {
         val app = ApplicationProvider.getApplicationContext<Application>()
         Shadows.shadowOf(app).denyPermissions(TasksOrgContract.PERMISSION_READ, TasksOrgContract.PERMISSION_WRITE)
@@ -142,6 +181,8 @@ class AndroidTasksOrgRepositoryTest {
         assertTrue(repository.getTasksDueInRange(0L, Long.MAX_VALUE / 2, emptySet()).isEmpty())
         assertTrue(repository.getLists().isEmpty())
         assertFalse(repository.setCompleted(1L, 1L))
+        assertNull(repository.getSchedule(1L))
+        assertFalse(repository.restoreSchedule(1L, TasksOrgSchedule(1L, false, 0L, false, "")))
         assertTrue(provider.queries.isEmpty())
         assertTrue(provider.updates.isEmpty())
     }
@@ -152,6 +193,8 @@ class AndroidTasksOrgRepositoryTest {
 
         assertTrue(repository.getTasksDueInRange(0L, 1L, emptySet()).isEmpty())
         assertFalse(repository.setCompleted(1L, 1L))
+        assertNull(repository.getSchedule(1L))
+        assertFalse(repository.restoreSchedule(1L, TasksOrgSchedule(1L, false, 0L, false, "")))
     }
 
     @Test
@@ -189,6 +232,8 @@ class FakeTasksOrgProvider : ContentProvider() {
         val recurrence: String = "",
         val allDay: Boolean = false,
         val notes: String = "",
+        val startDate: Long = 0,
+        val startAllDay: Boolean = false,
     )
 
     data class ListRow(val id: Long, val title: String, val color: Int, val access: String)
@@ -213,6 +258,23 @@ class FakeTasksOrgProvider : ContentProvider() {
         queries += uri
         val limit = uri.getQueryParameter(TasksOrgContract.PARAM_LIMIT)?.toInt() ?: 100
         val offset = uri.getQueryParameter(TasksOrgContract.PARAM_OFFSET)?.toInt() ?: 0
+        // An item URI, /v0/tasks/{id}: the one task with its scheduling columns.
+        val segments = uri.pathSegments
+        if (segments.size == 3 && segments[1] == "tasks") {
+            val id = segments[2].toLong()
+            return MatrixCursor(
+                arrayOf(
+                    TasksOrgContract.ID, TasksOrgContract.Tasks.DUE_DATE, TasksOrgContract.Tasks.DUE_ALL_DAY,
+                    TasksOrgContract.Tasks.START_DATE, TasksOrgContract.Tasks.START_ALL_DAY,
+                    TasksOrgContract.Tasks.RECURRENCE,
+                )
+            ).apply {
+                tasks.filter { it.id == id }.forEach { t ->
+                    addRow(arrayOf<Any>(t.id, t.due, if (t.allDay) 1 else 0, t.startDate,
+                        if (t.startAllDay) 1 else 0, t.recurrence))
+                }
+            }
+        }
         return when (uri.pathSegments.last()) {
             "tasks" -> {
                 val after = uri.getQueryParameter(TasksOrgContract.Tasks.PARAM_DUE_AFTER)?.toLong()

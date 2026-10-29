@@ -51,10 +51,12 @@ fun TasksOrgScreen(
     isInstalled: Boolean,
     isEnabled: Boolean,
     hasReadPermission: Boolean,
+    hasWritePermission: Boolean,
     lists: List<TasksOrgList>,
     hiddenListIds: Set<Long>,
     onNavigateBack: () -> Unit,
     onToggle: (Boolean) -> Unit,
+    onRequestPermission: () -> Unit,
     onToggleList: (Long, Boolean) -> Unit,
     onRefresh: () -> Unit = {}
 ) {
@@ -87,7 +89,7 @@ fun TasksOrgScreen(
                     IconButton(onClick = onRefresh) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = stringResource(R.string.cd_refresh_calendars),
+                            contentDescription = stringResource(R.string.cd_refresh_tasks_org_lists),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -122,7 +124,8 @@ fun TasksOrgScreen(
                 Switch(checked = isEnabled, onCheckedChange = onToggle)
             }
 
-            // On, but the permission is missing (revoked after it was granted).
+            // On, but the permission is missing (revoked after it was granted, or Tasks.org
+            // reinstalled); tapping asks for it again.
             AnimatedVisibility(
                 visible = isEnabled && !hasReadPermission,
                 enter = expandVertically(),
@@ -131,8 +134,39 @@ fun TasksOrgScreen(
                 Text(
                     stringResource(R.string.tasks_org_permission_required),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onRequestPermission)
+                        .padding(vertical = 8.dp)
                 )
+            }
+
+            // Readable but not writable: tasks show, their checkboxes stay disabled. Tapping
+            // asks for the write permission.
+            AnimatedVisibility(
+                visible = isEnabled && hasReadPermission && !hasWritePermission,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.shapes.small)
+                        .clickable(onClick = onRequestPermission)
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        stringResource(R.string.tasks_org_read_only_access),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Text(
+                        stringResource(R.string.tasks_org_grant_write),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                    )
+                }
             }
 
             AnimatedVisibility(

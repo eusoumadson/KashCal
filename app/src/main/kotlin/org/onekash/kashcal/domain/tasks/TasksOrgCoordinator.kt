@@ -5,6 +5,8 @@ import org.onekash.kashcal.data.preferences.KashCalDataStore
 import org.onekash.kashcal.data.tasks_org.TasksOrgList
 import org.onekash.kashcal.data.tasks_org.TasksOrgManager
 import org.onekash.kashcal.data.tasks_org.TasksOrgRepository
+import org.onekash.kashcal.data.tasks_org.TasksOrgSchedule
+import org.onekash.kashcal.data.tasks_org.TasksOrgTask
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -54,15 +56,58 @@ class TasksOrgCoordinator @Inject constructor(
     }
 
     /**
-     * Completes the task [taskId] now, or reopens it. Tasks.org moves a repeating task to its
-     * next occurrence instead.
-     *
-     * @return false when Tasks.org refused the write (no write permission, the task is gone)
+     * Completes the task [task] now, or reopens it. Tasks.org moves a repeating task to its
+     * next occurrence instead of completing it, so before completing one this reads its
+     * schedule, which [undo] writes back.
      */
-    suspend fun setCompleted(taskId: Long, completed: Boolean): Boolean {
-        val written = repository.setCompleted(taskId, if (completed) System.currentTimeMillis() else null)
+    suspend fun setCompleted(task: TasksOrgTask, completed: Boolean): TaskCompletionResult {
+        val undo: TaskCompletionUndo? = if (completed && task.isRecurring) {
+            // Unreadable schedule: reopening alone wouldn't bring the occurrence back, so no undo.
+            repository.getSchedule(task.id)?.let { TaskCompletionUndo.RestoreSchedule(task.id, it) }
+        } else {
+            TaskCompletionUndo.SetCompletedAt(task.id, task.completedAt)
+        }
+        val written = repository.setCompleted(task.id, if (completed) System.currentTimeMillis() else null)
         // Re-query at once instead of waiting for the debounced observer.
+        manager.notifyChanged()
+        return if (written) TaskCompletionResult.Written(undo) else TaskCompletionResult.Refused
+    }
+
+    /**
+     * Reverts a change made by [setCompleted].
+     *
+     * @return false when Tasks.org refused the write
+     */
+    suspend fun undo(undo: TaskCompletionUndo): Boolean {
+        val written = when (undo) {
+            is TaskCompletionUndo.SetCompletedAt -> repository.setCompleted(undo.taskId, undo.completedAt)
+            // Back to the completed occurrence's dates, then open: an account that repeats on
+            // the server leaves the task completed with its dates unchanged instead of moving them.
+            is TaskCompletionUndo.RestoreSchedule ->
+                repository.restoreSchedule(undo.taskId, undo.schedule) &&
+                    repository.setCompleted(undo.taskId, null)
+        }
         manager.notifyChanged()
         return written
     }
+}
+
+/** Outcome of [TasksOrgCoordinator.setCompleted]. */
+sealed interface TaskCompletionResult {
+    /** Tasks.org took the write; [undo] reverts it, null when it can't be reverted. */
+    data class Written(val undo: TaskCompletionUndo?) : TaskCompletionResult
+
+    /** Tasks.org refused the write: no write permission, or the task is gone. */
+    data object Refused : TaskCompletionResult
+}
+
+/** How to revert a completion change made by [TasksOrgCoordinator.setCompleted]. */
+sealed interface TaskCompletionUndo {
+    val taskId: Long
+
+    /** Writes the task's completion time back; null reopens it. */
+    data class SetCompletedAt(override val taskId: Long, val completedAt: Long?) : TaskCompletionUndo
+
+    /** Moves a repeating task back to the occurrence that was completed. */
+    data class RestoreSchedule(override val taskId: Long, val schedule: TasksOrgSchedule) : TaskCompletionUndo
 }

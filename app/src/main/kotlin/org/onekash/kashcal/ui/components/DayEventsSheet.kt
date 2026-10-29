@@ -55,6 +55,7 @@ internal fun DayEventsSheet(
     onEventClick: (Event, Long?) -> Unit,
     onDeviceEventClick: (DisplayEvent.Device) -> Unit,
     onTaskClick: (DisplayEvent.Task) -> Unit = {},
+    onTaskCheckedChange: OnTaskCheckedChange? = null,
     onCreateEvent: (Long) -> Unit,
     onDismiss: () -> Unit,
     attendeesByEventId: Map<Long, List<org.onekash.kashcal.ui.components.attendees.AttendeeUiModel>> = emptyMap()
@@ -128,6 +129,7 @@ internal fun DayEventsSheet(
                             showEventEmojis = showEventEmojis,
                             timePattern = timePattern,
                             attendees = rowAttendees,
+                            onTaskCheckedChange = onTaskCheckedChange,
                             onClick = {
                                 when (displayEvent) {
                                     is DisplayEvent.Room -> onEventClick(

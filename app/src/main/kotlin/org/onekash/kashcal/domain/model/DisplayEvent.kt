@@ -136,7 +136,8 @@ sealed interface DisplayEvent {
      * A task from the Tasks.org app, at its due date ([TasksOrgTask]). It has no end and never
      * counts as busy. The title carries a checkbox prefix ([taskDisplayTitle]) so every view
      * tells it from an event and shows whether it is done. Read-only in every view except its
-     * completion, which the task quick view toggles in Tasks.org.
+     * completion, which the task quick view and the list checkbox ([org.onekash.kashcal.ui.components.TaskCard])
+     * toggle in Tasks.org.
      */
     @Immutable
     data class Task(val task: TasksOrgTask) : DisplayEvent {

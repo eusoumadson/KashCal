@@ -141,6 +141,8 @@ import org.onekash.kashcal.domain.model.SearchResult
 import org.onekash.kashcal.ui.components.CalendarDrawer
 import org.onekash.kashcal.ui.components.DayEventsSheet
 import org.onekash.kashcal.ui.components.EventCard
+import org.onekash.kashcal.ui.components.OnTaskCheckedChange
+import org.onekash.kashcal.ui.components.TaskCard
 import org.onekash.kashcal.ui.components.HomeStopEffect
 import org.onekash.kashcal.ui.components.InvitationInboxSheet
 import org.onekash.kashcal.ui.components.PendingSnackbarEffect
@@ -225,6 +227,8 @@ fun HomeScreen(
     onEventClick: (Event, Long?) -> Unit = { _, _ -> },  // (event, occurrenceStartTs)
     onDeviceEventClick: (DisplayEvent.Device) -> Unit = {},  // device calendar event clicked
     onTaskClick: (DisplayEvent.Task) -> Unit = {},  // Tasks.org task clicked
+    // Tasks.org task checkbox in the day and agenda lists; null shows tasks as plain cards
+    onTaskCheckedChange: OnTaskCheckedChange? = null,
     onCreateEvent: () -> Unit = {},
     onCreateEventWithDateTime: (Long) -> Unit = {},  // timestamp for pre-filled event form
     // Sync callbacks
@@ -655,6 +659,7 @@ fun HomeScreen(
                                 onResultClick = onSearchResultClick,
                                 onDeviceEventClick = onDeviceEventClick,
                                 onTaskClick = onTaskClick,
+                                onTaskCheckedChange = onTaskCheckedChange,
                                 onFilterSelect = onSearchDateFilterChange,
                                 onCustomDateClick = onSearchShowDatePicker
                             )
@@ -764,6 +769,7 @@ fun HomeScreen(
                                                 listState = agendaListState,
                                                 showEventEmojis = uiState.showEventEmojis,
                                                 timePattern = timePattern,
+                                                onTaskCheckedChange = onTaskCheckedChange,
                                                 onEventClick = { displayEvent ->
                                                     when (displayEvent) {
                                                         is DisplayEvent.Room -> onEventClick(displayEvent.event, displayEvent.occurrence.startTs)
@@ -1044,6 +1050,7 @@ fun HomeScreen(
                                                 onEventClick = onEventClick,
                                                 onDeviceEventClick = onDeviceEventClick,
                                                 onTaskClick = onTaskClick,
+                                                onTaskCheckedChange = onTaskCheckedChange,
                                                 onDateSelected = onDateSelected,
                                                 onLoadEventsForRange = onLoadEventsForDayPagerRange,
                                                 shouldRefreshCache = shouldRefreshDayPagerCache,
@@ -1100,6 +1107,7 @@ fun HomeScreen(
                                                 onEventClick = onEventClick,
                                                 onDeviceEventClick = onDeviceEventClick,
                                                 onTaskClick = onTaskClick,
+                                                onTaskCheckedChange = onTaskCheckedChange,
                                                 onDateSelected = onDateSelected,
                                                 onLoadEventsForRange = onLoadEventsForDayPagerRange,
                                                 shouldRefreshCache = shouldRefreshDayPagerCache
@@ -1257,6 +1265,7 @@ fun HomeScreen(
             onEventClick = onEventClick,
             onDeviceEventClick = onDeviceEventClick,
             onTaskClick = onTaskClick,
+            onTaskCheckedChange = onTaskCheckedChange,
             onCreateEvent = onCreateEventWithDateTime,
             onDismiss = onDismissDayDetail,
             attendeesByEventId = dayAttendees
@@ -1812,6 +1821,7 @@ private fun ColumnScope.DayEventsPager(
     onEventClick: (Event, Long?) -> Unit,
     onDeviceEventClick: (DisplayEvent.Device) -> Unit = {},
     onTaskClick: (DisplayEvent.Task) -> Unit = {},  // Tasks.org task clicked
+    onTaskCheckedChange: OnTaskCheckedChange? = null,
     onDateSelected: (Long) -> Unit,
     onLoadEventsForRange: (Long) -> Unit,
     shouldRefreshCache: (Long) -> Boolean,
@@ -1941,6 +1951,7 @@ private fun ColumnScope.DayEventsPager(
                 onEventClick = onEventClick,
                 onDeviceEventClick = onDeviceEventClick,
                 onTaskClick = onTaskClick,
+                onTaskCheckedChange = onTaskCheckedChange,
                 attendeesByEventId = attendeesByEventId
             )
         }
@@ -1960,6 +1971,7 @@ private fun DayEventsPage(
     onEventClick: (Event, Long?) -> Unit,
     onDeviceEventClick: (DisplayEvent.Device) -> Unit = {},
     onTaskClick: (DisplayEvent.Task) -> Unit = {},  // Tasks.org task clicked
+    onTaskCheckedChange: OnTaskCheckedChange? = null,
     attendeesByEventId: Map<Long, List<org.onekash.kashcal.ui.components.attendees.AttendeeUiModel>> = emptyMap()
 ) {
     when {
@@ -2040,6 +2052,7 @@ private fun DayEventsPage(
                         showEventEmojis = showEventEmojis,
                         timePattern = timePattern,
                         attendees = attendeeModels,
+                        onTaskCheckedChange = onTaskCheckedChange,
                         onClick = {
                             when (displayEvent) {
                                 is DisplayEvent.Room -> onEventClick(displayEvent.event, displayEvent.occurrence.startTs)
@@ -2150,6 +2163,7 @@ private fun SearchContent(
     onResultClick: (Event, Long?) -> Unit,
     onDeviceEventClick: (DisplayEvent.Device) -> Unit = {},
     onTaskClick: (DisplayEvent.Task) -> Unit = {},  // Tasks.org task clicked
+    onTaskCheckedChange: OnTaskCheckedChange? = null,
     onFilterSelect: (DateFilter) -> Unit,
     onCustomDateClick: () -> Unit
 ) {
@@ -2224,6 +2238,18 @@ private fun SearchContent(
                     }
                     val isPast = !isRecurring &&
                         DateTimeUtils.isEventPast(displayEvent.endTs, displayEvent.endDay, displayEvent.isAllDay)
+                    if (displayEvent is DisplayEvent.Task && onTaskCheckedChange != null) {
+                        TaskCard(
+                            displayEvent = displayEvent,
+                            showEventEmojis = showEventEmojis,
+                            timePattern = timePattern,
+                            onCheckedChange = onTaskCheckedChange,
+                            onClick = { onTaskClick(displayEvent) },
+                            modifier = Modifier.animateItem(),
+                            supportingText = formatSearchResultDate(displayEvent, timePattern = timePattern)
+                        )
+                        return@items
+                    }
                     SearchResultCard(
                         searchResult = result,
                         isPast = isPast,
@@ -2267,6 +2293,7 @@ private fun AgendaContent(
     listState: LazyListState = rememberLazyListState(),
     showEventEmojis: Boolean = true,
     timePattern: String = "h:mm a",
+    onTaskCheckedChange: OnTaskCheckedChange? = null,
     onEventClick: (DisplayEvent) -> Unit
 ) {
     val todayLabel = stringResource(R.string.label_today)
@@ -2336,13 +2363,24 @@ private fun AgendaContent(
                 ) { item ->
                     val isPast = item.displayDay < todayDayCode
                     Column(modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) {
-                        AgendaCard(
-                            item = item,
-                            isPast = isPast,
-                            showEventEmojis = showEventEmojis,
-                            timePattern = timePattern,
-                            onClick = { onEventClick(item.displayEvent) }
-                        )
+                        val de = item.displayEvent
+                        if (de is DisplayEvent.Task && onTaskCheckedChange != null) {
+                            TaskCard(
+                                displayEvent = de,
+                                showEventEmojis = showEventEmojis,
+                                timePattern = timePattern,
+                                onCheckedChange = onTaskCheckedChange,
+                                onClick = { onEventClick(de) }
+                            )
+                        } else {
+                            AgendaCard(
+                                item = item,
+                                isPast = isPast,
+                                showEventEmojis = showEventEmojis,
+                                timePattern = timePattern,
+                                onClick = { onEventClick(item.displayEvent) }
+                            )
+                        }
                     }
                 }
             }

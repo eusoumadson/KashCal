@@ -22,7 +22,7 @@ data class PlannerSummaryItem(
  * day does. Listed: strip items ([isStripItem]) that aren't changed occurrences, unless their
  * own RRULE repeats daily or weekly; changed occurrences that moved ([movedCue]); and cancelled
  * events. A changed all-day occurrence that kept its day (a note or RSVP edit) isn't listed.
- * Declined events never are. A multi-day event is one entry with its first and last day.
+ * Declined events and Tasks.org tasks never are. A multi-day event is one entry with its first and last day.
  * Entries are ordered by first day, then [PlannerSummaryKind], then start.
  */
 fun differentThisWeek(
@@ -38,6 +38,8 @@ fun differentThisWeek(
     for (day in days) {
         for (event in eventsByDayCode[day].orEmpty()) {
             if (event.isDeclinedByMe) continue
+            // A task is a to-do, not something that makes the week unusual.
+            if (event is DisplayEvent.Task) continue
             val seen = byKey[event.stableKey]
             if (seen != null) {
                 byKey[event.stableKey] = seen.copy(lastDayCode = day)

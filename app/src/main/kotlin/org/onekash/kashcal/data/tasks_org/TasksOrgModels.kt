@@ -48,3 +48,16 @@ data class TasksOrgTask(
     val isCompleted: Boolean get() = completedAt != null
     val isRecurring: Boolean get() = recurrence != null
 }
+
+/**
+ * The scheduling columns of a Tasks.org task, as Tasks.org stores them. Completing a repeating
+ * task moves its dates (and decrements a `COUNT` rule), so undoing that writes these back.
+ * Times are epoch millis, 0 when unset; [recurrence] is empty when the task doesn't repeat.
+ */
+data class TasksOrgSchedule(
+    val dueDate: Long,
+    val dueAllDay: Boolean,
+    val startDate: Long,
+    val startAllDay: Boolean,
+    val recurrence: String
+)

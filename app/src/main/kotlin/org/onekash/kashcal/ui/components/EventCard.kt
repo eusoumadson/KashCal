@@ -45,8 +45,20 @@ internal fun EventCard(
     showEventEmojis: Boolean = true,
     timePattern: String = "h:mm a",
     attendees: List<org.onekash.kashcal.ui.components.attendees.AttendeeUiModel> = emptyList(),
+    onTaskCheckedChange: OnTaskCheckedChange? = null,
     onClick: () -> Unit
 ) {
+    // A task gets the compact card with its checkbox wherever the list can complete it.
+    if (displayEvent is DisplayEvent.Task && onTaskCheckedChange != null) {
+        TaskCard(
+            displayEvent = displayEvent,
+            showEventEmojis = showEventEmojis,
+            timePattern = timePattern,
+            onCheckedChange = onTaskCheckedChange,
+            onClick = onClick
+        )
+        return
+    }
     val resources = LocalResources.current
     val displayTitle = remember(displayEvent, showEventEmojis) {
         formatDisplayEventTitle(displayEvent, showEventEmojis, resources)

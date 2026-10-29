@@ -107,7 +107,6 @@ class WidgetDataRepository @Inject constructor(
      * ([EXTRA_EVENT_ID], [EXTRA_IS_DEVICE_EVENT]), and a task id would open another event.
      */
     private fun toWidgetEvent(displayEvent: DisplayEvent): WidgetEvent? {
-        if (displayEvent is DisplayEvent.Task) return null
         return WidgetEvent(
             eventId = when (displayEvent) {
                 is DisplayEvent.Room -> displayEvent.event.id

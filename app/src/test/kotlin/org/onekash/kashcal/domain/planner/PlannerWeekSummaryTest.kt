@@ -47,6 +47,20 @@ class PlannerWeekSummaryTest {
     }
 
     @Test
+    fun `Tasks_org tasks are never listed`() {
+        val friday = utcMidnight(fri)
+        val task = DisplayEvent.Task(
+            org.onekash.kashcal.data.tasks_org.TasksOrgTask(
+                id = 1, title = "Pay rent", notes = "", dueTs = friday, isAllDay = true,
+                startTs = friday, endTs = friday + 86_399_999L, startDay = dayCode(fri), endDay = dayCode(fri),
+                completedAt = null, recurrence = null, listId = 1, listTitle = "Inbox", listColor = 0, isReadOnly = false
+            )
+        )
+        val noSchool = PlannerTestEvents.roomAllDay(2, fri, ny).withTitle("No school")
+        assertEquals(listOf("No school"), titles(summary(task, noSchool)))
+    }
+
+    @Test
     fun `daily and weekly all-day series are the usual week`() {
         val events = arrayOf(
             PlannerTestEvents.roomAllDay(1, fri, ny, rrule = "FREQ=WEEKLY;INTERVAL=2").withTitle("Trash day"),

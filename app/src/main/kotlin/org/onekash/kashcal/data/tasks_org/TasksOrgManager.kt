@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.onekash.kashcal.data.calendar_provider.CalendarProviderObserver
 import org.onekash.kashcal.data.preferences.KashCalDataStore
@@ -62,13 +63,13 @@ class TasksOrgManager @Inject constructor(
     /** Starts observing and re-queries once the source is switched on. */
     fun onEnabled() {
         registerObserver()
-        _changeSignal.value++
+        _changeSignal.update { it + 1 }
     }
 
     /** Stops observing and re-queries, so tasks leave the views, once it is switched off. */
     fun onDisabled() {
         unregisterObserver()
-        _changeSignal.value++
+        _changeSignal.update { it + 1 }
     }
 
     /**
@@ -76,7 +77,7 @@ class TasksOrgManager @Inject constructor(
      * shown, so the views don't wait for the debounced observer.
      */
     fun notifyChanged() {
-        _changeSignal.value++
+        _changeSignal.update { it + 1 }
     }
 
     private fun registerObserver() {
@@ -92,7 +93,7 @@ class TasksOrgManager @Inject constructor(
             debounceMs = OBSERVER_DEBOUNCE_MS
         ) {
             // Widgets don't show tasks (WidgetDataRepository), so only the views re-query.
-            _changeSignal.value++
+            _changeSignal.update { it + 1 }
         }
         try {
             context.contentResolver.registerContentObserver(

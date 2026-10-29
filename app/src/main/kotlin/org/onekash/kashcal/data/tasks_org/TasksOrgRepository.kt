@@ -42,4 +42,14 @@ interface TasksOrgRepository {
      * @return false when the write was refused or the task no longer exists
      */
     suspend fun setCompleted(taskId: Long, completedAt: Long?): Boolean
+
+    /** Reads the scheduling columns of the task [taskId]; null when it can't be read. */
+    suspend fun getSchedule(taskId: Long): TasksOrgSchedule?
+
+    /**
+     * Writes [schedule] back to the task [taskId], dates, all-day flags and rule together.
+     *
+     * @return false when the write was refused or the task no longer exists
+     */
+    suspend fun restoreSchedule(taskId: Long, schedule: TasksOrgSchedule): Boolean
 }

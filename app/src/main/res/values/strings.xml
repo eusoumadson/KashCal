@@ -929,9 +929,15 @@
     <!-- Subtitle of the Tasks.org row while its tasks are shown. -->
     <string name="settings_tasks_org_enabled">On</string>
     <!-- Explains the Tasks.org source at the top of its settings screen. -->
-    <string name="tasks_org_description">Shows the tasks with a due date from the Tasks.org app on your calendar. Tap a task to mark it done. Tasks stay in Tasks.org, which syncs them.</string>
-    <!-- Shown while the source is on but KashCal can't read Tasks.org. -->
-    <string name="tasks_org_permission_required">Access to Tasks.org required. Tap Enable to grant access.</string>
+    <string name="tasks_org_description">Shows the tasks with a due date from the Tasks.org app on your calendar. Check a task off to mark it done. Tasks stay in Tasks.org, which syncs them.</string>
+    <!-- Shown while the source is on but KashCal can't read Tasks.org; tapping it asks for access. -->
+    <string name="tasks_org_permission_required">Access to Tasks.org required. Tap to grant access.</string>
+    <!-- Title of the notice shown when KashCal can read Tasks.org tasks but not complete them. -->
+    <string name="tasks_org_read_only_access">Tasks can\'t be marked done</string>
+    <!-- Body of that notice; tapping it asks for the Tasks.org write permission. -->
+    <string name="tasks_org_grant_write">Tap to let KashCal complete tasks in Tasks.org</string>
+    <!-- Content description of the button that reloads the Tasks.org lists. -->
+    <string name="cd_refresh_tasks_org_lists">Refresh task lists</string>
     <!-- Shown in place of the switch when the Tasks.org app isn't installed. -->
     <string name="tasks_org_not_installed">Install Tasks.org to show its tasks here.</string>
     <!-- Header of the list of Tasks.org lists, each with a show switch. -->
@@ -947,6 +953,10 @@
     <string name="task_repeats_note">Completing it moves the task to its next date in Tasks.org.</string>
     <string name="task_open_in_tasks_org">Open in Tasks.org</string>
     <string name="snackbar_task_update_failed">Couldn\'t update task</string>
+    <!-- Snackbar after a Tasks.org task is checked off; offers Undo. -->
+    <string name="snackbar_task_completed">Task completed</string>
+    <!-- Snackbar after a completed Tasks.org task is unchecked; offers Undo. -->
+    <string name="snackbar_task_reopened">Task reopened</string>
     <string name="offline_calendars_row_label">Offline calendars</string>
     <string name="offline_calendars_row_hint">Calendars that stay on this phone</string>
     <string name="offline_calendars_manage_note">Add, rename, recolor or remove your offline calendars.</string>

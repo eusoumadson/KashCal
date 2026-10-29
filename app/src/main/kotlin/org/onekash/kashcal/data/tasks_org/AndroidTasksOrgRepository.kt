@@ -70,6 +70,8 @@ class AndroidTasksOrgRepository @Inject constructor(
             .apply { search?.let { appendQueryParameter(TasksOrgContract.Tasks.PARAM_SEARCH, it) } }
             .build()
         readPages(uri) { cursor -> cursor.toTask(lists) }
+            // Offset pages aren't a snapshot: a row that moves during the read can come twice.
+            .distinctBy { it.id }
             .filter { it.listId !in hiddenListIds }
             .sortedBy { it.startTs }
     }
@@ -81,6 +83,39 @@ class AndroidTasksOrgRepository @Inject constructor(
                 put(TasksOrgContract.Tasks.COMPLETED_AT, completedAt ?: 0L)
             }
             guarded("update task $taskId", false) {
+                contentResolver.update(TasksOrgContract.Tasks.itemUri(taskId), values, null, null) > 0
+            }
+        }
+
+    override suspend fun getSchedule(taskId: Long): TasksOrgSchedule? = withContext(Dispatchers.IO) {
+        if (!hasReadPermission()) return@withContext null
+        guarded("read task $taskId", null) {
+            contentResolver.query(TasksOrgContract.Tasks.itemUri(taskId), null, null, null, null)?.use { cursor ->
+                if (!cursor.moveToFirst()) return@use null
+                TasksOrgSchedule(
+                    dueDate = cursor.long(TasksOrgContract.Tasks.DUE_DATE),
+                    dueAllDay = cursor.long(TasksOrgContract.Tasks.DUE_ALL_DAY) != 0L,
+                    startDate = cursor.long(TasksOrgContract.Tasks.START_DATE),
+                    startAllDay = cursor.long(TasksOrgContract.Tasks.START_ALL_DAY) != 0L,
+                    recurrence = cursor.string(TasksOrgContract.Tasks.RECURRENCE)
+                )
+            }
+        }
+    }
+
+    override suspend fun restoreSchedule(taskId: Long, schedule: TasksOrgSchedule): Boolean =
+        withContext(Dispatchers.IO) {
+            if (!hasWritePermission()) return@withContext false
+            // The flags go with their dates: an omitted flag keeps the row's, and an explicit
+            // start date stops Tasks.org from moving it along with the due date.
+            val values = ContentValues().apply {
+                put(TasksOrgContract.Tasks.DUE_DATE, schedule.dueDate)
+                put(TasksOrgContract.Tasks.DUE_ALL_DAY, if (schedule.dueAllDay) 1 else 0)
+                put(TasksOrgContract.Tasks.START_DATE, schedule.startDate)
+                put(TasksOrgContract.Tasks.START_ALL_DAY, if (schedule.startAllDay) 1 else 0)
+                put(TasksOrgContract.Tasks.RECURRENCE, schedule.recurrence)
+            }
+            guarded("restore task $taskId", false) {
                 contentResolver.update(TasksOrgContract.Tasks.itemUri(taskId), values, null, null) > 0
             }
         }

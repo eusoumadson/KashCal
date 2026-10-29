@@ -324,8 +324,8 @@ class MainActivity : FragmentActivity() {
                     }
                 }
 
-                // Tasks.org task quick view: the tapped task, updated in place when its
-                // completion is toggled. Null while closed.
+                // Tasks.org task quick view: the tapped task; null while closed. Toggling its
+                // completion closes it.
                 var taskQuickViewEvent by remember { mutableStateOf<DisplayEvent.Task?>(null) }
 
                 // Device event quick view sheet state
@@ -546,10 +546,27 @@ class MainActivity : FragmentActivity() {
 
                 Log.d(TAG, "Composing with ${uiState.dayEventsCache.values.sumOf { it.size }} cached day events")
 
+                // Whether KashCal may complete Tasks.org tasks; re-read on resume, since the
+                // permission can be granted or revoked in Settings meanwhile.
+                val readTasksOrgWrite = {
+                    androidx.core.content.ContextCompat.checkSelfPermission(
+                        this@MainActivity,
+                        org.onekash.kashcal.data.tasks_org.TasksOrgContract.PERMISSION_WRITE
+                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                }
+                var canWriteTasksOrg by remember { mutableStateOf(readTasksOrgWrite()) }
+                androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+                    canWriteTasksOrg = readTasksOrgWrite()
+                    onPauseOrDispose { }
+                }
+
                 // Publish per-tag custom colors to every chip below (home views, form, quick view,
                 // week blocks) so recoloring a tag repaints its chips without threading color
                 // through the occurrence stream.
-                CompositionLocalProvider(LocalTagColors provides uiState.tagColors) {
+                CompositionLocalProvider(
+                    LocalTagColors provides uiState.tagColors,
+                    org.onekash.kashcal.ui.components.LocalCanWriteTasksOrg provides canWriteTasksOrg,
+                ) {
 
                 HomeScreen(
                     uiState = uiState,
@@ -578,6 +595,9 @@ class MainActivity : FragmentActivity() {
                         showDeviceQuickViewSheet = true
                     },
                     onTaskClick = { task -> taskQuickViewEvent = task },
+                    onTaskCheckedChange = { task, completed, onResult ->
+                        homeViewModel.setTasksOrgTaskCompleted(task.task, completed, onResult)
+                    },
                     onCreateEvent = {
                         Log.d(TAG, "Create event clicked")
 
@@ -1123,23 +1143,13 @@ class MainActivity : FragmentActivity() {
                 taskQuickViewEvent?.let { shown ->
                     TaskQuickViewSheet(
                         displayEvent = shown,
-                        canComplete = !shown.task.isReadOnly && androidx.core.content.ContextCompat.checkSelfPermission(
-                            this@MainActivity,
-                            org.onekash.kashcal.data.tasks_org.TasksOrgContract.PERMISSION_WRITE
-                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED,
+                        canComplete = !shown.task.isReadOnly && canWriteTasksOrg,
                         onSetCompleted = { completed ->
-                            homeViewModel.setTasksOrgTaskCompleted(shown.task.id, completed)
-                            // Tasks.org moves a repeating task to its next date instead of
-                            // completing it, so the sheet would show the wrong occurrence.
-                            taskQuickViewEvent = if (shown.task.isRecurring && completed) {
-                                null
-                            } else {
-                                shown.copy(
-                                    task = shown.task.copy(
-                                        completedAt = if (completed) System.currentTimeMillis() else null
-                                    )
-                                )
-                            }
+                            homeViewModel.setTasksOrgTaskCompleted(shown.task, completed)
+                            // Close, so the snackbar and its Undo aren't hidden under the sheet,
+                            // and a repeating task, which Tasks.org moves to its next date, isn't
+                            // shown on the occurrence just completed.
+                            taskQuickViewEvent = null
                         },
                         onDismiss = { taskQuickViewEvent = null },
                         showEventEmojis = uiState.showEventEmojis,

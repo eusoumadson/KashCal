@@ -9,7 +9,8 @@ import android.net.Uri
  *
  * The API filters only through query parameters: a selection, selectionArgs or sortOrder
  * makes the provider throw IllegalArgumentException. Dates are epoch milliseconds. A
- * collection returns at most [MAX_LIMIT] rows per query; [PARAM_OFFSET] pages.
+ * collection returns 100 rows unless [PARAM_LIMIT] asks for more; KashCal reads pages of
+ * [MAX_LIMIT] rows, moving on with [PARAM_OFFSET].
  */
 object TasksOrgContract {
     /** Package of the Tasks.org app, Play and F-Droid builds alike. */
@@ -41,6 +42,10 @@ object TasksOrgContract {
         const val DUE_DATE = "due_date"
         /** 1 when [DUE_DATE] is a date with no time of day. */
         const val DUE_ALL_DAY = "due_all_day"
+        /** Epoch millis the task is hidden until; 0 when unset. */
+        const val START_DATE = "start_date"
+        /** 1 when [START_DATE] is a date with no time of day. */
+        const val START_ALL_DAY = "start_all_day"
         /** Epoch millis; 0 while the task is open. Writing a value above 0 completes it. */
         const val COMPLETED_AT = "completed_at"
         /** RFC 5545 RRULE of a repeating task, or empty. */

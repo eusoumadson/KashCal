@@ -191,6 +191,7 @@ fun SettingsRoute(
         val tasksOrgInstalled by viewModel.tasksOrgInstalled.collectAsStateWithLifecycle()
         val tasksOrgEnabled by viewModel.tasksOrgEnabled.collectAsStateWithLifecycle()
         val hasTasksOrgPermission by viewModel.hasTasksOrgPermission.collectAsStateWithLifecycle()
+        val hasTasksOrgWritePermission by viewModel.hasTasksOrgWritePermission.collectAsStateWithLifecycle()
         val tasksOrgLists by viewModel.tasksOrgLists.collectAsStateWithLifecycle()
         val hiddenTasksOrgListIds by viewModel.hiddenTasksOrgListIds.collectAsStateWithLifecycle()
         val hasReadCalendarPermission by viewModel.hasReadCalendarPermission.collectAsStateWithLifecycle()
@@ -736,23 +737,28 @@ fun SettingsRoute(
                         )
                     }
                     SettingsDestination.TasksOrg -> {
+                        val requestTasksOrgPermissions = {
+                            tasksOrgPermissionLauncher.launch(arrayOf(
+                                org.onekash.kashcal.data.tasks_org.TasksOrgContract.PERMISSION_READ,
+                                org.onekash.kashcal.data.tasks_org.TasksOrgContract.PERMISSION_WRITE
+                            ))
+                        }
                         TasksOrgScreen(
                             isInstalled = tasksOrgInstalled,
                             isEnabled = tasksOrgEnabled,
                             hasReadPermission = hasTasksOrgPermission,
+                            hasWritePermission = hasTasksOrgWritePermission,
                             lists = tasksOrgLists,
                             hiddenListIds = hiddenTasksOrgListIds,
                             onNavigateBack = { showTasksOrgScreen = false },
                             onToggle = { enabled ->
                                 if (enabled && !hasTasksOrgPermission) {
-                                    tasksOrgPermissionLauncher.launch(arrayOf(
-                                        org.onekash.kashcal.data.tasks_org.TasksOrgContract.PERMISSION_READ,
-                                        org.onekash.kashcal.data.tasks_org.TasksOrgContract.PERMISSION_WRITE
-                                    ))
+                                    requestTasksOrgPermissions()
                                 } else {
                                     viewModel.onToggleTasksOrg(enabled)
                                 }
                             },
+                            onRequestPermission = requestTasksOrgPermissions,
                             onToggleList = viewModel::onToggleTasksOrgList,
                             onRefresh = viewModel::refreshTasksOrg
                         )
