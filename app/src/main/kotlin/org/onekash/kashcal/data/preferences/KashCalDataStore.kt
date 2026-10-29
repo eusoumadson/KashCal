@@ -691,6 +691,32 @@ class KashCalDataStore(
         setPreference(PreferencesKeys.ANNIVERSARY_REMINDER, minutes)
     }
 
+    // ========== Tasks.org ==========
+
+    val tasksOrgEnabled: Flow<Boolean>
+        get() = getPreference(PreferencesKeys.TASKS_ORG_ENABLED, false)
+
+    suspend fun getTasksOrgEnabled(): Boolean = tasksOrgEnabled.first()
+
+    suspend fun setTasksOrgEnabled(enabled: Boolean) {
+        setPreference(PreferencesKeys.TASKS_ORG_ENABLED, enabled)
+    }
+
+    /**
+     * Tasks.org list ids whose tasks are not shown. Stored as strings like
+     * [enabledDeviceCalendarIds]. A list not in the set is shown, so a list created later in
+     * Tasks.org appears without a visit to settings.
+     */
+    val hiddenTasksOrgListIds: Flow<Set<Long>>
+        get() = getPreference(PreferencesKeys.HIDDEN_TASKS_ORG_LIST_IDS, emptySet<String>())
+            .map { strings -> strings.mapNotNull { it.toLongOrNull() }.toSet() }
+
+    suspend fun getHiddenTasksOrgListIds(): Set<Long> = hiddenTasksOrgListIds.first()
+
+    suspend fun setHiddenTasksOrgListIds(ids: Set<Long>) {
+        setPreference(PreferencesKeys.HIDDEN_TASKS_ORG_LIST_IDS, ids.map { it.toString() }.toSet())
+    }
+
     // ========== Device Calendars ==========
 
     val deviceCalendarsEnabled: Flow<Boolean>

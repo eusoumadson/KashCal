@@ -8,6 +8,7 @@ import org.onekash.kashcal.data.contacts.ContactEventUtils
 import org.onekash.kashcal.data.db.entity.Calendar
 import org.onekash.kashcal.data.db.entity.Event
 import org.onekash.kashcal.data.db.entity.Occurrence
+import org.onekash.kashcal.data.tasks_org.TasksOrgTask
 import org.onekash.kashcal.domain.mapper.availabilityIntToTransp
 import org.onekash.kashcal.domain.mapper.statusIntToString
 import org.onekash.kashcal.util.DateTimeUtils
@@ -18,10 +19,11 @@ import java.util.TimeZone
 import java.util.UUID
 
 /**
- * Presents an event from either source to the UI without it knowing which source it came from.
+ * Presents an event from any source to the UI without it knowing which source it came from.
  *
  * [Room] wraps a Room [Event], [Occurrence] and [Calendar]; [Device] wraps a
- * [DeviceCalendarInstance] from Android's CalendarProvider.
+ * [DeviceCalendarInstance] from Android's CalendarProvider; [Task] wraps a [TasksOrgTask] from
+ * the Tasks.org app.
  */
 @Immutable
 sealed interface DisplayEvent {
@@ -129,7 +131,51 @@ sealed interface DisplayEvent {
         /** True for any occurrence of a recurring series, including an exception. */
         val isPartOfRecurringSeries: Boolean get() = instance.isPartOfRecurringSeries
     }
+
+    /**
+     * A task from the Tasks.org app, at its due date ([TasksOrgTask]). It has no end and never
+     * counts as busy. The title carries a checkbox prefix ([taskDisplayTitle]) so every view
+     * tells it from an event and shows whether it is done. Read-only in every view except its
+     * completion, which the task quick view toggles in Tasks.org.
+     */
+    @Immutable
+    data class Task(val task: TasksOrgTask) : DisplayEvent {
+        override val title get() = taskDisplayTitle(task.title, task.isCompleted)
+        override val description get() = task.notes.ifEmpty { null }
+        override val location: String? get() = null
+        override val categories: List<String> get() = emptyList()
+        override val startTs get() = task.startTs
+        override val endTs get() = task.endTs
+        override val startDay get() = task.startDay
+        override val endDay get() = task.endDay
+        override val isAllDay get() = task.isAllDay
+        override val hasRrule get() = task.isRecurring
+        override val calendarColor get() = task.listColor.takeIf { it != 0 } ?: DEFAULT_TASK_LIST_COLOR
+        override val eventColor: Int? get() = null
+        override val calendarName get() = task.listTitle
+        override val isReadOnly: Boolean get() = true
+        override val isFree: Boolean get() = true
+        override val isDeclinedByMe: Boolean get() = false
+        override val isCancelled: Boolean get() = false
+        override val stableKey get() = "task:${task.id}"
+    }
 }
+
+/** Color of a Tasks.org list that has none, Tasks.org's own default blue. */
+internal const val DEFAULT_TASK_LIST_COLOR = 0xFF2196F3.toInt()
+
+/** Title prefix of an open task: U+2610 BALLOT BOX. */
+internal const val TASK_OPEN_PREFIX = "\u2610 "
+
+/** Title prefix of a completed task: U+2611 BALLOT BOX WITH CHECK. */
+internal const val TASK_DONE_PREFIX = "\u2611 "
+
+/**
+ * Returns [title] with a checkbox prefix showing whether the task is [completed]. Display only:
+ * the title stored in Tasks.org never carries it.
+ */
+fun taskDisplayTitle(title: String, completed: Boolean): String =
+    (if (completed) TASK_DONE_PREFIX else TASK_OPEN_PREFIX) + title
 
 /**
  * Builds an unsaved [Event] copy of this device event for the duplicate form.

@@ -66,6 +66,7 @@ import org.onekash.kashcal.ui.screens.settings.AccountsScreen
 import org.onekash.kashcal.ui.screens.settings.BirthdaysAndAnniversariesScreen
 import org.onekash.kashcal.ui.screens.settings.CalDavConnectionState
 import org.onekash.kashcal.ui.screens.settings.DeviceCalendarsScreen
+import org.onekash.kashcal.ui.screens.settings.TasksOrgScreen
 import org.onekash.kashcal.ui.screens.settings.OfflineCalendarsScreen
 import org.onekash.kashcal.ui.screens.settings.toAccountUiModel
 import org.onekash.kashcal.ui.screens.settings.ICloudConnectionState
@@ -187,6 +188,11 @@ fun SettingsRoute(
 
         // Device calendars state
         val deviceCalendarsEnabled by viewModel.deviceCalendarsEnabled.collectAsStateWithLifecycle()
+        val tasksOrgInstalled by viewModel.tasksOrgInstalled.collectAsStateWithLifecycle()
+        val tasksOrgEnabled by viewModel.tasksOrgEnabled.collectAsStateWithLifecycle()
+        val hasTasksOrgPermission by viewModel.hasTasksOrgPermission.collectAsStateWithLifecycle()
+        val tasksOrgLists by viewModel.tasksOrgLists.collectAsStateWithLifecycle()
+        val hiddenTasksOrgListIds by viewModel.hiddenTasksOrgListIds.collectAsStateWithLifecycle()
         val hasReadCalendarPermission by viewModel.hasReadCalendarPermission.collectAsStateWithLifecycle()
         val hasWriteCalendarPermission by viewModel.hasWriteCalendarPermission.collectAsStateWithLifecycle()
         val deviceCalendars by viewModel.deviceCalendars.collectAsStateWithLifecycle()
@@ -313,6 +319,17 @@ fun SettingsRoute(
             }
         }
 
+        // Tasks.org permission launcher. Requests READ and WRITE together: reading shows the
+        // tasks, writing completes them. The source is enabled when READ was granted.
+        val tasksOrgPermissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
+            if (permissions[org.onekash.kashcal.data.tasks_org.TasksOrgContract.PERMISSION_READ] == true) {
+                viewModel.onToggleTasksOrg(true)
+            }
+            viewModel.refreshTasksOrg()
+        }
+
         // Snackbar state, declared before the write-permission launcher that uses it
         val coroutineScope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }
@@ -404,6 +421,7 @@ fun SettingsRoute(
         var showTagsScreen by rememberSaveable { mutableStateOf(openTagsInitially) }
         var showDeviceCalendarsScreen by rememberSaveable { mutableStateOf(false) }
         var showOfflineCalendarsScreen by rememberSaveable { mutableStateOf(false) }
+        var showTasksOrgScreen by rememberSaveable { mutableStateOf(false) }
 
         // ICS import state
         var icsImportFile by remember { mutableStateOf<IcsImportFile?>(null) }
@@ -533,7 +551,8 @@ fun SettingsRoute(
                 showSubscriptionsScreen ||
                 showTagsScreen ||
                 showDeviceCalendarsScreen ||
-                showOfflineCalendarsScreen
+                showOfflineCalendarsScreen ||
+                showTasksOrgScreen
         ) {
             if (showTagsScreen) {
                 closeTags()
@@ -544,6 +563,7 @@ fun SettingsRoute(
             showSubscriptionsScreen = false
             showDeviceCalendarsScreen = false
             showOfflineCalendarsScreen = false
+            showTasksOrgScreen = false
         }
 
         // State-based navigation between the root and detail screens, animated as a directional
@@ -555,6 +575,7 @@ fun SettingsRoute(
             tags = showTagsScreen,
             deviceCalendars = showDeviceCalendarsScreen,
             offlineCalendars = showOfflineCalendarsScreen,
+            tasksOrg = showTasksOrgScreen,
         )
 
         Box(modifier = Modifier.fillMaxSize()) {
@@ -712,6 +733,28 @@ fun SettingsRoute(
                                 writeCalendarPermissionLauncher.launch(android.Manifest.permission.WRITE_CALENDAR)
                             },
                             onRefresh = viewModel::refreshDeviceCalendars
+                        )
+                    }
+                    SettingsDestination.TasksOrg -> {
+                        TasksOrgScreen(
+                            isInstalled = tasksOrgInstalled,
+                            isEnabled = tasksOrgEnabled,
+                            hasReadPermission = hasTasksOrgPermission,
+                            lists = tasksOrgLists,
+                            hiddenListIds = hiddenTasksOrgListIds,
+                            onNavigateBack = { showTasksOrgScreen = false },
+                            onToggle = { enabled ->
+                                if (enabled && !hasTasksOrgPermission) {
+                                    tasksOrgPermissionLauncher.launch(arrayOf(
+                                        org.onekash.kashcal.data.tasks_org.TasksOrgContract.PERMISSION_READ,
+                                        org.onekash.kashcal.data.tasks_org.TasksOrgContract.PERMISSION_WRITE
+                                    ))
+                                } else {
+                                    viewModel.onToggleTasksOrg(enabled)
+                                }
+                            },
+                            onToggleList = viewModel::onToggleTasksOrgList,
+                            onRefresh = viewModel::refreshTasksOrg
                         )
                     }
                     SettingsDestination.OfflineCalendars -> {
@@ -883,6 +926,13 @@ fun SettingsRoute(
                             onNavigateToAccounts = { viewModel.onSearchClose(); showAccountsScreen = true },
                             // Navigate to Device Calendars detail screen
                             onNavigateToDeviceCalendars = { viewModel.onSearchClose(); showDeviceCalendarsScreen = true },
+                            onNavigateToTasksOrg = {
+                                viewModel.onSearchClose()
+                                viewModel.refreshTasksOrg()
+                                showTasksOrgScreen = true
+                            },
+                            tasksOrgInstalled = tasksOrgInstalled,
+                            tasksOrgEnabled = tasksOrgEnabled,
                             onNavigateToOfflineCalendars = { viewModel.onSearchClose(); showOfflineCalendarsScreen = true },
                             offlineCalendarCount = offlineCalendars.size,
                             // Inline search

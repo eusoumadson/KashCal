@@ -72,4 +72,5 @@ private fun summaryKind(
 private fun DisplayEvent.ownRrule(): String? = when (this) {
     is DisplayEvent.Room -> event.rrule
     is DisplayEvent.Device -> rrule
+    is DisplayEvent.Task -> task.recurrence
 }

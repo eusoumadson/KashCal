@@ -65,6 +65,7 @@ class DisplayEventRepositoryDeviceRealProviderTest {
         val dataStore: KashCalDataStore = mockk {
             coEvery { getShowDeclinedEvents() } answers { showDeclined }
             coEvery { getDeviceCalendarsEnabled() } returns true
+            coEvery { getTasksOrgEnabled() } returns false
             coEvery { getEnabledDeviceCalendarIds() } answers { enabledIds }
             coEvery { getHiddenDeviceCalendarIds() } answers { hiddenIds }
             every { hiddenDeviceCalendarIds } returns hiddenFlow
@@ -77,7 +78,14 @@ class DisplayEventRepositoryDeviceRealProviderTest {
             every { attendeesChangeSignal() } returns flowOf(0)
         }
         val accountsDao: AccountsDao = mockk()
-        display = DisplayEventRepository(eventReader, f.repository, manager, dataStore, attendeesDao, accountsDao)
+        // Tasks.org is off, so its repository is never read; the strict mock throws if it is.
+        val tasksOrgManager: org.onekash.kashcal.data.tasks_org.TasksOrgManager = mockk {
+            every { changeSignal } returns MutableStateFlow(0)
+        }
+        display = DisplayEventRepository(
+            eventReader, f.repository, manager, dataStore, attendeesDao, accountsDao,
+            tasksOrgRepository = mockk(), tasksOrgManager = tasksOrgManager
+        )
     }
 
     @After

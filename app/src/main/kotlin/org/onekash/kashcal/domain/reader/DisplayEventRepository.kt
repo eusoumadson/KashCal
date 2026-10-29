@@ -21,6 +21,8 @@ import org.onekash.kashcal.data.db.dao.AttendeesDao
 import org.onekash.kashcal.data.db.dao.TitleSuggestion
 import org.onekash.kashcal.data.db.entity.Calendar
 import org.onekash.kashcal.data.preferences.KashCalDataStore
+import org.onekash.kashcal.data.tasks_org.TasksOrgManager
+import org.onekash.kashcal.data.tasks_org.TasksOrgRepository
 import org.onekash.kashcal.domain.model.DisplayEvent
 import org.onekash.kashcal.domain.model.SearchResult
 import org.onekash.kashcal.ui.util.DayPagerUtils
@@ -42,7 +44,9 @@ class DisplayEventRepository @Inject constructor(
     private val calendarProviderManager: CalendarProviderManager,
     private val dataStore: KashCalDataStore,
     private val attendeesDao: AttendeesDao,
-    private val accountsDao: AccountsDao
+    private val accountsDao: AccountsDao,
+    private val tasksOrgRepository: TasksOrgRepository,
+    private val tasksOrgManager: TasksOrgManager
 ) {
     companion object {
         private const val TAG = "DisplayEventRepo"
@@ -54,6 +58,13 @@ class DisplayEventRepository @Inject constructor(
      * CalendarProviderManager.
      */
     val deviceCalendarChangeSignal: StateFlow<Int> get() = calendarProviderManager.changeSignal
+
+    /**
+     * Emits when either source outside Room changes: device calendars or Tasks.org. One flow, so
+     * the view flows' combine stays within its five-argument overload.
+     */
+    private val externalChangeSignal: Flow<Pair<Int, Int>>
+        get() = combine(calendarProviderManager.changeSignal, tasksOrgManager.changeSignal) { d, t -> d to t }
 
     /**
      * Emits the day pager's events, from 3 days before [centerDateMs] to 4 days after, grouped
@@ -75,13 +86,14 @@ class DisplayEventRepository @Inject constructor(
 
         return combine(
             eventReader.getVisibleOccurrencesWithEventsInRangeFlow(rangeStart, rangeEnd),
-            calendarProviderManager.changeSignal,
+            externalChangeSignal,
             dataStore.showDeclinedEvents,
             attendeesDao.attendeesChangeSignal(),
             dataStore.hiddenDeviceCalendarIds
         ) { roomOccurrences, _, showDeclined, _, _ ->
             val roomEvents = applyDeclinedPolicy(roomOccurrences, showDeclined)
-            val deviceEvents = queryDeviceEvents(startDayCode, endDayCode)
+            val deviceEvents = queryDeviceEvents(startDayCode, endDayCode) +
+                queryTaskEvents(startDayCode, endDayCode)
             mergeAndGroupByDay(roomEvents, deviceEvents, startDayCode, endDayCode)
         }
     }
@@ -100,13 +112,14 @@ class DisplayEventRepository @Inject constructor(
 
         return combine(
             eventReader.getVisibleOccurrencesWithEventsInRangeFlow(startMs, endMs),
-            calendarProviderManager.changeSignal,
+            externalChangeSignal,
             dataStore.showDeclinedEvents,
             attendeesDao.attendeesChangeSignal(),
             dataStore.hiddenDeviceCalendarIds
         ) { roomOccurrences, _, showDeclined, _, _ ->
             val roomEvents = applyDeclinedPolicy(roomOccurrences, showDeclined)
-            val deviceEvents = queryDeviceEvents(startDayCode, endDayCode)
+            val deviceEvents = queryDeviceEvents(startDayCode, endDayCode) +
+                queryTaskEvents(startDayCode, endDayCode)
             (roomEvents + deviceEvents)
                 .sortedBy { it.startTs }
                 .toPersistentList()
@@ -127,13 +140,14 @@ class DisplayEventRepository @Inject constructor(
 
         return combine(
             eventReader.getVisibleOccurrencesWithEventsInRangeFlow(startMs, endMs),
-            calendarProviderManager.changeSignal,
+            externalChangeSignal,
             dataStore.showDeclinedEvents,
             attendeesDao.attendeesChangeSignal(),
             dataStore.hiddenDeviceCalendarIds
         ) { roomOccurrences, _, showDeclined, _, _ ->
             val roomEvents = applyDeclinedPolicy(roomOccurrences, showDeclined)
-            val deviceEvents = queryDeviceEvents(startDayCode, endDayCode)
+            val deviceEvents = queryDeviceEvents(startDayCode, endDayCode) +
+                queryTaskEvents(startDayCode, endDayCode)
             mergeAndGroupByDay(roomEvents, deviceEvents, startDayCode, endDayCode)
         }
     }
@@ -172,7 +186,10 @@ class DisplayEventRepository @Inject constructor(
             emptyList()
         }
 
-        return (roomResults + deviceResults).sortedBy { it.displayTs }
+        val taskResults = queryTaskEvents(startDayCode, endDayCode, search = query)
+            .map { SearchResult(it, it.startTs) }
+
+        return (roomResults + deviceResults + taskResults).sortedBy { it.displayTs }
     }
 
     /**
@@ -195,7 +212,8 @@ class DisplayEventRepository @Inject constructor(
             .first()
         val showDeclined = dataStore.getShowDeclinedEvents()
         val roomEvents = applyDeclinedPolicy(roomOccurrences, showDeclined)
-        val deviceEvents = queryDeviceEvents(startDayCode, endDayCode)
+        val deviceEvents = queryDeviceEvents(startDayCode, endDayCode) +
+            queryTaskEvents(startDayCode, endDayCode)
 
         return mergeAndGroupByDay(roomEvents, deviceEvents, startDayCode, endDayCode)
     }
@@ -313,6 +331,25 @@ class DisplayEventRepository @Inject constructor(
             Log.w(TAG, "Calendar permission revoked, falling back to Room-only", e)
             emptyList()
         }
+    }
+
+    /**
+     * Returns the Tasks.org tasks due from [startDayCode] to [endDayCode] (YYYYMMDD, inclusive)
+     * in lists not hidden in settings; empty while the source is off. [TasksOrgRepository]
+     * returns empty instead of throwing.
+     */
+    private suspend fun queryTaskEvents(
+        startDayCode: Int,
+        endDayCode: Int,
+        search: String? = null
+    ): List<DisplayEvent> {
+        if (!dataStore.getTasksOrgEnabled()) return emptyList()
+        return tasksOrgRepository.getTasksDueInRange(
+            startMs = dayCodeToStartOfDayMs(startDayCode),
+            endMs = dayCodeToEndOfDayMs(endDayCode),
+            hiddenListIds = dataStore.getHiddenTasksOrgListIds(),
+            search = search
+        ).map { DisplayEvent.Task(it) }
     }
 
     /** Returns the enabled, not hidden device calendar IDs; empty when the feature is off. */

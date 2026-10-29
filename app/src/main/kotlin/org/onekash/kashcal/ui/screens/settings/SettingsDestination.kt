@@ -12,7 +12,8 @@ enum class SettingsDestination(val depth: Int) {
     Subscriptions(depth = 1),
     Tags(depth = 1),
     DeviceCalendars(depth = 1),
-    OfflineCalendars(depth = 1);
+    OfflineCalendars(depth = 1),
+    TasksOrg(depth = 1);
 
     /** True when navigating from this destination to [target] moves deeper (root -> detail). */
     fun isForwardTo(target: SettingsDestination): Boolean = target.depth > depth
@@ -29,6 +30,7 @@ enum class SettingsDestination(val depth: Int) {
             tags: Boolean,
             deviceCalendars: Boolean,
             offlineCalendars: Boolean,
+            tasksOrg: Boolean = false,
         ): SettingsDestination = when {
             accounts -> Accounts
             birthdaysAnniversaries -> BirthdaysAnniversaries
@@ -36,6 +38,7 @@ enum class SettingsDestination(val depth: Int) {
             tags -> Tags
             deviceCalendars -> DeviceCalendars
             offlineCalendars -> OfflineCalendars
+            tasksOrg -> TasksOrg
             else -> Root
         }
     }

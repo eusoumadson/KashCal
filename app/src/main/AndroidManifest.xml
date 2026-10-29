@@ -9,6 +9,8 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="geo" />
         </intent>
+        <!-- Tasks.org: its task provider (org.tasks.api) and launch intent, for showing tasks -->
+        <package android:name="org.tasks" />
     </queries>
 
     <!-- Network: CalDAV sync -->
@@ -51,6 +53,11 @@
     <!-- Device calendars: Read/write events from other calendar apps -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+
+    <!-- Tasks.org tasks: read them for the calendar, write to complete them. Runtime permissions
+         defined by the Tasks.org app, asked for only when the user turns its tasks on. -->
+    <uses-permission android:name="org.tasks.permission.READ_TASKS" />
+    <uses-permission android:name="org.tasks.permission.WRITE_TASKS" />
 
     <!-- Sync adapter registration (for CalendarProvider intent routing) -->
     <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />

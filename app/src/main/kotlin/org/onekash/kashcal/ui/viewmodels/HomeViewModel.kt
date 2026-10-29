@@ -288,7 +288,9 @@ class HomeViewModel(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     /** Runs a drag's save, which must finish even when this ViewModel is cleared. */
     private val applicationScope: CoroutineScope,
-    private val currentDayCodeProvider: () -> Int
+    private val currentDayCodeProvider: () -> Int,
+    /** Completes Tasks.org tasks; null in tests that don't exercise them. */
+    private val tasksOrgCoordinator: org.onekash.kashcal.domain.tasks.TasksOrgCoordinator? = null
 ) : ViewModel() {
 
     @Inject
@@ -307,6 +309,7 @@ class HomeViewModel(
         @ApplicationContext context: Context,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
         @ApplicationScope applicationScope: CoroutineScope,
+        tasksOrgCoordinator: org.onekash.kashcal.domain.tasks.TasksOrgCoordinator? = null,
     ) : this(
         eventCoordinator,
         eventReader,
@@ -322,7 +325,8 @@ class HomeViewModel(
         context,
         ioDispatcher,
         applicationScope,
-        { DayPagerUtils.msToDayCode(System.currentTimeMillis()) }
+        { DayPagerUtils.msToDayCode(System.currentTimeMillis()) },
+        tasksOrgCoordinator
     )
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -1277,7 +1281,12 @@ class HomeViewModel(
      */
     private fun observeDeviceCalendarChanges() {
         viewModelScope.launch {
-            displayEventRepository.deviceCalendarChangeSignal
+            // Device calendars and Tasks.org tasks both feed the dots; a change in either
+            // rebuilds them.
+            kotlinx.coroutines.flow.merge(
+                displayEventRepository.deviceCalendarChangeSignal,
+                tasksOrgCoordinator?.changeSignal ?: kotlinx.coroutines.flow.emptyFlow()
+            )
                 .collect { signal ->
                     if (signal > 0) {
                         _uiState.update {
@@ -2631,6 +2640,7 @@ class HomeViewModel(
                     when (val de = result.displayEvent) {
                         is DisplayEvent.Room -> de.event.calendarId in visibleCalendarIds
                         is DisplayEvent.Device -> true // only visible ones were searched
+                        is DisplayEvent.Task -> true // only shown lists were searched
                     }
                 }
 
@@ -3573,6 +3583,8 @@ class HomeViewModel(
                     endDay = endDay,
                 )
             )
+            // A task is read-only (DayColumn never lets it be dragged), so it has no moved copy.
+            is DisplayEvent.Task -> this
         }
     }
 
@@ -3594,6 +3606,8 @@ class HomeViewModel(
                 RruleShift.zoneFor(displayEvent.event.timezone, displayEvent.event.isAllDay) to displayEvent.occurrence.startTs
             is DisplayEvent.Device ->
                 RruleShift.zoneFor(displayEvent.instance.timezone, displayEvent.instance.isAllDay) to displayEvent.instance.startTs
+            is DisplayEvent.Task ->
+                RruleShift.zoneFor(null, displayEvent.isAllDay) to displayEvent.startTs
         }
         return Instant.ofEpochMilli(occurrenceStartTs).atZone(zone).toLocalDate() !=
             Instant.ofEpochMilli(droppedStartTs).atZone(zone).toLocalDate()
@@ -3626,6 +3640,7 @@ class HomeViewModel(
                 when (dropped) {
                     is DisplayEvent.Room -> blockedDragScopes(dropped, droppedStartTs)
                     is DisplayEvent.Device -> blockedDeviceDragScopes(dropped, droppedStartTs)
+                    is DisplayEvent.Task -> setOf(EditScope.ALL_EVENTS, EditScope.THIS_AND_FUTURE)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -3993,6 +4008,8 @@ class HomeViewModel(
                         }
                         MoveSaveOutcome.SAVED
                     }
+                    // A task is read-only (DayColumn never lets it be dragged): nothing to write.
+                    is DisplayEvent.Task -> MoveSaveOutcome.CHANGED
                     is DisplayEvent.Device -> {
                         val instance = displayEvent.instance
                         val stored = deviceEventReader.getDeviceEvent(instance.eventId)
@@ -4145,6 +4162,7 @@ class HomeViewModel(
         get() = when (this) {
             is DisplayEvent.Room -> "room:${event.originalEventId ?: event.id}"
             is DisplayEvent.Device -> "device:${instance.originalId ?: instance.eventId}"
+            is DisplayEvent.Task -> "task:${task.id}"
         }
 
     /** Whether this is an occurrence of a repeating series, not a one-off or a changed one. */
@@ -4152,6 +4170,7 @@ class HomeViewModel(
         get() = when (this) {
             is DisplayEvent.Room -> event.rrule != null && event.originalEventId == null
             is DisplayEvent.Device -> instance.hasRrule
+            is DisplayEvent.Task -> false
         }
 
     /**
@@ -4400,6 +4419,26 @@ class HomeViewModel(
                 Log.e(TAG, "Error saving attendee reminders for event $eventId", e)
                 Result.failure(e)
             }
+        }
+    }
+
+    /**
+     * Completes the Tasks.org task [taskId] or reopens it, without waiting. Tasks.org moves a
+     * repeating task to its next occurrence instead of completing it. A refused write (the write
+     * permission was revoked, the task is gone) shows a snackbar.
+     */
+    fun setTasksOrgTaskCompleted(taskId: Long, completed: Boolean) {
+        val coordinator = tasksOrgCoordinator ?: return
+        viewModelScope.launch {
+            val written = try {
+                withContext(ioDispatcher) { coordinator.setCompleted(taskId, completed) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating Tasks.org task", e)
+                false
+            }
+            if (!written) showSnackbar(context.getString(R.string.snackbar_task_update_failed))
         }
     }
 

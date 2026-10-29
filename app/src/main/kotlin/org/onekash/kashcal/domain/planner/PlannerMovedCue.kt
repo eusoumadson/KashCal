@@ -20,6 +20,7 @@ sealed interface MovedCue {
 fun DisplayEvent.isChangedOccurrence(): Boolean = when (this) {
     is DisplayEvent.Room -> event.isException || occurrence.exceptionEventId != null
     is DisplayEvent.Device -> instance.originalId != null || instance.originalInstanceTime != null
+    is DisplayEvent.Task -> false
 }
 
 /**
@@ -56,6 +57,8 @@ fun movedCue(
             event.instance.startTs,
             event.instance.originalAllDay,
         )
+        // Never a changed occurrence (isChangedOccurrence), so the guard above returned.
+        is DisplayEvent.Task -> return null
     }
     if (original == start) return null
 

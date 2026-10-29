@@ -67,6 +67,7 @@ import org.onekash.kashcal.ui.components.category.LocalTagColors
 import org.onekash.kashcal.ui.components.DeviceEventQuickViewSheet
 import org.onekash.kashcal.ui.components.EventFormSheet
 import org.onekash.kashcal.ui.components.EventQuickViewSheet
+import org.onekash.kashcal.ui.components.TaskQuickViewSheet
 import org.onekash.kashcal.ui.components.IcsImportSheet
 import org.onekash.kashcal.ui.components.importSummary
 import org.onekash.kashcal.ui.components.NotificationPermissionDialog
@@ -323,6 +324,10 @@ class MainActivity : FragmentActivity() {
                     }
                 }
 
+                // Tasks.org task quick view: the tapped task, updated in place when its
+                // completion is toggled. Null while closed.
+                var taskQuickViewEvent by remember { mutableStateOf<DisplayEvent.Task?>(null) }
+
                 // Device event quick view sheet state
                 var showDeviceQuickViewSheet by remember { mutableStateOf(false) }
                 var deviceQuickViewEvent by remember { mutableStateOf<DisplayEvent.Device?>(null) }
@@ -572,6 +577,7 @@ class MainActivity : FragmentActivity() {
                         deviceQuickViewEvent = deviceEvent
                         showDeviceQuickViewSheet = true
                     },
+                    onTaskClick = { task -> taskQuickViewEvent = task },
                     onCreateEvent = {
                         Log.d(TAG, "Create event clicked")
 
@@ -1110,6 +1116,34 @@ class MainActivity : FragmentActivity() {
                                     .getOrNull()
                             }
                         },
+                    )
+                }
+
+                // Tasks.org task quick view
+                taskQuickViewEvent?.let { shown ->
+                    TaskQuickViewSheet(
+                        displayEvent = shown,
+                        canComplete = !shown.task.isReadOnly && androidx.core.content.ContextCompat.checkSelfPermission(
+                            this@MainActivity,
+                            org.onekash.kashcal.data.tasks_org.TasksOrgContract.PERMISSION_WRITE
+                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED,
+                        onSetCompleted = { completed ->
+                            homeViewModel.setTasksOrgTaskCompleted(shown.task.id, completed)
+                            // Tasks.org moves a repeating task to its next date instead of
+                            // completing it, so the sheet would show the wrong occurrence.
+                            taskQuickViewEvent = if (shown.task.isRecurring && completed) {
+                                null
+                            } else {
+                                shown.copy(
+                                    task = shown.task.copy(
+                                        completedAt = if (completed) System.currentTimeMillis() else null
+                                    )
+                                )
+                            }
+                        },
+                        onDismiss = { taskQuickViewEvent = null },
+                        showEventEmojis = uiState.showEventEmojis,
+                        timeFormat = uiState.timeFormat
                     )
                 }
 

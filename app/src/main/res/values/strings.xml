@@ -922,6 +922,31 @@
     <string name="settings_device_calendars">Device calendars</string>
     <!-- Subtitle shown on the Settings row when device calendars are not enabled; provenance hint for where the data comes from. -->
     <string name="settings_device_calendars_hint">Calendars from other apps</string>
+    <!-- Settings hub row for showing tasks from the Tasks.org app. "Tasks.org" is the app's name, don't translate it. -->
+    <string name="settings_tasks_org">Tasks.org tasks</string>
+    <!-- Subtitle of the Tasks.org row while its tasks are not shown. -->
+    <string name="settings_tasks_org_hint">Tasks with a due date from Tasks.org</string>
+    <!-- Subtitle of the Tasks.org row while its tasks are shown. -->
+    <string name="settings_tasks_org_enabled">On</string>
+    <!-- Explains the Tasks.org source at the top of its settings screen. -->
+    <string name="tasks_org_description">Shows the tasks with a due date from the Tasks.org app on your calendar. Tap a task to mark it done. Tasks stay in Tasks.org, which syncs them.</string>
+    <!-- Shown while the source is on but KashCal can't read Tasks.org. -->
+    <string name="tasks_org_permission_required">Access to Tasks.org required. Tap Enable to grant access.</string>
+    <!-- Shown in place of the switch when the Tasks.org app isn't installed. -->
+    <string name="tasks_org_not_installed">Install Tasks.org to show its tasks here.</string>
+    <!-- Header of the list of Tasks.org lists, each with a show switch. -->
+    <string name="tasks_org_lists_header">Task lists</string>
+    <string name="tasks_org_no_lists">No task lists found in Tasks.org.</string>
+    <!-- A Tasks.org list the user can't change, such as a shared one. -->
+    <string name="tasks_org_list_read_only">Read-only</string>
+    <!-- Task quick view: when the task is due; %1$s is its date, or date and time. -->
+    <string name="task_due">Due %1$s</string>
+    <string name="task_mark_completed">Mark as completed</string>
+    <string name="task_completed_label">Completed</string>
+    <!-- Task quick view note on a repeating task. -->
+    <string name="task_repeats_note">Completing it moves the task to its next date in Tasks.org.</string>
+    <string name="task_open_in_tasks_org">Open in Tasks.org</string>
+    <string name="snackbar_task_update_failed">Couldn\'t update task</string>
     <string name="offline_calendars_row_label">Offline calendars</string>
     <string name="offline_calendars_row_hint">Calendars that stay on this phone</string>
     <string name="offline_calendars_manage_note">Add, rename, recolor or remove your offline calendars.</string>

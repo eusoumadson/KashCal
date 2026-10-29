@@ -172,6 +172,10 @@ object ExportablePreferences {
         PreferencesKeys.ENABLED_DEVICE_CALENDAR_IDS.name,
         PreferencesKeys.HIDDEN_DEVICE_CALENDAR_IDS.name,
         PreferencesKeys.MUTED_DEVICE_CALENDAR_IDS.name,
+        // Tasks.org: the switch needs a runtime permission granted on this device, and the
+        // list ids are Tasks.org row ids, not portable across installs
+        PreferencesKeys.TASKS_ORG_ENABLED.name,
+        PreferencesKeys.HIDDEN_TASKS_ORG_LIST_IDS.name,
         // Stores "room:<id>" or "device:<id>"; neither ID is portable across installs
         PreferencesKeys.DEFAULT_CALENDAR.name,
         // Legacy (superseded)

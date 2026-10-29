@@ -264,4 +264,5 @@ private fun eventOrderRank(event: DisplayEvent): Int = when {
 internal fun DisplayEvent.spanIdentityKey(): String = when (this) {
     is DisplayEvent.Room -> "room:${event.id}:${occurrence.startTs}"
     is DisplayEvent.Device -> "device:${instance.eventId}:${instance.startTs}"
+    is DisplayEvent.Task -> stableKey
 }

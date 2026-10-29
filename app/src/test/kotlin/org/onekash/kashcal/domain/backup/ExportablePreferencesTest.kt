@@ -41,8 +41,8 @@ class ExportablePreferencesTest {
     }
 
     @Test
-    fun `exclude list contains exactly 30 key names`() {
-        assertEquals(30, ExportablePreferences.EXCLUDED_KEY_NAMES.size)
+    fun `exclude list contains exactly 32 key names`() {
+        assertEquals(32, ExportablePreferences.EXCLUDED_KEY_NAMES.size)
     }
 
     @Test
@@ -149,6 +149,9 @@ class ExportablePreferencesTest {
             PreferencesKeys.ENABLED_DEVICE_CALENDAR_IDS,
             PreferencesKeys.HIDDEN_DEVICE_CALENDAR_IDS,
             PreferencesKeys.DEFAULT_CALENDAR_ID,
+            // Tasks.org: a permission granted on this device, and Tasks.org row ids
+            PreferencesKeys.TASKS_ORG_ENABLED,
+            PreferencesKeys.HIDDEN_TASKS_ORG_LIST_IDS,
         )
         mustBeExcluded.forEach { key ->
             assertTrue(

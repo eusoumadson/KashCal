@@ -54,6 +54,7 @@ internal fun DayEventsSheet(
     timePattern: String,
     onEventClick: (Event, Long?) -> Unit,
     onDeviceEventClick: (DisplayEvent.Device) -> Unit,
+    onTaskClick: (DisplayEvent.Task) -> Unit = {},
     onCreateEvent: (Long) -> Unit,
     onDismiss: () -> Unit,
     attendeesByEventId: Map<Long, List<org.onekash.kashcal.ui.components.attendees.AttendeeUiModel>> = emptyMap()
@@ -110,6 +111,7 @@ internal fun DayEventsSheet(
                         when (event) {
                             is DisplayEvent.Room -> "room-${event.event.id}-${event.occurrence.startTs}"
                             is DisplayEvent.Device -> "device-${event.instance.instanceId}-${event.startTs}"
+                            is DisplayEvent.Task -> event.stableKey
                         }
                     }) { displayEvent ->
                         val isPast = DateTimeUtils.isEventPast(
@@ -133,6 +135,7 @@ internal fun DayEventsSheet(
                                         displayEvent.occurrence.startTs
                                     )
                                     is DisplayEvent.Device -> onDeviceEventClick(displayEvent)
+                                    is DisplayEvent.Task -> onTaskClick(displayEvent)
                                 }
                             }
                         )

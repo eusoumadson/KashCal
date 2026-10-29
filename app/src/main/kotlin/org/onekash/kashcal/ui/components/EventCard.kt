@@ -122,6 +122,7 @@ internal fun formatDisplayEventTitle(displayEvent: DisplayEvent, showEmojis: Boo
     return when (displayEvent) {
         is DisplayEvent.Room -> formatEventTitle(displayEvent.event, displayEvent.occurrence.startTs, showEmojis, resources)
         is DisplayEvent.Device -> EmojiMatcher.formatWithEmoji(displayEvent.title, showEmojis)
+        is DisplayEvent.Task -> EmojiMatcher.formatWithEmoji(displayEvent.title, showEmojis)
     }
 }
 

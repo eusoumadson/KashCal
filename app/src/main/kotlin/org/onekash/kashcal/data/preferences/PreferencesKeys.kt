@@ -283,6 +283,14 @@ object PreferencesKeys {
     /** KashCal fires reminders for device calendar events. */
     val DEVICE_CALENDAR_REMINDERS_ENABLED = booleanPreferencesKey("device_calendar_reminders_enabled")
 
+    // ========== Tasks.org ==========
+
+    /** Tasks from the Tasks.org app are shown ([org.onekash.kashcal.data.tasks_org.TasksOrgManager]). */
+    val TASKS_ORG_ENABLED = booleanPreferencesKey("tasks_org_enabled")
+
+    /** Tasks.org list ids whose tasks are not shown, stored as strings. */
+    val HIDDEN_TASKS_ORG_LIST_IDS = stringSetPreferencesKey("hidden_tasks_org_list_ids")
+
     // ========== Parse Failure Retry (v16.7.0) ==========
 
     /**

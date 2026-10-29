@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Cake
+import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.DateRange
@@ -238,6 +239,10 @@ fun AccountSettingsScreen(
     onNavigateToSubscriptions: () -> Unit = {},
     onNavigateToBirthdaysAnniversaries: () -> Unit = {},
     onNavigateToDeviceCalendars: () -> Unit = {},
+    onNavigateToTasksOrg: () -> Unit = {},
+    // Tasks.org: the row shows only while the app is installed.
+    tasksOrgInstalled: Boolean = false,
+    tasksOrgEnabled: Boolean = false,
     onNavigateToOfflineCalendars: () -> Unit = {},
     // Offline calendars, the built-in included; the row shows its hint until there is more than
     // one.
@@ -497,6 +502,22 @@ fun AccountSettingsScreen(
                                 showDivider = false,
                                 searchQuery = searchQuery
                             )
+                        }
+
+                        if (tasksOrgInstalled) {
+                            val tasksOrgSubtitle = stringResource(
+                                if (tasksOrgEnabled) R.string.settings_tasks_org_enabled else R.string.settings_tasks_org_hint
+                            )
+                            row(label = stringResource(R.string.settings_tasks_org), subtitle = tasksOrgSubtitle, id = "tasks-org") {
+                                SettingsRow(
+                                    icon = Icons.Default.TaskAlt,
+                                    label = stringResource(R.string.settings_tasks_org),
+                                    subtitle = tasksOrgSubtitle,
+                                    onClick = onNavigateToTasksOrg,
+                                    showDivider = false,
+                                    searchQuery = searchQuery
+                                )
+                            }
                         }
 
                         val offlineCalendarsSubtitle = if (offlineCalendarCount <= 1) stringResource(R.string.offline_calendars_row_hint)

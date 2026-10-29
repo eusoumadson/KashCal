@@ -171,6 +171,8 @@ class AccountSettingsViewModel @Inject constructor(
     private val reminderNotificationChannels: ReminderNotificationChannels,
     @ApplicationContext private val context: Context,
     @ApplicationScope private val applicationScope: CoroutineScope,
+    /** The Tasks.org source; null in tests that don't exercise it. */
+    private val tasksOrgCoordinator: org.onekash.kashcal.domain.tasks.TasksOrgCoordinator? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AccountSettingsUiState(isLoading = true))
@@ -388,6 +390,22 @@ class AccountSettingsViewModel @Inject constructor(
     private val _localNetworkHintActive = MutableStateFlow(false)
     val localNetworkHintActive: StateFlow<Boolean> = _localNetworkHintActive.asStateFlow()
 
+    // Tasks.org tasks
+    private val _tasksOrgInstalled = MutableStateFlow(false)
+    val tasksOrgInstalled: StateFlow<Boolean> = _tasksOrgInstalled.asStateFlow()
+
+    private val _tasksOrgEnabled = MutableStateFlow(false)
+    val tasksOrgEnabled: StateFlow<Boolean> = _tasksOrgEnabled.asStateFlow()
+
+    private val _hasTasksOrgPermission = MutableStateFlow(false)
+    val hasTasksOrgPermission: StateFlow<Boolean> = _hasTasksOrgPermission.asStateFlow()
+
+    private val _tasksOrgLists = MutableStateFlow<List<org.onekash.kashcal.data.tasks_org.TasksOrgList>>(emptyList())
+    val tasksOrgLists: StateFlow<List<org.onekash.kashcal.data.tasks_org.TasksOrgList>> = _tasksOrgLists.asStateFlow()
+
+    private val _hiddenTasksOrgListIds = MutableStateFlow<Set<Long>>(emptySet())
+    val hiddenTasksOrgListIds: StateFlow<Set<Long>> = _hiddenTasksOrgListIds.asStateFlow()
+
     // Device Calendars
     private val _deviceCalendarsEnabled = MutableStateFlow(false)
     val deviceCalendarsEnabled: StateFlow<Boolean> = _deviceCalendarsEnabled.asStateFlow()
@@ -522,6 +540,7 @@ class AccountSettingsViewModel @Inject constructor(
         refreshContactEventCounts()
         observeUserPreferences()
         observeDeviceCalendars()
+        observeTasksOrg()
         observeDisplaySettings()
         checkContactsPermission()
         checkCalendarPermission()
@@ -783,6 +802,52 @@ class AccountSettingsViewModel @Inject constructor(
                 _hiddenDeviceCalendarIds.value = ids
             }
         }
+    }
+
+    private fun observeTasksOrg() {
+        val coordinator = tasksOrgCoordinator ?: return
+        viewModelScope.launch {
+            coordinator.enabled.collect { enabled ->
+                _tasksOrgEnabled.value = enabled
+                refreshTasksOrg()
+            }
+        }
+        viewModelScope.launch {
+            coordinator.hiddenListIds.collect { _hiddenTasksOrgListIds.value = it }
+        }
+    }
+
+    /**
+     * Re-reads whether Tasks.org is installed and readable, and its lists. Call it when the
+     * Tasks.org screen opens and after the permission prompt, since neither change notifies.
+     */
+    fun refreshTasksOrg() {
+        val coordinator = tasksOrgCoordinator ?: return
+        viewModelScope.launch {
+            _tasksOrgInstalled.value = coordinator.isInstalled()
+            _hasTasksOrgPermission.value = coordinator.hasReadPermission()
+            _tasksOrgLists.value = if (_tasksOrgEnabled.value && _hasTasksOrgPermission.value) {
+                coordinator.getLists()
+            } else {
+                emptyList()
+            }
+        }
+    }
+
+    /**
+     * Shows or stops showing Tasks.org tasks. The caller requests the Tasks.org permission
+     * before enabling; without it [org.onekash.kashcal.data.tasks_org.TasksOrgManager] switches
+     * the source back off.
+     */
+    fun onToggleTasksOrg(enabled: Boolean) {
+        val coordinator = tasksOrgCoordinator ?: return
+        viewModelScope.launch { coordinator.setEnabled(enabled) }
+    }
+
+    /** Shows or hides the tasks of the Tasks.org list [listId]. */
+    fun onToggleTasksOrgList(listId: Long, shown: Boolean) {
+        val coordinator = tasksOrgCoordinator ?: return
+        viewModelScope.launch { coordinator.setListShown(listId, shown) }
     }
 
     private suspend fun loadDeviceCalendars() {

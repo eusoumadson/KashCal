@@ -54,7 +54,7 @@ class WidgetDataRepository @Inject constructor(
         val eventsMap = displayEventRepository.getDisplayEventsGroupedByDayOnce(todayCode, todayCode)
         val todayEvents = eventsMap[todayCode] ?: return emptyList()
 
-        return todayEvents.map { toWidgetEvent(it) }
+        return todayEvents.mapNotNull { toWidgetEvent(it) }
             .sortedWith(compareBy({ !it.isAllDay }, { it.startTs }))
     }
 
@@ -78,7 +78,7 @@ class WidgetDataRepository @Inject constructor(
         // Every day gets an entry, even with no events.
         return dayCodes.associateWith { dayCode ->
             eventsMap[dayCode].orEmpty()
-                .map { toWidgetEvent(it) }
+                .mapNotNull { toWidgetEvent(it) }
                 .sortedWith(compareBy({ !it.isAllDay }, { it.startTs }))
         }
     }
@@ -93,20 +93,26 @@ class WidgetDataRepository @Inject constructor(
 
         return eventsMap.mapValues { (_, displayEvents) ->
             displayEvents
-                .map { toWidgetEvent(it) }
+                .mapNotNull { toWidgetEvent(it) }
                 .sortedWith(compareBy({ !it.isAllDay }, { it.startTs }))
         }
+            .filterValues { it.isNotEmpty() }
     }
 
     /**
      * Maps a [DisplayEvent] to a [WidgetEvent]. A set event color wins over the calendar color;
      * when the winner is 0, [DEFAULT_CALENDAR_COLOR] is used.
+     *
+     * Returns null for a Tasks.org task: a widget tap opens the event by its Room or device id
+     * ([EXTRA_EVENT_ID], [EXTRA_IS_DEVICE_EVENT]), and a task id would open another event.
      */
-    private fun toWidgetEvent(displayEvent: DisplayEvent): WidgetEvent {
+    private fun toWidgetEvent(displayEvent: DisplayEvent): WidgetEvent? {
+        if (displayEvent is DisplayEvent.Task) return null
         return WidgetEvent(
             eventId = when (displayEvent) {
                 is DisplayEvent.Room -> displayEvent.event.id
                 is DisplayEvent.Device -> displayEvent.instance.eventId
+                is DisplayEvent.Task -> return null
             },
             occurrenceStartTs = displayEvent.startTs,
             title = when (displayEvent) {
@@ -114,6 +120,7 @@ class WidgetDataRepository @Inject constructor(
                     displayEvent.event, displayEvent.startTs, context.resources
                 )
                 is DisplayEvent.Device -> displayEvent.title
+                is DisplayEvent.Task -> return null
             },
             startTs = displayEvent.startTs,
             endTs = displayEvent.endTs,

@@ -224,6 +224,7 @@ fun HomeScreen(
     // Event callbacks
     onEventClick: (Event, Long?) -> Unit = { _, _ -> },  // (event, occurrenceStartTs)
     onDeviceEventClick: (DisplayEvent.Device) -> Unit = {},  // device calendar event clicked
+    onTaskClick: (DisplayEvent.Task) -> Unit = {},  // Tasks.org task clicked
     onCreateEvent: () -> Unit = {},
     onCreateEventWithDateTime: (Long) -> Unit = {},  // timestamp for pre-filled event form
     // Sync callbacks
@@ -653,6 +654,7 @@ fun HomeScreen(
                                 timePattern = timePattern,
                                 onResultClick = onSearchResultClick,
                                 onDeviceEventClick = onDeviceEventClick,
+                                onTaskClick = onTaskClick,
                                 onFilterSelect = onSearchDateFilterChange,
                                 onCustomDateClick = onSearchShowDatePicker
                             )
@@ -766,6 +768,7 @@ fun HomeScreen(
                                                     when (displayEvent) {
                                                         is DisplayEvent.Room -> onEventClick(displayEvent.event, displayEvent.occurrence.startTs)
                                                         is DisplayEvent.Device -> onDeviceEventClick(displayEvent)
+                                                        is DisplayEvent.Task -> onTaskClick(displayEvent)
                                                     }
                                                 }
                                             )
@@ -826,6 +829,7 @@ fun HomeScreen(
                                                     when (displayEvent) {
                                                         is DisplayEvent.Room -> onEventClick(displayEvent.event, displayEvent.occurrence.startTs)
                                                         is DisplayEvent.Device -> onDeviceEventClick(displayEvent)
+                                                        is DisplayEvent.Task -> onTaskClick(displayEvent)
                                                     }
                                                 }
                                             },
@@ -1039,6 +1043,7 @@ fun HomeScreen(
                                                 todayDayCode = todayDayCode,
                                                 onEventClick = onEventClick,
                                                 onDeviceEventClick = onDeviceEventClick,
+                                                onTaskClick = onTaskClick,
                                                 onDateSelected = onDateSelected,
                                                 onLoadEventsForRange = onLoadEventsForDayPagerRange,
                                                 shouldRefreshCache = shouldRefreshDayPagerCache,
@@ -1094,6 +1099,7 @@ fun HomeScreen(
                                                 todayDayCode = todayDayCode,
                                                 onEventClick = onEventClick,
                                                 onDeviceEventClick = onDeviceEventClick,
+                                                onTaskClick = onTaskClick,
                                                 onDateSelected = onDateSelected,
                                                 onLoadEventsForRange = onLoadEventsForDayPagerRange,
                                                 shouldRefreshCache = shouldRefreshDayPagerCache
@@ -1250,6 +1256,7 @@ fun HomeScreen(
             timePattern = timePattern,
             onEventClick = onEventClick,
             onDeviceEventClick = onDeviceEventClick,
+            onTaskClick = onTaskClick,
             onCreateEvent = onCreateEventWithDateTime,
             onDismiss = onDismissDayDetail,
             attendeesByEventId = dayAttendees
@@ -1265,6 +1272,8 @@ fun HomeScreen(
         val (masterStartTs, occurrenceTs, isAllDay) = when (val ev = pending.displayEvent) {
             is DisplayEvent.Room -> Triple(ev.event.startTs, ev.occurrence.startTs, ev.event.isAllDay)
             is DisplayEvent.Device -> Triple(ev.instance.eventStartTs, ev.startTs, ev.instance.isAllDay)
+            // Never dragged (read-only), so no drop is pending for one.
+            is DisplayEvent.Task -> Triple(ev.startTs, ev.startTs, ev.isAllDay)
         }
         val options = org.onekash.kashcal.ui.viewmodels.computeDragScopeOptions(
             masterStartTs = masterStartTs,
@@ -1802,6 +1811,7 @@ private fun ColumnScope.DayEventsPager(
     todayDayCode: Int,
     onEventClick: (Event, Long?) -> Unit,
     onDeviceEventClick: (DisplayEvent.Device) -> Unit = {},
+    onTaskClick: (DisplayEvent.Task) -> Unit = {},  // Tasks.org task clicked
     onDateSelected: (Long) -> Unit,
     onLoadEventsForRange: (Long) -> Unit,
     shouldRefreshCache: (Long) -> Boolean,
@@ -1930,6 +1940,7 @@ private fun ColumnScope.DayEventsPager(
                 todayDayCode = todayDayCode,
                 onEventClick = onEventClick,
                 onDeviceEventClick = onDeviceEventClick,
+                onTaskClick = onTaskClick,
                 attendeesByEventId = attendeesByEventId
             )
         }
@@ -1948,6 +1959,7 @@ private fun DayEventsPage(
     todayDayCode: Int,
     onEventClick: (Event, Long?) -> Unit,
     onDeviceEventClick: (DisplayEvent.Device) -> Unit = {},
+    onTaskClick: (DisplayEvent.Task) -> Unit = {},  // Tasks.org task clicked
     attendeesByEventId: Map<Long, List<org.onekash.kashcal.ui.components.attendees.AttendeeUiModel>> = emptyMap()
 ) {
     when {
@@ -2032,6 +2044,7 @@ private fun DayEventsPage(
                             when (displayEvent) {
                                 is DisplayEvent.Room -> onEventClick(displayEvent.event, displayEvent.occurrence.startTs)
                                 is DisplayEvent.Device -> onDeviceEventClick(displayEvent)
+                                is DisplayEvent.Task -> onTaskClick(displayEvent)
                             }
                         }
                     )
@@ -2067,6 +2080,9 @@ private fun SearchResultCard(
             is DisplayEvent.Device -> {
                 formatSearchResultDate(displayEvent, timePattern = timePattern)
             }
+            is DisplayEvent.Task -> {
+                formatSearchResultDate(displayEvent, timePattern = timePattern)
+            }
         }
     }
 
@@ -2076,6 +2092,7 @@ private fun SearchResultCard(
         when (displayEvent) {
             is DisplayEvent.Room -> formatEventTitle(displayEvent.event, searchResult.displayTs, showEventEmojis, resources)
             is DisplayEvent.Device -> EmojiMatcher.formatWithEmoji(displayEvent.title, showEventEmojis)
+            is DisplayEvent.Task -> EmojiMatcher.formatWithEmoji(displayEvent.title, showEventEmojis)
         }
     }
 
@@ -2132,6 +2149,7 @@ private fun SearchContent(
     timePattern: String = "h:mm a",
     onResultClick: (Event, Long?) -> Unit,
     onDeviceEventClick: (DisplayEvent.Device) -> Unit = {},
+    onTaskClick: (DisplayEvent.Task) -> Unit = {},  // Tasks.org task clicked
     onFilterSelect: (DateFilter) -> Unit,
     onCustomDateClick: () -> Unit
 ) {
@@ -2192,6 +2210,7 @@ private fun SearchContent(
                         when (val de = result.displayEvent) {
                             is DisplayEvent.Room -> "room_${de.event.id}"
                             is DisplayEvent.Device -> "device_${de.instance.instanceId}"
+                            is DisplayEvent.Task -> "task_${de.task.id}"
                         }
                     },
                     contentType = { "search_result" }
@@ -2201,6 +2220,7 @@ private fun SearchContent(
                     val isRecurring = when (displayEvent) {
                         is DisplayEvent.Room -> displayEvent.event.isRecurring || displayEvent.event.isException
                         is DisplayEvent.Device -> displayEvent.hasRrule
+                        is DisplayEvent.Task -> displayEvent.hasRrule
                     }
                     val isPast = !isRecurring &&
                         DateTimeUtils.isEventPast(displayEvent.endTs, displayEvent.endDay, displayEvent.isAllDay)
@@ -2214,6 +2234,7 @@ private fun SearchContent(
                             when (displayEvent) {
                                 is DisplayEvent.Room -> onResultClick(displayEvent.event, result.displayTs)
                                 is DisplayEvent.Device -> onDeviceEventClick(displayEvent)
+                                is DisplayEvent.Task -> onTaskClick(displayEvent)
                             }
                         }
                     )
@@ -2308,6 +2329,7 @@ private fun AgendaContent(
                         when (val de = item.displayEvent) {
                             is DisplayEvent.Room -> "room_${de.event.id}_${de.occurrence.startTs}_${item.displayDay}"
                             is DisplayEvent.Device -> "device_${de.instance.instanceId}_${item.displayDay}"
+                            is DisplayEvent.Task -> "task_${de.task.id}_${item.displayDay}"
                         }
                     },
                     contentType = { "agenda_card" }

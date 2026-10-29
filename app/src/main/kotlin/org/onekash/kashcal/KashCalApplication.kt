@@ -98,6 +98,9 @@ class KashCalApplication : Application(), Configuration.Provider {
     lateinit var calendarProviderManager: CalendarProviderManager
 
     @Inject
+    lateinit var tasksOrgManager: org.onekash.kashcal.data.tasks_org.TasksOrgManager
+
+    @Inject
     lateinit var dataStore: KashCalDataStore
 
     @Inject
@@ -172,6 +175,10 @@ class KashCalApplication : Application(), Configuration.Provider {
             // When device calendars are on, registers their observer; without READ_CALENDAR it
             // turns the feature off instead.
             calendarProviderManager.initialize()
+
+            // When Tasks.org tasks are on, observes them; without the permission it turns the
+            // source off instead.
+            tasksOrgManager.initialize()
 
             // Daily refresh that arms reminders that entered the scheduling window.
             ReminderRefreshWorker.schedule(this)
