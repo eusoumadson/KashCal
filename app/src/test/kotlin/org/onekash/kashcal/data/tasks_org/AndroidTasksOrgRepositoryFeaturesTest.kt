@@ -21,7 +21,7 @@ import java.time.ZoneId
 
 /**
  * The fork's richer repository behavior against [FakeTasksOrgProvider]: what a task read carries
- * (tags, priority, subtasks, place, start), overdue tasks pinned to today, the atomic save that
+ * (tags, priority, subtasks, place, start), overdue tasks left on their own day, the atomic save that
  * writes a task with its tags, reminders and place in one batch, management of lists, tags and
  * places, accounts, and the installed version.
  */
@@ -71,7 +71,6 @@ class AndroidTasksOrgRepositoryFeaturesTest {
         assertEquals(3L, task.placeId)
         assertEquals(TasksOrgDate(start, allDay = true), task.hideUntil)
         assertEquals(TasksOrgRepeatFrom.COMPLETION_DATE, task.repeatFrom)
-        assertFalse(task.isOverdue)
     }
 
     @Test
@@ -86,72 +85,45 @@ class AndroidTasksOrgRepositoryFeaturesTest {
     private val now get() = at(2026, 10, 30, 12)
 
     private fun seedOverdueScenario() {
-        provider.now = now
         // Overdue all-day task from last week.
         provider.tasks += FakeTasksOrgProvider.TaskRow(id = 1, title = "Late rent", due = at(2026, 10, 25), listId = 1, allDay = true)
-        // Due later today: in range, not overdue.
+        // Due later today.
         provider.tasks += FakeTasksOrgProvider.TaskRow(id = 2, title = "Today 5pm", due = at(2026, 10, 30, 17), listId = 1)
-        // Overdue but already completed: not shown pinned.
+        // Overdue and completed.
         provider.tasks += FakeTasksOrgProvider.TaskRow(id = 3, title = "Done late", due = at(2026, 10, 20), listId = 1, completedAt = at(2026, 10, 21))
     }
 
     @Test
-    fun `an overdue open task is shown on today with its real due date kept`() = runTest {
+    fun `an overdue task is not shown on today`() = runTest {
         seedOverdueScenario()
 
-        val tasks = repository.getTasksDueInRange(at(2026, 10, 30), at(2026, 10, 30, 23, 59), emptySet(), nowMs = now)
+        val tasks = repository.getTasksDueInRange(at(2026, 10, 30), at(2026, 10, 30, 23, 59), emptySet())
 
-        assertEquals(listOf(1L, 2L), tasks.map { it.id })
-        val late = tasks.first { it.id == 1L }
-        assertTrue(late.isOverdue)
-        assertTrue(late.isAllDay)
-        assertEquals(20261030, late.startDay)
-        // The real due date is untouched, for the editor and the schedule.
+        assertEquals(listOf(2L), tasks.map { it.id })
+    }
+
+    @Test
+    fun `an overdue task stays on its scheduled day`() = runTest {
+        seedOverdueScenario()
+
+        val tasks = repository.getTasksDueInRange(at(2026, 10, 25), at(2026, 10, 25, 23, 59), emptySet())
+
+        val late = tasks.single()
+        assertEquals(1L, late.id)
+        assertEquals(20261025, late.startDay)
         assertEquals(at(2026, 10, 25), late.dueTs)
-        assertEquals(at(2026, 10, 25), late.overdueSince)
-        assertTrue(late.dueAllDay)
-        assertFalse(tasks.first { it.id == 2L }.isOverdue)
+        assertTrue(late.isAllDay)
     }
 
     @Test
-    fun `overdue tasks are asked for dated open tasks before the range only`() = runTest {
-        seedOverdueScenario()
-        val rangeStart = at(2026, 10, 30)
-
-        repository.getTasksDueInRange(rangeStart, at(2026, 10, 30, 23, 59), emptySet(), nowMs = now)
-
-        val uri = provider.queries.single { it.getQueryParameter(TasksOrgContract.Tasks.PARAM_OVERDUE) == "1" }
-        assertEquals("0", uri.getQueryParameter(TasksOrgContract.Tasks.PARAM_COMPLETED))
-        assertEquals("0", uri.getQueryParameter(TasksOrgContract.Tasks.PARAM_DUE_AFTER))
-        assertEquals(rangeStart.toString(), uri.getQueryParameter(TasksOrgContract.Tasks.PARAM_DUE_BEFORE))
-    }
-
-    @Test
-    fun `overdue tasks are not added when today is outside the range`() = runTest {
+    fun `reading a range makes no query beyond the range itself`() = runTest {
         seedOverdueScenario()
 
-        val tasks = repository.getTasksDueInRange(at(2026, 11, 2), at(2026, 11, 8), emptySet(), nowMs = now)
+        repository.getTasksDueInRange(at(2026, 10, 30), at(2026, 10, 30, 23, 59), emptySet())
 
-        assertTrue(tasks.isEmpty())
-        assertTrue(provider.queries.none { it.getQueryParameter(TasksOrgContract.Tasks.PARAM_OVERDUE) == "1" })
-    }
-
-    @Test
-    fun `a search does not add overdue tasks`() = runTest {
-        seedOverdueScenario()
-
-        repository.getTasksDueInRange(at(2026, 10, 1), at(2026, 12, 31), emptySet(), search = "rent", nowMs = now)
-
-        assertTrue(provider.queries.none { it.getQueryParameter(TasksOrgContract.Tasks.PARAM_OVERDUE) == "1" })
-    }
-
-    @Test
-    fun `an overdue task in a hidden list is not shown`() = runTest {
-        seedOverdueScenario()
-
-        val tasks = repository.getTasksDueInRange(at(2026, 10, 30), at(2026, 10, 30, 23, 59), setOf(1L), nowMs = now)
-
-        assertTrue(tasks.isEmpty())
+        val taskQueries = provider.queries.filter { it.pathSegments.last() == "tasks" }
+        assertEquals(1, taskQueries.size)
+        assertEquals((at(2026, 10, 30) - 1).toString(), taskQueries.single().getQueryParameter(TasksOrgContract.Tasks.PARAM_DUE_AFTER))
     }
 
     // ------------------------------------------------------------------ atomic create

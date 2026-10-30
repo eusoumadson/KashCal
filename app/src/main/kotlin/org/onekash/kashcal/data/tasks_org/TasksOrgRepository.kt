@@ -33,19 +33,15 @@ interface TasksOrgRepository {
      * Returns the tasks due in [startMs]..[endMs] (inclusive), open and completed, that are in
      * none of [hiddenListIds], sorted by due time. Tasks without a due date are never returned.
      *
-     * An open task that is overdue and due before [startMs] is also returned, shown on the day
-     * of [nowMs] (see [TasksOrgTask.overdueSince]), when that day falls in the range. A search
-     * does not include them.
+     * A task, overdue or not, is placed on its own due day.
      *
      * @param search when not null, only tasks whose title or notes contain it
-     * @param nowMs the instant "today" is taken from; a seam for tests
      */
     suspend fun getTasksDueInRange(
         startMs: Long,
         endMs: Long,
         hiddenListIds: Set<Long>,
-        search: String? = null,
-        nowMs: Long = System.currentTimeMillis()
+        search: String? = null
     ): List<TasksOrgTask>
 
     /** Reads one task by id, or null when it can't be read or has no due date. */

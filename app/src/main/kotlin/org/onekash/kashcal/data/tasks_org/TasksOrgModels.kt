@@ -188,12 +188,6 @@ data class TasksOrgTask(
     val isReadOnly: Boolean,
     /** Task priority; defaults to [TasksOrgPriority.NONE] when the provider omits it. */
     val priority: TasksOrgPriority = TasksOrgPriority.NONE,
-    /**
-     * Whether the due date itself is all-day, as Tasks.org stores it. [isAllDay] says how the
-     * task is placed on the calendar; the two differ only for an overdue task pinned to today
-     * ([overdueSince]), so the editor and the schedule always use this one.
-     */
-    val dueAllDay: Boolean = isAllDay,
     /** Names of the task's tags, in Tasks.org's order. */
     val tags: List<String> = emptyList(),
     /** Direct subtasks and, of those, the open ones. Subtasks are managed in Tasks.org. */
@@ -203,17 +197,10 @@ data class TasksOrgTask(
     val placeId: Long = 0L,
     /** When the task is hidden until, or null. */
     val hideUntil: TasksOrgDate? = null,
-    val repeatFrom: TasksOrgRepeatFrom = TasksOrgRepeatFrom.DUE_DATE,
-    /**
-     * The real due time of an open task that is overdue and shown on today instead of its own
-     * day; null for any other task. The calendar fields ([startTs] and the rest) then describe
-     * today, while [dueTs] keeps the real date.
-     */
-    val overdueSince: Long? = null
+    val repeatFrom: TasksOrgRepeatFrom = TasksOrgRepeatFrom.DUE_DATE
 ) {
     val isCompleted: Boolean get() = completedAt != null
     val isRecurring: Boolean get() = recurrence != null
-    val isOverdue: Boolean get() = overdueSince != null
     val hasSubtasks: Boolean get() = childCount > 0
 }
 

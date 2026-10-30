@@ -66,10 +66,13 @@ Estes arquivos não existem no upstream; o rebase nunca conflita neles. Eles con
   integração e a seção de gestão de listas, tags e lugares.
 - `ui/viewmodels/TasksOrgManageViewModel.kt` — ViewModel da gestão. **É um ViewModel próprio de
   propósito**: estender `AccountSettingsViewModel`/`SettingsRoute` (core) criaria conflito de rebase.
-- `LocalCanWriteTasksOrg` (CompositionLocal) — exposto por um componente do fork.
+- `rememberCanWriteTasksOrg()` (em `TaskCard.kt`) — lê a permissão de escrita e a relê ao voltar
+  para o app; usado pelo cartão e pelo quick view, então o core não precisa fornecê-la.
+- `ui/components/TasksOrgFab.kt` — `TasksOrgFabSlot`, que põe o FAB "nova tarefa" acima do FAB
+  de evento (integração off: só chama o conteúdo, tela idêntica à original).
 
 > Observação: `TaskQuickViewSheet` ganhou um parâmetro opcional `onEdit` e `TaskCard`/
-> `LocalCanWriteTasksOrg` são do fork; como os arquivos são do fork, não há seam de core aqui.
+> `rememberCanWriteTasksOrg` são do fork; como os arquivos são do fork, não há seam de core aqui.
 
 ---
 
@@ -167,14 +170,15 @@ Reaplicar: colar a região inteira (delimitada) + os 2 membros + o param do ctor
 
 ### 3.4 `ui/screens/HomeScreen.kt` — FAB secundário + params (aditivo)
 
-- **imports** (4): `CheckCircle` (ícone), `SmallFloatingActionButton`, `OnTaskCheckedChange`,
-  `TaskCard`.
+- **imports** (3): `OnTaskCheckedChange`, `TaskCard`, `TasksOrgFabSlot`.
 - **params** do composable (em 2 composables): `onTaskClick`, `onTaskCheckedChange` (já existiam
   no PR de read), e os novos `showTaskFab: Boolean = false`, `onCreateTask: () -> Unit = {}`.
   **Todos com default**, então callers antigos compilam.
-- **bloco do FAB**: dentro do `floatingActionButton`, um `if (showTaskFab) { SmallFloatingActionButton(...) }`
-  **acima** do FAB de evento, num `Column`. Com `showTaskFab = false` o `Column` renderiza só o
-  FAB original → tela idêntica ao upstream.
+- **bloco do FAB**: o FAB de evento original fica **intacto**; duas linhas o envolvem em
+  `TasksOrgFabSlot(showTaskFab, onCreateTask) { ... }`. Com `showTaskFab = false` o slot só chama
+  o conteúdo → tela idêntica ao upstream.
+- **agenda**: o `AgendaCard(...)` original fica intacto; um `if (task) TaskCard(...) else`
+  é inserido antes dele.
 - **5 when-branches** `is DisplayEvent.Task -> onTaskClick(displayEvent)` (ver §3.0).
 
 ### 3.5 `MainActivity.kt` — fiação da UI (aditivo)
@@ -182,9 +186,6 @@ Reaplicar: colar a região inteira (delimitada) + os 2 membros + o param do ctor
 - **imports** (3): `TaskQuickViewSheet`, `TaskEditorSheet`, `TaskEditorState`.
 - **`val tasksOrgEnabled by homeViewModel.tasksOrgEnabled...`** — coleta o flag.
 - **estado**: `taskQuickViewEvent`, `taskEditorState` (dois `remember { mutableStateOf(...) }`).
-- **`readTasksOrgWrite` / `canWriteTasksOrg` / `LifecycleResumeEffect`** — relê a permissão de
-  escrita no resume.
-- **`LocalCanWriteTasksOrg provides canWriteTasksOrg`** — no `CompositionLocalProvider`.
 - **args do `HomeScreen`**: `onTaskClick`, `onTaskCheckedChange`, `showTaskFab = tasksOrgEnabled`,
   `onCreateTask = { ... prepareNewTask ... }`.
 - **bloco `taskQuickViewEvent?.let { ... }`** — hospeda o `TaskQuickViewSheet`; o `onEdit` é
@@ -202,7 +203,7 @@ inteiro para remover.
 # compila
 ./gradlew :app:compileDebugKotlin
 
-# testes da feature (devem passar: 136)
+# testes da feature (devem passar: 133)
 ./gradlew :app:testDebugUnitTest \
   --tests "org.onekash.kashcal.data.tasks_org.*" \
   --tests "org.onekash.kashcal.domain.tasks.*" \
@@ -214,7 +215,7 @@ Contagem esperada por classe:
 | Classe de teste | testes |
 | --- | :-: |
 | `AndroidTasksOrgRepositoryTest` | 26 |
-| `AndroidTasksOrgRepositoryFeaturesTest` | 29 |
+| `AndroidTasksOrgRepositoryFeaturesTest` | 27 |
 | `TasksOrgV0MapperTest` | 13 |
 | `TasksOrgV0MapperFeaturesTest` | 8 |
 | `TasksOrgCoordinatorTest` | 9 |
@@ -222,7 +223,7 @@ Contagem esperada por classe:
 | `RecurrenceRuleTest` | 10 |
 | `TaskEditorStateTest` | 11 |
 | `TaskEditorStateFeaturesTest` | 12 |
-| `TaskEditorFieldsTest` | 11 |
+| `TaskEditorFieldsTest` | 10 |
 
 ---
 
@@ -251,4 +252,55 @@ Ao adicionar qualquer coisa nova à feature, mantenha estas invariantes:
 - [ ] Nenhum campo novo no `Event` do Room nem no formulário de evento.
 - [ ] Todo acesso à API v0 passa pelo `TasksOrgV0Mapper` (nenhuma coluna/URI crua fora dele).
 - [ ] Escrita sempre em `Dispatchers.IO`, sempre serializada pelo `tasksOrgWriteMutex`.
-- [ ] `./gradlew :app:compileDebugKotlin` + os 136 testes passando.
+- [ ] `./gradlew :app:compileDebugKotlin` + os 133 testes passando.
+
+---
+
+## 7. Auditoria: núcleo do fork vs original (`git diff main`)
+
+`main` é o upstream (release v2026.10.26). Conferido com `git diff main --name-status` e
+`git diff main -U0 | grep '^-[^-]'`.
+
+**Linhas do original removidas ou alteradas — a lista inteira (15 linhas em 3 arquivos do app, mais 2 testes):**
+
+| Arquivo | O que muda | Por que é inevitável |
+| --- | --- | --- |
+| `DisplayEventRepository.kt` | vírgula no último param do construtor; 3× `calendarProviderManager.changeSignal` → `externalChangeSignal`; 4× `queryDeviceEvents(...)` ganha `+ queryTaskEvents(...)`; 1 `return` da busca | A agregação precisa incluir as tarefas e reagir às mudanças delas. Com a integração off, `queryTaskEvents` devolve `emptyList()` na primeira linha e o sinal do Tasks.org nunca muda. |
+| `HomeViewModel.kt` | vírgula no último param do construtor e no `this(...)` | Receber o `TasksOrgCoordinator` (nulo por padrão). |
+| `WidgetDataRepository.kt` | 3× `.map { toWidgetEvent }` → `.mapNotNull`; retorno de `toWidgetEvent` vira nulo-able | `DisplayEvent.Task` não tem id de evento para o widget abrir; é descartada. Sem tarefas, o resultado é idêntico. |
+| testes upstream (2) | `ExportablePreferencesTest`, `DisplayEventRepositoryDeviceRealProviderTest` | Novas chaves no export; novos params do `DisplayEventRepository`. |
+
+**Todo o resto do core é inserção pura**, cada uma com o marcador `FORK:tasks-org` ou em bloco
+próprio: o manifesto (`<queries>` + 2 permissões), `KashCalApplication` (1 `@Inject` + 1 chamada
+`tasksOrgManager.initialize()`), `PreferencesKeys`/`KashCalDataStore` (2 chaves), `RepositoryModule`
+(1 `@Binds`), `ExportablePreferences` (2 chaves fora do backup), `DisplayEvent` (variante `Task`) e os
+branches `is DisplayEvent.Task ->` exigidos pelo compilador (§3.0), `DayEventsSheet`/`EventCard`
+(callbacks opcionais), `HomeScreen`, `MainActivity`, `SettingsRoute`/`SettingsDestination`/
+`AccountSettingsScreen`/`AccountSettingsViewModel` (a entrada "Tasks.org" nas configurações) e
+`strings.xml`.
+
+**O que NÃO é tocado** (portanto igual ao original): adicionar conta CalDAV/iCloud, sincronização,
+calendários do dispositivo (`DeviceCalendars*`, `CalendarProviderManager`,
+`AndroidCalendarProviderRepository`), o Room e seu schema, o formulário de evento, notificações,
+build (`build.gradle.kts`, `libs.versions.toml`), CI e licenças.
+
+**O que o usuário vê com a integração desligada:**
+
+| Superfície | Tasks.org não instalado | Instalado, integração off | Integração on |
+| --- | --- | --- | --- |
+| Linha "Tasks.org" nas configurações | oculta | visível (é o interruptor) | visível |
+| FAB "nova tarefa" | oculto | oculto | visível |
+| Tarefas nas visões/busca/pontos do mês | não | não (`queryTaskEvents` → vazio) | sim |
+| Observer do ContentProvider | não registrado | não registrado | registrado |
+| Permissões `org.tasks.*` | declaradas, nunca pedidas | nunca pedidas | pedidas ao ligar |
+| Fluxo de dots do mês | idêntico ao original | idêntico | ver `observeTasksOrgChanges` (só no bloco do fork) |
+
+A única superfície visível fora da integração ligada é a linha de configurações, e só quando o
+Tasks.org está instalado: sem ela não haveria como ligar a integração.
+
+**Mudança de comportamento do core revertida nesta auditoria:** uma rodada anterior alterou
+`HomeViewModel.buildEventDots` (cancelamento do job anterior) e `observeDeviceCalendarChanges`
+(não limpava os pontos antes de reconstruir). Isso mudava o app mesmo com a integração off e foi
+revertido; os dots por mudança de tarefas agora são reconstruídos por `observeTasksOrgChanges()`,
+dentro da região do fork. O `LocalCanWriteTasksOrg` (que exigia editar o `CompositionLocalProvider`
+da `MainActivity`) foi trocado por `rememberCanWriteTasksOrg()` dentro de `TaskCard.kt`.

@@ -80,10 +80,6 @@ object TasksOrgContract {
         const val PARAM_DUE_BEFORE = "due_before"
         /** Free text matched against title and notes. */
         const val PARAM_SEARCH = "search"
-        /** `1` for tasks the app shows as overdue. */
-        const val PARAM_OVERDUE = "overdue"
-        /** `0` for open tasks, `1` for completed ones. */
-        const val PARAM_COMPLETED = "completed"
 
         fun itemUri(id: Long): Uri = Uri.withAppendedPath(CONTENT_URI, id.toString())
 

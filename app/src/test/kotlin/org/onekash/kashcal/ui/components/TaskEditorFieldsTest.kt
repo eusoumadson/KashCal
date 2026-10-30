@@ -126,22 +126,4 @@ class TaskEditorFieldsTest {
         assertNotNull(priorityColor(TasksOrgPriority.LOW))
         assertTrue(priorityColor(TasksOrgPriority.HIGH) != priorityColor(TasksOrgPriority.LOW))
     }
-
-    @Test
-    fun `an overdue task shows its own date and any other task its calendar date`() {
-        // All-day task due Oct 25 (local midnight), pinned to Oct 30.
-        val due = LocalDateTime.of(2026, 10, 25, 0, 0).atZone(saoPaulo).toInstant().toEpochMilli()
-        val oct25Utc = LocalDateTime.of(2026, 10, 25, 0, 0).toInstant(ZoneOffset.UTC).toEpochMilli()
-        val oct30Utc = LocalDateTime.of(2026, 10, 30, 0, 0).toInstant(ZoneOffset.UTC).toEpochMilli()
-        val pinned = TasksOrgTask(
-            id = 1, title = "Late", notes = "", dueTs = due, isAllDay = true,
-            startTs = oct30Utc, endTs = oct30Utc + 86_399_999L, startDay = 20261030, endDay = 20261030,
-            completedAt = null, recurrence = null, listId = 1, listTitle = "", listColor = 0, isReadOnly = false,
-            dueAllDay = true, overdueSince = due
-        )
-        assertEquals(oct25Utc, pinned.dueCalendarTs(saoPaulo))
-
-        val normal = pinned.copy(overdueSince = null, startTs = oct25Utc)
-        assertEquals(oct25Utc, normal.dueCalendarTs(saoPaulo))
-    }
 }

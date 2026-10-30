@@ -277,7 +277,7 @@ do escopo por decisão. Detalhes e limites em `FORK_FEATURES.md`.
   manuais), listar e excluir; uma tarefa tem no máximo um lugar.
 - ✅ **Batch** (`applyBatch`): tarefa + tags + lembretes + lugar numa transação (`TasksOrgBatch.kt`).
 - ✅ **Recorrência e início no editor**, aviso de efeito colateral e releitura da regra (§4.2, §4.3).
-- ✅ **Atrasadas** em "hoje"; prioridade, tags e subtarefas (contagem) no cartão.
+- ✅ Prioridade, tags e subtarefas (contagem) no cartão. Tarefas atrasadas ficam no dia programado.
 - ✅ **Gestão** de listas, tags e lugares; saúde das contas; checagem de versão (mínima 15.12).
 - ➖ **Subtarefas**: por decisão, o KashCal só mostra a contagem e **redireciona ao Tasks.org**.
 - ➖ **Tarefas sem data**: por decisão, não são exibidas.

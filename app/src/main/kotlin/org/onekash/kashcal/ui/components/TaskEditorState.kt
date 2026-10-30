@@ -72,7 +72,7 @@ data class TaskEditorState(
     val dueChangeHasSideEffects: Boolean
         get() {
             val o = original ?: return false
-            val dueChanged = dueMs != o.dueTs.takeIf { it > 0L } || isAllDay != o.dueAllDay
+            val dueChanged = dueMs != o.dueTs.takeIf { it > 0L } || isAllDay != o.isAllDay
             return dueChanged && (o.isRecurring || o.hideUntil != null)
         }
 
@@ -114,7 +114,7 @@ data class TaskEditorState(
             title = fieldIfChanged(title.trim(), o.title),
             notes = fieldIfChanged(notes.trim(), o.notes),
             listId = listFieldIfChanged(o.listId),
-            due = dateFieldIfChanged(dueDate(), if (o.dueTs > 0L) TasksOrgDate(o.dueTs, o.dueAllDay) else null),
+            due = dateFieldIfChanged(dueDate(), if (o.dueTs > 0L) TasksOrgDate(o.dueTs, o.isAllDay) else null),
             start = dateFieldIfChanged(startDate(), o.hideUntil),
             priority = fieldIfChanged(priority, o.priority),
             recurrence = if (ruleChanged) TasksOrgTaskPatch.Field.Value(newRule) else TasksOrgTaskPatch.Field.Unset,
@@ -187,7 +187,7 @@ data class TaskEditorState(
                 notes = task.notes,
                 listId = task.listId,
                 dueMs = task.dueTs.takeIf { it > 0L },
-                isAllDay = task.dueAllDay,
+                isAllDay = task.isAllDay,
                 priority = task.priority,
                 writableLists = writableLists,
                 allTags = allTags,

@@ -2175,7 +2175,7 @@
     <string name="share_as_card_share_failed">Could not share card</string>
 
 
-    <!-- ===== Tasks.org (fork): recurrence, start date, place, subtasks, overdue, management ===== -->
+    <!-- ===== Tasks.org (fork): recurrence, start date, place, subtasks, management ===== -->
     <string name="task_editor_start_label">Start (hidden until)</string>
     <string name="task_editor_set_start">Set start date</string>
     <string name="task_editor_repeat_label">Repeat</string>
@@ -2226,8 +2226,6 @@
     <string name="task_duration_days">%1$d d</string>
     <string name="task_subtasks_summary">%1$d subtasks, %2$d open</string>
     <string name="task_subtasks_manage">Manage subtasks in Tasks.org</string>
-    <string name="task_overdue_since">Overdue since %1$s</string>
-    <string name="task_overdue_short">Overdue</string>
     <string name="task_priority_dot_high">High priority</string>
     <string name="task_priority_dot_medium">Medium priority</string>
     <string name="task_priority_dot_low">Low priority</string>

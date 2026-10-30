@@ -68,7 +68,7 @@ class DisplayEventRepositoryTasksTest {
             every { showDeclinedEvents } returns flowOf(false)
         }
         tasksRepository = mockk {
-            coEvery { getTasksDueInRange(any(), any(), any(), any(), any()) } returns listOf(day1Task, day2Task)
+            coEvery { getTasksDueInRange(any(), any(), any(), any()) } returns listOf(day1Task, day2Task)
         }
         val attendeesDao: AttendeesDao = mockk { every { attendeesChangeSignal() } returns flowOf(0) }
         display = DisplayEventRepository(
@@ -85,7 +85,7 @@ class DisplayEventRepositoryTasksTest {
         assertEquals(listOf(2L), byDay[day2]!!.map { (it as DisplayEvent.Task).task.id })
         coVerify {
             tasksRepository.getTasksDueInRange(
-                dayCodeToStartOfDayMs(day1), dayCodeToEndOfDayMs(day2), hiddenLists, null, any()
+                dayCodeToStartOfDayMs(day1), dayCodeToEndOfDayMs(day2), hiddenLists, null
             )
         }
     }
@@ -95,7 +95,7 @@ class DisplayEventRepositoryTasksTest {
         tasksEnabled = false
 
         assertTrue(display.getDisplayEventsGroupedByDayOnce(day1, day2).isEmpty())
-        coVerify(exactly = 0) { tasksRepository.getTasksDueInRange(any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { tasksRepository.getTasksDueInRange(any(), any(), any(), any()) }
     }
 
     @Test
@@ -110,6 +110,6 @@ class DisplayEventRepositoryTasksTest {
         val results = display.searchDisplayEvents("Task", day1, day2) { emptyList() }
 
         assertEquals(2, results.size)
-        coVerify { tasksRepository.getTasksDueInRange(any(), any(), hiddenLists, "Task", any()) }
+        coVerify { tasksRepository.getTasksDueInRange(any(), any(), hiddenLists, "Task") }
     }
 }

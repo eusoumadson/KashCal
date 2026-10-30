@@ -24,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,16 +32,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import kotlinx.coroutines.delay
 import org.onekash.kashcal.R
+import org.onekash.kashcal.data.tasks_org.TasksOrgContract
 import org.onekash.kashcal.data.tasks_org.TasksOrgPriority
-import org.onekash.kashcal.data.tasks_org.TasksOrgTask
-import org.onekash.kashcal.data.tasks_org.placementOf
 import org.onekash.kashcal.domain.EmojiMatcher
 import org.onekash.kashcal.domain.model.DisplayEvent
 import org.onekash.kashcal.util.DateTimeUtils
@@ -55,10 +57,23 @@ import java.time.ZoneId
 typealias OnTaskCheckedChange = (task: DisplayEvent.Task, completed: Boolean, onResult: (Boolean) -> Unit) -> Unit
 
 /**
- * Whether KashCal holds the Tasks.org write permission, which completing a task needs. The
- * activity provides it, re-read on resume; true by default so previews show a live checkbox.
+ * Whether KashCal holds the Tasks.org write permission, which completing a task needs. Re-read
+ * on resume, since the permission can be granted or revoked in system settings meanwhile.
  */
-val LocalCanWriteTasksOrg = compositionLocalOf { true }
+@Composable
+internal fun rememberCanWriteTasksOrg(): Boolean {
+    val context = LocalContext.current
+    val read = {
+        ContextCompat.checkSelfPermission(context, TasksOrgContract.PERMISSION_WRITE) ==
+            PackageManager.PERMISSION_GRANTED
+    }
+    var canWrite by remember { mutableStateOf(read()) }
+    LifecycleResumeEffect(Unit) {
+        canWrite = read()
+        onPauseOrDispose { }
+    }
+    return canWrite
+}
 
 /** How long a [TaskCard] checkbox waits for the re-query after a write before it unlocks. */
 private const val PENDING_TIMEOUT_MS = 3_000L
@@ -70,7 +85,7 @@ private const val PENDING_TIMEOUT_MS = 3_000L
  * checkbox stands for the ☐/☑ title prefix the other views use, so the title has none.
  *
  * The checkbox is disabled for a task in a read-only list and without the write permission
- * ([LocalCanWriteTasksOrg]), and ignores taps while a change waits for Tasks.org. A completed
+ * ([rememberCanWriteTasksOrg]), and ignores taps while a change waits for Tasks.org. A completed
  * task is struck through and dimmed; an open task past its due date is not, since it still
  * needs doing.
  *
@@ -88,7 +103,7 @@ internal fun TaskCard(
     supportingText: String? = null,
 ) {
     val task = displayEvent.task
-    val canWrite = LocalCanWriteTasksOrg.current
+    val canWrite = rememberCanWriteTasksOrg()
     // Flips at once; the re-query after the write brings the task's real state, which resets
     // both. [pending] blocks another tap until then: a repeating task's re-query moves it to its
     // next date, and a tap on the stale row would reopen nothing.
@@ -111,10 +126,6 @@ internal fun TaskCard(
     val trailing = remember(task.startTs, task.isAllDay, task.isRecurring, timePattern, supportingText) {
         if (supportingText != null) "" else formatTaskCardTime(task.startTs, task.isAllDay, task.isRecurring, timePattern)
     }
-    // An overdue task shown on today says since when, in the error color.
-    val overdueText = if (task.isOverdue && supportingText == null) {
-        stringResource(R.string.task_overdue_since, DateTimeUtils.formatEventDateShort(task.dueCalendarTs(), task.dueAllDay))
-    } else null
     val meta = remember(task.tags, task.childCount, task.uncompletedChildCount) {
         formatTaskMeta(task.tags, task.childCount, task.uncompletedChildCount)
     }
@@ -208,15 +219,7 @@ internal fun TaskCard(
                     )
                 }
             }
-            if (overdueText != null) {
-                Text(
-                    overdueText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    maxLines = 1,
-                    modifier = Modifier.padding(start = 8.dp, end = 12.dp)
-                )
-            } else if (trailing.isNotEmpty()) {
+            if (trailing.isNotEmpty()) {
                 Text(
                     trailing,
                     style = MaterialTheme.typography.bodySmall,
@@ -263,10 +266,3 @@ internal fun formatTaskMeta(tags: List<String>, childCount: Int, uncompletedChil
     val subtaskText = if (childCount > 0) "\u2937 ${childCount - uncompletedChildCount}/$childCount" else ""
     return listOf(tagText, subtaskText).filter { it.isNotEmpty() }.joinToString(" \u00B7 ")
 }
-
-/**
- * The calendar timestamp of the task's real due date. It equals [TasksOrgTask.startTs] except
- * for an overdue task pinned to today, whose own date is earlier.
- */
-internal fun TasksOrgTask.dueCalendarTs(zone: ZoneId = ZoneId.systemDefault()): Long =
-    if (isOverdue) placementOf(dueTs, dueAllDay, zone).startTs else startTs

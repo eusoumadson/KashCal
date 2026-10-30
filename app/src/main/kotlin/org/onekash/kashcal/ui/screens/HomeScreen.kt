@@ -49,7 +49,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.outlined.CheckCircle // FORK:tasks-org
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -67,7 +66,6 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.SmallFloatingActionButton // FORK:tasks-org
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
@@ -145,6 +143,7 @@ import org.onekash.kashcal.ui.components.DayEventsSheet
 import org.onekash.kashcal.ui.components.EventCard
 import org.onekash.kashcal.ui.components.OnTaskCheckedChange // FORK:tasks-org
 import org.onekash.kashcal.ui.components.TaskCard // FORK:tasks-org
+import org.onekash.kashcal.ui.components.TasksOrgFabSlot // FORK:tasks-org
 import org.onekash.kashcal.ui.components.HomeStopEffect
 import org.onekash.kashcal.ui.components.InvitationInboxSheet
 import org.onekash.kashcal.ui.components.PendingSnackbarEffect
@@ -615,32 +614,16 @@ fun HomeScreen(
         floatingActionButton = {
             // Insights is a read-only analytics view, so it has no create button.
             if (uiState.viewMode != ViewMode.INSIGHTS) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                // FORK:tasks-org — with the integration off this only calls the lambda, so the
+                // FAB below is the original's; on, a small "new task" FAB sits above it.
+                TasksOrgFabSlot(showTaskFab, onCreateTask) { // FORK:tasks-org
+                FloatingActionButton(
+                    onClick = onCreateEvent,
+                    containerColor = MaterialTheme.colorScheme.primary
                 ) {
-                    // FORK:tasks-org — a smaller secondary FAB for a new Tasks.org task, above
-                    // the event FAB. Shown only while the integration is on; with it off this
-                    // disappears and the screen matches the original app.
-                    if (showTaskFab) {
-                        SmallFloatingActionButton(
-                            onClick = onCreateTask,
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        ) {
-                            Icon(
-                                Icons.Outlined.CheckCircle,
-                                contentDescription = stringResource(R.string.task_editor_new_task_action)
-                            )
-                        }
-                    }
-                    FloatingActionButton(
-                        onClick = onCreateEvent,
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_create_event))
-                    }
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_create_event))
                 }
+                } // FORK:tasks-org
             }
         },
     ) { paddingValues ->
@@ -2388,24 +2371,23 @@ private fun AgendaContent(
                 ) { item ->
                     val isPast = item.displayDay < todayDayCode
                     Column(modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) {
-                        val de = item.displayEvent
-                        if (de is DisplayEvent.Task && onTaskCheckedChange != null) {
+                        val taskItem = item.displayEvent as? DisplayEvent.Task // FORK:tasks-org
+                        if (taskItem != null && onTaskCheckedChange != null) { // FORK:tasks-org
                             TaskCard(
-                                displayEvent = de,
+                                displayEvent = taskItem,
                                 showEventEmojis = showEventEmojis,
                                 timePattern = timePattern,
                                 onCheckedChange = onTaskCheckedChange,
-                                onClick = { onEventClick(de) }
+                                onClick = { onEventClick(taskItem) }
                             )
-                        } else {
-                            AgendaCard(
-                                item = item,
-                                isPast = isPast,
-                                showEventEmojis = showEventEmojis,
-                                timePattern = timePattern,
-                                onClick = { onEventClick(item.displayEvent) }
-                            )
-                        }
+                        } else // FORK:tasks-org
+                        AgendaCard(
+                            item = item,
+                            isPast = isPast,
+                            showEventEmojis = showEventEmojis,
+                            timePattern = timePattern,
+                            onClick = { onEventClick(item.displayEvent) }
+                        )
                     }
                 }
             }

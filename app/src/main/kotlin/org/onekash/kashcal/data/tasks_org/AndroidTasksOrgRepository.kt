@@ -67,8 +67,7 @@ class AndroidTasksOrgRepository @Inject constructor(
         startMs: Long,
         endMs: Long,
         hiddenListIds: Set<Long>,
-        search: String?,
-        nowMs: Long
+        search: String?
     ): List<TasksOrgTask> = withContext(Dispatchers.IO) {
         if (!hasReadPermission()) return@withContext emptyList()
         val lists = getLists().associateBy { it.id }
@@ -79,25 +78,8 @@ class AndroidTasksOrgRepository @Inject constructor(
             .appendQueryParameter(TasksOrgContract.Tasks.PARAM_DUE_BEFORE, (endMs + 1).toString())
             .apply { search?.let { appendQueryParameter(TasksOrgContract.Tasks.PARAM_SEARCH, it) } }
             .build()
-        val inRange = readPages(uri) { cursor -> mapper.readTask(cursor, lists, tags) }
-
-        // Overdue open tasks from before the range are shown on today, but only when today is in
-        // the range; a search looks for text, not for what needs doing.
-        val overdue = if (search == null && nowMs in startMs..endMs) {
-            val overdueUri = TasksOrgContract.Tasks.CONTENT_URI.buildUpon()
-                .appendQueryParameter(TasksOrgContract.Tasks.PARAM_OVERDUE, "1")
-                .appendQueryParameter(TasksOrgContract.Tasks.PARAM_COMPLETED, "0")
-                .appendQueryParameter(TasksOrgContract.Tasks.PARAM_DUE_AFTER, "0")
-                .appendQueryParameter(TasksOrgContract.Tasks.PARAM_DUE_BEFORE, startMs.toString())
-                .build()
-            readPages(overdueUri) { cursor -> mapper.readTask(cursor, lists, tags) }
-                .map { it.pinnedToDayOf(nowMs, mapper.zone) }
-        } else {
-            emptyList()
-        }
-
         // Offset pages aren't a snapshot: a row that moves during the read can come twice.
-        (inRange + overdue)
+        readPages(uri) { cursor -> mapper.readTask(cursor, lists, tags) }
             .distinctBy { it.id }
             .filter { it.listId !in hiddenListIds }
             .sortedBy { it.startTs }
@@ -430,23 +412,6 @@ internal fun placementOf(dueTs: Long, isAllDay: Boolean, zone: ZoneId): Calendar
 }
 
 /**
- * Shows an overdue open task on the day of [nowMs] instead of its own day: all-day, so it sits
- * with the day's all-day items. [TasksOrgTask.dueTs] and [TasksOrgTask.dueAllDay] keep the real
- * due date; [TasksOrgTask.overdueSince] marks the task as pinned.
- */
-internal fun TasksOrgTask.pinnedToDayOf(nowMs: Long, zone: ZoneId): TasksOrgTask {
-    val p = placementOf(nowMs, isAllDay = true, zone = zone)
-    return copy(
-        isAllDay = true,
-        startTs = p.startTs,
-        endTs = p.endTs,
-        startDay = p.startDay,
-        endDay = p.endDay,
-        overdueSince = dueTs
-    )
-}
-
-/**
  * Builds a [TasksOrgTask] placed at [dueTs] with the Room event time conventions (see
  * [TasksOrgTask]). An all-day due date is read in [zone], where Tasks.org stores it.
  */
@@ -489,7 +454,6 @@ internal fun taskAt(
         listColor = listColor,
         isReadOnly = isReadOnly,
         priority = priority,
-        dueAllDay = isAllDay,
         tags = tags,
         childCount = childCount,
         uncompletedChildCount = uncompletedChildCount,

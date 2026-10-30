@@ -554,27 +554,10 @@ class MainActivity : FragmentActivity() {
 
                 Log.d(TAG, "Composing with ${uiState.dayEventsCache.values.sumOf { it.size }} cached day events")
 
-                // FORK:tasks-org — whether KashCal may complete Tasks.org tasks; re-read on
-                // resume, since the permission can be granted or revoked in Settings meanwhile.
-                val readTasksOrgWrite = {
-                    androidx.core.content.ContextCompat.checkSelfPermission(
-                        this@MainActivity,
-                        org.onekash.kashcal.data.tasks_org.TasksOrgContract.PERMISSION_WRITE
-                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                }
-                var canWriteTasksOrg by remember { mutableStateOf(readTasksOrgWrite()) } // FORK:tasks-org
-                androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { // FORK:tasks-org
-                    canWriteTasksOrg = readTasksOrgWrite()
-                    onPauseOrDispose { }
-                }
-
                 // Publish per-tag custom colors to every chip below (home views, form, quick view,
                 // week blocks) so recoloring a tag repaints its chips without threading color
                 // through the occurrence stream.
-                CompositionLocalProvider(
-                    LocalTagColors provides uiState.tagColors,
-                    org.onekash.kashcal.ui.components.LocalCanWriteTasksOrg provides canWriteTasksOrg, // FORK:tasks-org
-                ) {
+                CompositionLocalProvider(LocalTagColors provides uiState.tagColors) {
 
                 HomeScreen(
                     uiState = uiState,
@@ -1161,7 +1144,7 @@ class MainActivity : FragmentActivity() {
                 taskQuickViewEvent?.let { shown -> // FORK:tasks-org — entire block
                     TaskQuickViewSheet(
                         displayEvent = shown,
-                        canComplete = !shown.task.isReadOnly && canWriteTasksOrg,
+                        canComplete = !shown.task.isReadOnly,
                         onSetCompleted = { completed ->
                             homeViewModel.setTasksOrgTaskCompleted(shown.task, completed)
                             // Close, so the snackbar and its Undo aren't hidden under the sheet,

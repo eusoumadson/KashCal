@@ -24,7 +24,7 @@ Documentos relacionados:
 | 7 | Recorrência no editor (diária, semanal com dias, mensal, anual, intervalo, contagem) e "repetir a partir de" | ✅ |
 | 8 | Data de início ("oculta até") no editor | ✅ |
 | 9 | Aviso de efeito colateral ao mudar a data + releitura da regra após salvar | ✅ |
-| 10 | Tarefas atrasadas aparecem em "hoje" | ✅ |
+| 10 | Tarefa atrasada continua no **dia programado** (não vai para "hoje") | ✅ |
 | 11 | Lugares e lembretes de local (chegada/saída) | ✅ |
 | 12 | Salvamento atômico: tarefa + tags + lembretes + lugar em um `applyBatch` | ✅ |
 | 13 | Gestão de listas, tags e lugares nas configurações | ✅ |
@@ -54,11 +54,9 @@ exibir tarefas sem data de vencimento.
 - **Permissões** `READ_TASKS`/`WRITE_TASKS` relidas ao voltar para o app.
 
 ### 2.1 Tarefas atrasadas
-Uma tarefa **aberta e atrasada** (segundo o filtro `overdue=1` do próprio Tasks.org) que venceu
-antes do período exibido aparece no **dia de hoje**, como item de dia inteiro, quando hoje está
-dentro do período. O cartão mostra "Atrasada desde <data>" na cor de erro; o editor e o
-quick view usam a data de vencimento real (`dueTs`/`dueAllDay`), nunca a data fixada.
-Não se aplica a tarefas concluídas, à busca, nem a listas ocultas.
+Uma tarefa atrasada **não** é movida para "hoje": ela fica no dia em que está programada, como
+qualquer tarefa, e é lida pela mesma consulta de período. Quem quiser vê-la navega até aquele dia
+(ou usa a agenda/busca). O fork não faz nenhuma consulta extra por atrasadas.
 
 ### 2.2 Cartão e quick view
 - **Prioridade:** ponto colorido (alta, média, baixa) antes do título, com descrição para
@@ -187,12 +185,12 @@ Tasks.org" do quick view agora abre a **tarefa**, não só o app (com o app como
 
 ## 12. Testes
 
-136 testes unitários passando:
+133 testes unitários passando:
 
 | Classe | Testes |
 | --- | :-: |
 | `AndroidTasksOrgRepositoryTest` | 26 |
-| `AndroidTasksOrgRepositoryFeaturesTest` | 29 |
+| `AndroidTasksOrgRepositoryFeaturesTest` | 27 |
 | `TasksOrgV0MapperTest` | 13 |
 | `TasksOrgV0MapperFeaturesTest` | 8 |
 | `TasksOrgCoordinatorTest` | 9 |
@@ -200,7 +198,7 @@ Tasks.org" do quick view agora abre a **tarefa**, não só o app (com o app como
 | `RecurrenceRuleTest` | 10 |
 | `TaskEditorStateTest` | 11 |
 | `TaskEditorStateFeaturesTest` | 12 |
-| `TaskEditorFieldsTest` | 11 |
+| `TaskEditorFieldsTest` | 10 |
 
 ```sh
 ./gradlew :app:testDebugUnitTest \

@@ -94,7 +94,7 @@ import org.onekash.kashcal.ui.components.toStartEndTs
 import org.onekash.kashcal.ui.components.SyncBannerState
 import org.onekash.kashcal.ui.components.attendees.AttendeeStatus
 import org.onekash.kashcal.ui.components.attendees.AttendeeUiModel
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withLock // FORK:tasks-org
 import org.onekash.kashcal.ui.components.generateSnackbarMessage
 import org.onekash.kashcal.data.tasks_org.TasksOrgTask // FORK:tasks-org
 import org.onekash.kashcal.domain.tasks.TaskCompletionResult // FORK:tasks-org
@@ -882,7 +882,6 @@ class HomeViewModel(
 
     // On-demand month dots load; cancelled by the next one on a fast swipe.
     private var loadDotsJob: Job? = null
-    private var buildDotsJob: Job? = null
 
     /** Orders Tasks.org writes, so a quick reopen can't reach Tasks.org before its completion. */
     private val tasksOrgWriteMutex = kotlinx.coroutines.sync.Mutex() // FORK:tasks-org
@@ -1300,17 +1299,16 @@ class HomeViewModel(
      */
     private fun observeDeviceCalendarChanges() {
         viewModelScope.launch {
-            // Device calendars and Tasks.org tasks both feed the dots; a change in either
-            // rebuilds them.
-            kotlinx.coroutines.flow.merge(
-                displayEventRepository.deviceCalendarChangeSignal,
-                tasksOrgCoordinator?.changeSignal ?: kotlinx.coroutines.flow.emptyFlow()
-            )
+            displayEventRepository.deviceCalendarChangeSignal
                 .collect { signal ->
                     if (signal > 0) {
-                        // Keep the current dots until the rebuild replaces them in one update
-                        // (dots and loaded months together); clearing them first made the
-                        // month grid's dots blink on every change.
+                        _uiState.update {
+                            it.copy(
+                                loadedMonths = persistentSetOf(),
+                                eventDots = persistentMapOf()
+                            )
+                        }
+                        // Rebuild around the viewing month.
                         buildEventDots(
                             _uiState.value.viewingYear,
                             _uiState.value.viewingMonth
@@ -1318,17 +1316,7 @@ class HomeViewModel(
                     }
                 }
         }
-        // Search results are a snapshot; re-run an open search when Tasks.org tasks change, so
-        // a task completed from the results shows its new state (or its next date).
-        val tasksSignal = tasksOrgCoordinator?.changeSignal ?: return
-        viewModelScope.launch {
-            tasksSignal.collect { signal ->
-                val state = _uiState.value
-                if (signal > 0 && state.isSearchActive && state.searchQuery.isNotEmpty()) {
-                    performSearch(state.searchQuery)
-                }
-            }
-        }
+        observeTasksOrgChanges() // FORK:tasks-org
     }
 
     // ==================== Sync Operations ====================
@@ -1706,9 +1694,7 @@ class HomeViewModel(
      * the loaded-months set.
      */
     private fun buildEventDots(year: Int, month: Int) {
-        // A newer rebuild replaces the whole map, so an older one finishing last would win.
-        buildDotsJob?.cancel()
-        buildDotsJob = viewModelScope.launch {
+        viewModelScope.launch {
             try {
                 val dots = mutableMapOf<String, MutableMap<Int, MutableList<Int>>>()
 
@@ -4684,6 +4670,25 @@ class HomeViewModel(
                         context.getString(R.string.snackbar_task_delete_failed)
                 }
             )
+        }
+    }
+    /**
+     * Rebuilds the month dots when Tasks.org tasks change, and re-runs an open search (its
+     * results are a snapshot), so a task completed from the results shows its new state. Does
+     * nothing while the integration isn't wired.
+     */
+    private fun observeTasksOrgChanges() {
+        val signal = tasksOrgCoordinator?.changeSignal ?: return
+        viewModelScope.launch {
+            signal.collect { value ->
+                if (value > 0) {
+                    buildEventDots(_uiState.value.viewingYear, _uiState.value.viewingMonth)
+                    val state = _uiState.value
+                    if (state.isSearchActive && state.searchQuery.isNotEmpty()) {
+                        performSearch(state.searchQuery)
+                    }
+                }
+            }
         }
     }
     // endregion FORK:tasks-org

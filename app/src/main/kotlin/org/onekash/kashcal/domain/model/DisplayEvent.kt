@@ -19,11 +19,10 @@ import java.util.TimeZone
 import java.util.UUID
 
 /**
- * Presents an event from any source to the UI without it knowing which source it came from.
+ * Presents an event from either source to the UI without it knowing which source it came from.
  *
  * [Room] wraps a Room [Event], [Occurrence] and [Calendar]; [Device] wraps a
- * [DeviceCalendarInstance] from Android's CalendarProvider; [Task] wraps a [TasksOrgTask] from
- * the Tasks.org app.
+ * [DeviceCalendarInstance] from Android's CalendarProvider.
  */
 @Immutable
 sealed interface DisplayEvent {

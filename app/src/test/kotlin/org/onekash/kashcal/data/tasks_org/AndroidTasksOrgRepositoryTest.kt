@@ -465,8 +465,6 @@ class FakeTasksOrgProvider : ContentProvider() {
     val places = mutableListOf<PlaceRow>()
     val accounts = mutableListOf<AccountRow>()
 
-    /** What the fake treats as "now" when it filters `overdue=1`. */
-    var now: Long = Long.MAX_VALUE
     /** task id -> its tag ids, returned in the task's tag_ids column and edited via task_tags. */
     val taskTags = mutableMapOf<Long, MutableSet<Long>>()
     val queries = mutableListOf<Uri>()
@@ -508,8 +506,6 @@ class FakeTasksOrgProvider : ContentProvider() {
             "tasks" -> {
                 val after = uri.getQueryParameter(TasksOrgContract.Tasks.PARAM_DUE_AFTER)?.toLong()
                 val before = uri.getQueryParameter(TasksOrgContract.Tasks.PARAM_DUE_BEFORE)?.toLong()
-                val overdue = uri.getQueryParameter(TasksOrgContract.Tasks.PARAM_OVERDUE) == "1"
-                val completed = uri.getQueryParameter(TasksOrgContract.Tasks.PARAM_COMPLETED)
                 // The real provider filters with dueDate > after AND dueDate < before, so an
                 // undated task (0) falls out of any positive range; keep it to test the mapping,
                 // unless the query asks for a dated task (due_after=0).
@@ -517,9 +513,7 @@ class FakeTasksOrgProvider : ContentProvider() {
                     tasks.filter { t ->
                         val inRange = if (after == 0L) t.due > 0L && (before == null || t.due < before)
                         else t.due == 0L || ((after == null || t.due > after) && (before == null || t.due < before))
-                        inRange &&
-                            (!overdue || (t.due in 1 until now)) &&
-                            (completed == null || (completed == "1") == (t.completedAt > 0L))
+                        inRange
                     }.drop(offset).take(limit)
                 )
             }

@@ -50,7 +50,7 @@ import org.onekash.kashcal.util.DateTimeUtils
  * reopens it ([onSetCompleted]), and a button that opens Tasks.org, where the task is edited.
  *
  * The checkbox is disabled for a task in a read-only list or when KashCal lacks the write
- * permission ([canComplete]).
+ * permission. [canComplete] says whether the task's list is writable.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,6 +65,7 @@ fun TaskQuickViewSheet(
     onEdit: (() -> Unit)? = null,
 ) {
     val task = displayEvent.task
+    val canWrite = rememberCanWriteTasksOrg()
     val context = LocalContext.current
     val resources = LocalResources.current
     val is24HourDevice = DateFormat.is24HourFormat(context)
@@ -116,22 +117,11 @@ fun TaskQuickViewSheet(
                         Text(
                             text = stringResource(
                                 R.string.task_due,
-                                // The real due date: an overdue task is placed on today.
-                                formatTaskDue(task.dueCalendarTs(), task.dueAllDay, resources, timePattern)
+                                formatTaskDue(task.startTs, task.isAllDay, resources, timePattern)
                             ),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        if (task.isOverdue) {
-                            Text(
-                                text = stringResource(
-                                    R.string.task_overdue_since,
-                                    DateTimeUtils.formatEventDateShort(task.dueCalendarTs(), task.dueAllDay)
-                                ),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
                         if (task.priority != TasksOrgPriority.NONE) {
                             Text(
                                 text = stringResource(R.string.task_editor_priority_label) + ": " +
@@ -174,7 +164,7 @@ fun TaskQuickViewSheet(
 
             TaskCompletionRow(
                 isCompleted = task.isCompleted,
-                enabled = canComplete,
+                enabled = canComplete && canWrite,
                 onSetCompleted = onSetCompleted,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             )
@@ -208,7 +198,7 @@ fun TaskQuickViewSheet(
             }
 
             // Edit in KashCal (fork): only when the task is writable and the host wires it.
-            if (onEdit != null && canComplete) {
+            if (onEdit != null && canComplete && canWrite) {
                 TextButton(
                     onClick = onEdit,
                     modifier = Modifier.padding(horizontal = 8.dp)

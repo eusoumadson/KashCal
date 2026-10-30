@@ -552,8 +552,8 @@ fun SettingsRoute(
                 showSubscriptionsScreen ||
                 showTagsScreen ||
                 showDeviceCalendarsScreen ||
-                showOfflineCalendarsScreen ||
-                showTasksOrgScreen
+                showOfflineCalendarsScreen
+                || showTasksOrgScreen // FORK:tasks-org
         ) {
             if (showTagsScreen) {
                 closeTags()

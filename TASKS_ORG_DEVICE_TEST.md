@@ -1,6 +1,6 @@
 # TASKS_ORG_DEVICE_TEST.md: roteiro de teste com o Tasks.org real
 
-Os 136 testes unitários rodam contra um provider **falso**. Este roteiro valida, no aparelho, o
+Os 133 testes unitários rodam contra um provider **falso**. Este roteiro valida, no aparelho, o
 que o falso não consegue provar. Os itens estão na ordem em que mais podem revelar erro.
 
 > **Cuidado com os dados.** Crie uma **lista nova só para teste** no Tasks.org (por exemplo
@@ -28,9 +28,9 @@ escrita do Tasks.org concedidas em Configurações → Tasks.org.
 
 | # | Passo | Esperado |
 | --- | --- | --- |
-| 9 | Ter uma tarefa aberta com vencimento na semana passada. Abrir o KashCal numa visão que começa **depois** do vencimento e inclui hoje (agenda, dia, semana atual). | Aparece em **hoje**, "Atrasada desde <data>", em vermelho. |
-| 9b | Abrir uma visão que **contém** a data de vencimento (a semana passada, ou o mês inteiro). | Aparece no **dia real**, como qualquer tarefa, sem duplicar em hoje. |
-| 10 | Completar a tarefa do passo 9 pelo checkbox. | Some de hoje. Desfazer a traz de volta. |
+| 9 | Ter uma tarefa aberta com vencimento na semana passada. Abrir o KashCal em **hoje**. | A tarefa **não** aparece em hoje. |
+| 9b | Abrir o dia do vencimento (ou uma visão que o contém). | Aparece no **dia programado**, como qualquer tarefa, sem aviso de atraso. |
+| 10 | Completar a tarefa do passo 9b pelo checkbox. | Fica riscada no mesmo dia. Desfazer a reabre. |
 | 11 | Cartão de tarefa com prioridade alta, 2 tags e subtarefas (criadas no Tasks.org). | Ponto vermelho, `#tag #tag`, `⤷ x/y`. No quick view, "Gerenciar subtarefas no Tasks.org" abre **a tarefa** no Tasks.org. |
 
 ## C. Gestão (Configurações → Tasks.org → seção de gestão)
