@@ -158,10 +158,6 @@ class TasksOrgCoordinator @Inject constructor(
     /** The Tasks.org sync accounts, for list creation and the health notice. */
     suspend fun getAccounts(): List<TasksOrgAccount> = repository.getAccounts()
 
-    /** Creates a list in [accountId]; the views re-query. */
-    suspend fun createList(accountId: Long, title: String, color: Int = 0): TasksOrgWriteResult =
-        repository.createList(accountId, title, color).also { manager.notifyChanged() }
-
     suspend fun updateList(listId: Long, title: String? = null, color: Int? = null): TasksOrgWriteResult =
         repository.updateList(listId, title, color).also { manager.notifyChanged() }
 

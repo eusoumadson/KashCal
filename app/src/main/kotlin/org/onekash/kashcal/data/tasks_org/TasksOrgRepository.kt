@@ -152,13 +152,6 @@ interface TasksOrgRepository {
     /** The Tasks.org sync accounts; empty without the read permission. */
     suspend fun getAccounts(): List<TasksOrgAccount>
 
-    /**
-     * Creates a list named [title] in [accountId] and returns its id in [TasksOrgWriteResult.Ok].
-     * Not idempotent in Tasks.org: a retry after a timeout can create a second list, so callers
-     * re-read the lists before retrying.
-     */
-    suspend fun createList(accountId: Long, title: String, color: Int = 0): TasksOrgWriteResult
-
     /** Renames and/or recolors a list; a null argument is left as is. */
     suspend fun updateList(listId: Long, title: String? = null, color: Int? = null): TasksOrgWriteResult
 

@@ -262,9 +262,6 @@ class TasksOrgV0MapperFeaturesTest {
 
     @Test
     fun `list, tag and place writes send only what is given`() {
-        val list = mapper.listInsertValues(4L, "Groceries", 7)
-        assertEquals(4L, list.getAsLong(TasksOrgContract.Lists.ACCOUNT_ID))
-
         assertEquals(setOf(TasksOrgContract.Lists.TITLE), mapper.listUpdateValues("x", null).keySet())
         assertEquals(setOf(TasksOrgContract.Lists.COLOR), mapper.listUpdateValues(null, 3).keySet())
         assertEquals(setOf(TasksOrgContract.Tags.NAME), mapper.tagUpdateValues("x", null).keySet())

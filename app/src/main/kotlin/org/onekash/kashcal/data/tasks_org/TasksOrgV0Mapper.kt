@@ -66,13 +66,6 @@ class TasksOrgV0Mapper @Inject constructor() {
 
     // ---- Lists, tags and places: management writes ----
 
-    /** Insert values for a new list in [accountId]. */
-    fun listInsertValues(accountId: Long, title: String, color: Int): ContentValues = ContentValues().apply {
-        put(TasksOrgContract.Lists.ACCOUNT_ID, accountId)
-        put(TasksOrgContract.Lists.TITLE, title)
-        put(TasksOrgContract.Lists.COLOR, color)
-    }
-
     /** Update values for a list; only the non-null arguments are written. */
     fun listUpdateValues(title: String?, color: Int?): ContentValues = ContentValues().apply {
         title?.let { put(TasksOrgContract.Lists.TITLE, it) }

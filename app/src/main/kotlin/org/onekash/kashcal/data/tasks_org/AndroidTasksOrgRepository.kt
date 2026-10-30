@@ -267,9 +267,6 @@ class AndroidTasksOrgRepository @Inject constructor(
         readPages(TasksOrgContract.Accounts.CONTENT_URI) { mapper.readAccount(it) }
     }
 
-    override suspend fun createList(accountId: Long, title: String, color: Int): TasksOrgWriteResult =
-        insertGuarded("create list", TasksOrgContract.Lists.CONTENT_URI, mapper.listInsertValues(accountId, title, color))
-
     override suspend fun updateList(listId: Long, title: String?, color: Int?): TasksOrgWriteResult =
         updateGuarded("update list $listId", TasksOrgContract.Lists.itemUri(listId), mapper.listUpdateValues(title, color), listId)
 

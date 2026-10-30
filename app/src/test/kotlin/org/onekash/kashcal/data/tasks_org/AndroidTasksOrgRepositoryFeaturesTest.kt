@@ -308,19 +308,12 @@ class AndroidTasksOrgRepositoryFeaturesTest {
     // ------------------------------------------------------------------ management
 
     @Test
-    fun `a list is created, renamed and deleted`() = runTest {
-        provider.nextInsertId = 70L
+    fun `a list is renamed and deleted`() = runTest {
+        assertEquals(TasksOrgWriteResult.Ok(1L), repository.updateList(1L, title = "Shopping"))
+        assertEquals("Shopping", provider.lists.single { it.id == 1L }.title)
 
-        assertEquals(TasksOrgWriteResult.Ok(70L), repository.createList(accountId = 4L, title = "Groceries", color = 0xFF00FF00.toInt()))
-        val created = provider.inserts.single { it.first.lastPathSegment == "lists" }.second
-        assertEquals(4L, created.getAsLong(TasksOrgContract.Lists.ACCOUNT_ID))
-        assertEquals("Groceries", created.getAsString(TasksOrgContract.Lists.TITLE))
-
-        assertEquals(TasksOrgWriteResult.Ok(70L), repository.updateList(70L, title = "Shopping"))
-        assertEquals("Shopping", provider.lists.single { it.id == 70L }.title)
-
-        assertEquals(TasksOrgWriteResult.Ok(70L), repository.deleteList(70L))
-        assertTrue(provider.lists.none { it.id == 70L })
+        assertEquals(TasksOrgWriteResult.Ok(1L), repository.deleteList(1L))
+        assertTrue(provider.lists.none { it.id == 1L })
     }
 
     @Test
@@ -400,7 +393,7 @@ class AndroidTasksOrgRepositoryFeaturesTest {
         assertTrue(repository.getPlaces().isEmpty())
         assertTrue(repository.getAccounts().isEmpty())
         assertNull(repository.getTask(1L))
-        assertEquals(TasksOrgWriteResult.Refused, repository.createList(1L, "x"))
+        assertEquals(TasksOrgWriteResult.Refused, repository.updateList(1L, "x"))
         assertEquals(TasksOrgWriteResult.Refused, repository.deletePlace(1L))
     }
 

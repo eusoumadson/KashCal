@@ -37,7 +37,7 @@ escrita do Tasks.org concedidas em Configurações → Tasks.org.
 
 | # | Passo | Esperado |
 | --- | --- | --- |
-| 12 | Criar lista "KC teste 2", renomear, mudar a cor, excluir (confirmando). | Reflete no Tasks.org; excluir apaga as tarefas dela. Em conta CalDAV a chamada pode demorar (rede). |
+| 12 | Em Configurações > Tasks.org tasks > gerenciar, tocar em "Create a list in Tasks.org" (o fork não cria listas). Renomear e excluir lista só em lista de teste própria. | O Tasks.org abre. Renomear/excluir reflete no Tasks.org; excluir apaga as tarefas dela. |
 | 13 | Criar tag, renomear para o nome de **outra** tag. | Recusado (não há fusão). Renomear para um nome livre funciona. Excluir remove das tarefas. |
 | 14 | Criar um lugar pelo editor: digitar um endereço e tocar "Buscar coordenadas". | Preenche latitude/longitude (se o aparelho tiver geocoder). Sem rede/geocoder: mensagem e coordenadas manuais. |
 | 15 | Criar de novo um lugar com as mesmas coordenadas. | Reaproveita o existente, sem duplicar. |
@@ -92,11 +92,33 @@ todas removidas ao final. Tarefas, listas e lugares existentes só foram lidos.
 | Editar: repetição semanal | ok: o Tasks.org mostra "Repetir semanalmente"; a regra sem prefixo `RRULE:` é aceita; título, lembrete, tag e prioridade preservados |
 | Excluir tarefa (simples e recorrente), com confirmação | ok |
 | Excluir tag | ok |
-| Criar lista | **falha no Tasks.org, não no fork**: as listas do aparelho estão numa conta CalDAV e o Tasks.org lança `NullPointerException` em `CaldavClient.makeCollection` (`ApiListManager.remote`). O fork mostra "Tasks.org refused the change" e não cria nada. |
+| Criar lista pelo provider | **falha no Tasks.org, não no fork**: as listas do aparelho estão numa conta CalDAV e o Tasks.org lança `NullPointerException` em `CaldavClient.makeCollection` (`ApiListManager.remote`). Por isso o fork **não oferece mais criar lista**: a seção de gestão tem "Create a list in Tasks.org", que abre o app. |
 | Gestão visível com a integração desligada | **bug do fork, corrigido**: a seção só exigia a permissão de leitura; agora exige a integração ligada |
 
-Não exercitado: lugares e lembretes de local, data de início, lista somente leitura, rollback do
-`applyBatch` em falha, fuso horário diferente do aparelho.
+### Segunda rodada (30/10/2026)
+
+| Verificação | Resultado |
+| --- | --- |
+| Botão "+ New list" removido; "Create a list in Tasks.org" abre o Tasks.org | ok |
+| Novo lugar `KC-TEST_lugar` com endereço e "Find coordinates from address" | ok: o geocoder devolveu -23.5503898 / -46.633081 (Praça da Sé) |
+| Tarefa com início ("hidden until"), semanal às sextas terminando após 5, tag nova, lembrete 10 min antes, lembrete aleatório diário, lugar | ok: tudo conferido na tela de edição do Tasks.org (início, "Repetir semanalmente em sex., ocorre 5 vezes", os dois lembretes, tag, lista, lugar) |
+| Chip "On arrival" desligado no editor | ok: o Tasks.org mostra o lugar com o sino cortado (sem gatilho de chegada/saída). Na primeira escolha do lugar a chegada vem ligada por padrão |
+| Concluir tarefa recorrente | ok: vai para a próxima sexta (6/nov), "ocorre 4 vezes", o início andou junto (28/out para 4/nov) |
+| Desfazer a conclusão pelo snackbar (tarefa recorrente) | ok: a tarefa volta ao dia 13/nov |
+| Tarefa com vencimento "dia inteiro" e início com hora, ao concluir | **comportamento do Tasks.org**: o vencimento passa a ter hora (00:00). A mesma tarefa sem data de início segue "dia inteiro". Antes de concluir, o vencimento estava como dia inteiro |
+| Busca por "KC-TEST" | ok: as duas tarefas aparecem, com data e ícone de repetição |
+| Agenda e Semana | ok: tarefas aparecem (Semana mostra blocos com checkbox); Dia e 3 dias não foram conferidos por texto |
+| Mês: pontos | ok: pontos nos dias com tarefa |
+| "Open in Tasks.org" e "Manage subtasks in Tasks.org" | **bug do fork, corrigido**: o `ACTION_VIEW` na URI também casava com outro app (Itaú) e o Android mostrava "Abrir com". Agora a intent fixa o pacote `org.tasks` e abre direto |
+| Renomear tag | ok |
+| Excluir tag e excluir lugar (da tarefa) | ok: a tag some da lista; o lugar de teste some e o lugar existente fica intacto |
+| Excluir tarefa recorrente com confirmação | ok |
+
+Não exercitado: subtarefa (esta versão do Tasks.org não mostra a linha de subtarefa na tela de
+edição, então não consegui criar uma subtarefa de teste; o redirecionamento "Manage subtasks in
+Tasks.org" foi conferido), lista somente leitura (o aparelho não tem), rollback do `applyBatch` em
+falha (não há como forçar a falha), fuso horário diferente do aparelho, lembrete de local ligado
+(a chegada foi desligada por engano e o lugar foi apagado depois; só a gravação sem gatilho foi vista).
 
 Observação de i18n: as strings novas do fork estão só em inglês, então aparecem em inglês num
 aparelho em português (o resto do app é traduzido pelo upstream).

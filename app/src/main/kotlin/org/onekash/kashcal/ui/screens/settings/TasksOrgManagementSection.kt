@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -29,12 +28,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import android.content.Context
 import androidx.compose.runtime.collectAsState
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import org.onekash.kashcal.R
 import org.onekash.kashcal.data.tasks_org.TasksOrgAccount
+import org.onekash.kashcal.data.tasks_org.TasksOrgContract
 import org.onekash.kashcal.data.tasks_org.TasksOrgList
 import org.onekash.kashcal.data.tasks_org.TasksOrgPlace
 import org.onekash.kashcal.data.tasks_org.TasksOrgTag
@@ -99,10 +101,12 @@ fun TasksOrgManagementSection(viewModel: TasksOrgManageViewModel = hiltViewModel
                 onDelete = { deleting = Deletion.OfList(list) }
             )
         }
-        TextButton(
-            enabled = state.accounts.isNotEmpty() && !state.busy,
-            onClick = { listDialog = ListDialog.Create }
-        ) { Text("+ " + stringResource(R.string.tasks_org_new_list)) }
+        // Tasks.org's provider can't create a list on every account type (CalDAV ones fail inside
+        // Tasks.org), so new lists are created in Tasks.org itself.
+        val context = LocalContext.current
+        TextButton(onClick = { launchTasksOrgApp(context) }) {
+            Text(stringResource(R.string.tasks_org_create_list_in_app))
+        }
 
         SectionLabel(stringResource(R.string.tasks_org_manage_tags))
         if (state.tags.isEmpty()) Muted(stringResource(R.string.tasks_org_no_tags))
@@ -130,28 +134,14 @@ fun TasksOrgManagementSection(viewModel: TasksOrgManageViewModel = hiltViewModel
     }
 
     when (val dialog = listDialog) {
-        is ListDialog.Create -> NameColorDialog(
-            title = stringResource(R.string.tasks_org_new_list),
-            label = stringResource(R.string.tasks_org_list_name),
-            initialName = "",
-            initialColor = 0,
-            confirmLabel = stringResource(R.string.tasks_org_create),
-            accounts = state.accounts,
-            onDismiss = { listDialog = null },
-            onConfirm = { name, color, accountId ->
-                viewModel.createList(accountId, name, color)
-                listDialog = null
-            }
-        )
         is ListDialog.Edit -> NameColorDialog(
             title = stringResource(R.string.tasks_org_rename),
             label = stringResource(R.string.tasks_org_list_name),
             initialName = dialog.list.title,
             initialColor = dialog.list.color,
             confirmLabel = stringResource(R.string.tasks_org_save),
-            accounts = emptyList(),
             onDismiss = { listDialog = null },
-            onConfirm = { name, color, _ ->
+            onConfirm = { name, color ->
                 viewModel.updateList(dialog.list.id, name, color)
                 listDialog = null
             }
@@ -166,9 +156,8 @@ fun TasksOrgManagementSection(viewModel: TasksOrgManageViewModel = hiltViewModel
             initialName = tag.name,
             initialColor = tag.color,
             confirmLabel = stringResource(R.string.tasks_org_save),
-            accounts = emptyList(),
             onDismiss = { tagDialog = null },
-            onConfirm = { name, color, _ ->
+            onConfirm = { name, color ->
                 viewModel.updateTag(tag.id, name, color)
                 tagDialog = null
             }
@@ -198,7 +187,6 @@ fun TasksOrgManagementSection(viewModel: TasksOrgManageViewModel = hiltViewModel
 }
 
 private sealed interface ListDialog {
-    data object Create : ListDialog
     data class Edit(val list: TasksOrgList) : ListDialog
 }
 
@@ -293,7 +281,7 @@ private fun ManageRow(
     }
 }
 
-/** Name, color and (when creating a list) account, in one dialog shared by lists and tags. */
+/** Name and color in one dialog shared by lists and tags. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun NameColorDialog(
@@ -302,21 +290,11 @@ private fun NameColorDialog(
     initialName: String,
     initialColor: Int,
     confirmLabel: String,
-    accounts: List<TasksOrgAccount>,
     onDismiss: () -> Unit,
-    onConfirm: (name: String, color: Int, accountId: Long) -> Unit
+    onConfirm: (name: String, color: Int) -> Unit
 ) {
     var name by remember { mutableStateOf(initialName) }
     var color by remember { mutableStateOf(initialColor) }
-    // Prefer a healthy account; a local one is the safe default.
-    var accountId by remember {
-        mutableStateOf(
-            (accounts.firstOrNull { it.isLocal && !it.needsAttention }
-                ?: accounts.firstOrNull { !it.needsAttention }
-                ?: accounts.firstOrNull())?.id ?: 0L
-        )
-    }
-
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -341,26 +319,24 @@ private fun NameColorDialog(
                         )
                     }
                 }
-                if (accounts.size > 1) {
-                    Text(stringResource(R.string.tasks_org_list_account), style = MaterialTheme.typography.labelMedium)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        accounts.forEach { account ->
-                            FilterChip(
-                                selected = account.id == accountId,
-                                onClick = { accountId = account.id },
-                                label = { Text(account.name.ifBlank { account.type }) }
-                            )
-                        }
-                    }
-                }
             }
         },
         confirmButton = {
             TextButton(
                 enabled = name.isNotBlank(),
-                onClick = { onConfirm(name, color, accountId) }
+                onClick = { onConfirm(name, color) }
             ) { Text(confirmLabel) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.tasks_org_cancel)) } }
     )
+}
+
+/** Opens the Tasks.org app (where lists are created); does nothing when it can't be launched. */
+private fun launchTasksOrgApp(context: Context) {
+    val intent = context.packageManager.getLaunchIntentForPackage(TasksOrgContract.PACKAGE) ?: return
+    try {
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        // Uninstalled or disabled since the section opened.
+    }
 }

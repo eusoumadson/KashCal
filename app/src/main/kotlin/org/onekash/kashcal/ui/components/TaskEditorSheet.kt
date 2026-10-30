@@ -384,7 +384,9 @@ private fun NoteText(text: String) {
 
 /** Opens the task [taskId] in Tasks.org, where subtasks are managed. */
 internal fun openTaskInTasksOrg(context: android.content.Context, taskId: Long) {
+    // Pinned to Tasks.org's package so another app matching the URI can't turn this into a chooser.
     val intent = Intent(Intent.ACTION_VIEW, TasksOrgContract.Tasks.viewUri(taskId))
+        .setPackage(TasksOrgContract.PACKAGE)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     try {
         context.startActivity(intent)

@@ -140,8 +140,10 @@ está em `TasksOrgBatch.kt`, como funções puras testáveis.
 ## 7. Gestão de listas, tags e lugares (configurações)
 Seção própria no `TasksOrgScreen`, com ViewModel próprio (`TasksOrgManageViewModel`), sem tocar
 no ViewModel de configurações do core:
-- **Listas:** criar (escolhendo a conta), renomear, recolorir e excluir (com confirmação; apaga as
-  tarefas da lista). Lista somente leitura não oferece editar nem excluir.
+- **Listas:** renomear, recolorir e excluir (com confirmação; apaga as tarefas da lista). Lista
+  somente leitura não oferece editar nem excluir. **Criar lista não é oferecido**: o botão
+  "Create a list in Tasks.org" abre o app, porque o provider do Tasks.org falha ao criar lista em
+  conta CalDAV.
 - **Tags** e **lugares:** ver acima.
 - **Contas:** aviso quando uma conta precisa de atenção (login expirado, assinatura, falha de
   sincronização).

@@ -74,9 +74,6 @@ class TasksOrgManageViewModel @Inject constructor(
         }
     }
 
-    fun createList(accountId: Long, title: String, color: Int) =
-        act { coordinator.createList(accountId, title.trim(), color) }
-
     fun updateList(listId: Long, title: String, color: Int) =
         act { coordinator.updateList(listId, title.trim(), color) }
 

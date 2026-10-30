@@ -254,10 +254,14 @@ internal fun formatTaskDue(startTs: Long, isAllDay: Boolean, resources: Resource
 
 /** Opens the Tasks.org app; does nothing when it can't be launched. */
 private fun openTasksOrg(context: Context, taskId: Long) {
-    // Opens the task itself; falls back to the app when Tasks.org has no screen for the URI.
+    // Opens the task itself; falls back to the app when Tasks.org has no screen for the URI. Pinned
+    // to Tasks.org's package: on a device test another installed app also matched the URI and the
+    // system showed a chooser.
     try {
         context.startActivity(
-            Intent(Intent.ACTION_VIEW, TasksOrgContract.Tasks.viewUri(taskId)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            Intent(Intent.ACTION_VIEW, TasksOrgContract.Tasks.viewUri(taskId))
+                .setPackage(TasksOrgContract.PACKAGE)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         )
         return
     } catch (_: Exception) {

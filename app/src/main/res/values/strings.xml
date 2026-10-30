@@ -2234,12 +2234,10 @@
     <string name="tasks_org_version_label">Tasks.org %1$s</string>
     <string name="tasks_org_account_attention">%1$s needs attention in Tasks.org (%2$s).</string>
     <string name="tasks_org_manage_lists">Manage lists</string>
-    <string name="tasks_org_new_list">New list</string>
-    <string name="tasks_org_list_account">Account</string>
+    <string name="tasks_org_create_list_in_app">Create a list in Tasks.org</string>
     <string name="tasks_org_list_name">List name</string>
     <string name="tasks_org_rename">Rename</string>
     <string name="tasks_org_delete">Delete</string>
-    <string name="tasks_org_create">Create</string>
     <string name="tasks_org_save">Save</string>
     <string name="tasks_org_cancel">Cancel</string>
     <string name="tasks_org_color_label">Color</string>

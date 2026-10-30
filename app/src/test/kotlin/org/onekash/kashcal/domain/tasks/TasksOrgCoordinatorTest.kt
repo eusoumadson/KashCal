@@ -228,20 +228,18 @@ class TasksOrgCoordinatorSaveTest {
 
     @Test
     fun `list, tag and place changes re-query the views`() = runTest {
-        coEvery { repository.createList(any(), any(), any()) } returns TasksOrgWriteResult.Ok(1L)
         coEvery { repository.updateList(any(), any(), any()) } returns TasksOrgWriteResult.Ok(1L)
         coEvery { repository.deleteList(any()) } returns TasksOrgWriteResult.Ok(1L)
         coEvery { repository.updateTag(any(), any(), any()) } returns TasksOrgWriteResult.Ok(1L)
         coEvery { repository.deleteTag(any()) } returns TasksOrgWriteResult.Ok(1L)
         coEvery { repository.deletePlace(any()) } returns TasksOrgWriteResult.Ok(1L)
 
-        coordinator.createList(4L, "x")
         coordinator.updateList(1L, "y")
         coordinator.deleteList(1L)
         coordinator.updateTag(1L, "y")
         coordinator.deleteTag(1L)
         coordinator.deletePlace(1L)
 
-        verify(exactly = 6) { manager.notifyChanged() }
+        verify(exactly = 5) { manager.notifyChanged() }
     }
 }
