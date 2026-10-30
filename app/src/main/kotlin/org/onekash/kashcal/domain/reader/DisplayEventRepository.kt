@@ -21,8 +21,8 @@ import org.onekash.kashcal.data.db.dao.AttendeesDao
 import org.onekash.kashcal.data.db.dao.TitleSuggestion
 import org.onekash.kashcal.data.db.entity.Calendar
 import org.onekash.kashcal.data.preferences.KashCalDataStore
-import org.onekash.kashcal.data.tasks_org.TasksOrgManager
-import org.onekash.kashcal.data.tasks_org.TasksOrgRepository
+import org.onekash.kashcal.data.tasks_org.TasksOrgManager // FORK:tasks-org
+import org.onekash.kashcal.data.tasks_org.TasksOrgRepository // FORK:tasks-org
 import org.onekash.kashcal.domain.model.DisplayEvent
 import org.onekash.kashcal.domain.model.SearchResult
 import org.onekash.kashcal.ui.util.DayPagerUtils
@@ -45,8 +45,8 @@ class DisplayEventRepository @Inject constructor(
     private val dataStore: KashCalDataStore,
     private val attendeesDao: AttendeesDao,
     private val accountsDao: AccountsDao,
-    private val tasksOrgRepository: TasksOrgRepository,
-    private val tasksOrgManager: TasksOrgManager
+    private val tasksOrgRepository: TasksOrgRepository, // FORK:tasks-org
+    private val tasksOrgManager: TasksOrgManager // FORK:tasks-org
 ) {
     companion object {
         private const val TAG = "DisplayEventRepo"
@@ -64,7 +64,7 @@ class DisplayEventRepository @Inject constructor(
      * the view flows' combine stays within its five-argument overload.
      */
     private val externalChangeSignal: Flow<Pair<Int, Int>>
-        get() = combine(calendarProviderManager.changeSignal, tasksOrgManager.changeSignal) { d, t -> d to t }
+        get() = combine(calendarProviderManager.changeSignal, tasksOrgManager.changeSignal) { d, t -> d to t } // FORK:tasks-org (original: = calendarProviderManager.changeSignal)
 
     /**
      * Emits the day pager's events, from 3 days before [centerDateMs] to 4 days after, grouped
@@ -93,7 +93,7 @@ class DisplayEventRepository @Inject constructor(
         ) { roomOccurrences, _, showDeclined, _, _ ->
             val roomEvents = applyDeclinedPolicy(roomOccurrences, showDeclined)
             val deviceEvents = queryDeviceEvents(startDayCode, endDayCode) +
-                queryTaskEvents(startDayCode, endDayCode)
+                queryTaskEvents(startDayCode, endDayCode) // FORK:tasks-org (original: no task append)
             mergeAndGroupByDay(roomEvents, deviceEvents, startDayCode, endDayCode)
         }
     }
@@ -119,7 +119,7 @@ class DisplayEventRepository @Inject constructor(
         ) { roomOccurrences, _, showDeclined, _, _ ->
             val roomEvents = applyDeclinedPolicy(roomOccurrences, showDeclined)
             val deviceEvents = queryDeviceEvents(startDayCode, endDayCode) +
-                queryTaskEvents(startDayCode, endDayCode)
+                queryTaskEvents(startDayCode, endDayCode) // FORK:tasks-org (original: no task append)
             (roomEvents + deviceEvents)
                 .sortedBy { it.startTs }
                 .toPersistentList()
@@ -147,7 +147,7 @@ class DisplayEventRepository @Inject constructor(
         ) { roomOccurrences, _, showDeclined, _, _ ->
             val roomEvents = applyDeclinedPolicy(roomOccurrences, showDeclined)
             val deviceEvents = queryDeviceEvents(startDayCode, endDayCode) +
-                queryTaskEvents(startDayCode, endDayCode)
+                queryTaskEvents(startDayCode, endDayCode) // FORK:tasks-org (original: no task append)
             mergeAndGroupByDay(roomEvents, deviceEvents, startDayCode, endDayCode)
         }
     }
@@ -186,10 +186,11 @@ class DisplayEventRepository @Inject constructor(
             emptyList()
         }
 
+        // FORK:tasks-org — task results folded into search (original: roomResults + deviceResults only)
         val taskResults = queryTaskEvents(startDayCode, endDayCode, search = query)
             .map { SearchResult(it, it.startTs) }
 
-        return (roomResults + deviceResults + taskResults).sortedBy { it.displayTs }
+        return (roomResults + deviceResults + taskResults).sortedBy { it.displayTs } // FORK:tasks-org (original: roomResults + deviceResults)
     }
 
     /**
@@ -213,7 +214,7 @@ class DisplayEventRepository @Inject constructor(
         val showDeclined = dataStore.getShowDeclinedEvents()
         val roomEvents = applyDeclinedPolicy(roomOccurrences, showDeclined)
         val deviceEvents = queryDeviceEvents(startDayCode, endDayCode) +
-            queryTaskEvents(startDayCode, endDayCode)
+            queryTaskEvents(startDayCode, endDayCode) // FORK:tasks-org (original: no task append)
 
         return mergeAndGroupByDay(roomEvents, deviceEvents, startDayCode, endDayCode)
     }
@@ -338,6 +339,7 @@ class DisplayEventRepository @Inject constructor(
      * in lists not hidden in settings; empty while the source is off. [TasksOrgRepository]
      * returns empty instead of throwing.
      */
+    // FORK:tasks-org — entire helper added by the fork; safe to delete with its call-sites.
     private suspend fun queryTaskEvents(
         startDayCode: Int,
         endDayCode: Int,

@@ -12,8 +12,8 @@ import org.onekash.kashcal.data.repository.AccountRepository
 import org.onekash.kashcal.data.repository.AccountRepositoryImpl
 import org.onekash.kashcal.data.repository.CalendarRepository
 import org.onekash.kashcal.data.repository.CalendarRepositoryImpl
-import org.onekash.kashcal.data.tasks_org.AndroidTasksOrgRepository
-import org.onekash.kashcal.data.tasks_org.TasksOrgRepository
+import org.onekash.kashcal.data.tasks_org.AndroidTasksOrgRepository // FORK:tasks-org
+import org.onekash.kashcal.data.tasks_org.TasksOrgRepository // FORK:tasks-org
 import org.onekash.kashcal.sync.contacts.AndroidContactsProviderRepository
 import org.onekash.kashcal.sync.contacts.ContactsProviderRepository
 import javax.inject.Singleton
@@ -42,6 +42,7 @@ abstract class RepositoryModule {
         impl: AndroidCalendarProviderRepository
     ): CalendarProviderRepository
 
+    // FORK:tasks-org — binds the Tasks.org repository (reads, completion, and the fork's writes).
     /** Binds [TasksOrgRepository]: Tasks.org task reads and completion via its ContentProvider. */
     @Binds
     @Singleton

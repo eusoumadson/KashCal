@@ -58,7 +58,9 @@ fun TaskQuickViewSheet(
     onSetCompleted: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     showEventEmojis: Boolean = true,
-    timeFormat: String = "system"
+    timeFormat: String = "system",
+    /** When non-null and the task is writable, an Edit button that opens the task editor. */
+    onEdit: (() -> Unit)? = null,
 ) {
     val task = displayEvent.task
     val context = LocalContext.current
@@ -158,6 +160,16 @@ fun TaskQuickViewSheet(
                 modifier = Modifier.padding(horizontal = 8.dp)
             ) {
                 Text(stringResource(R.string.task_open_in_tasks_org))
+            }
+
+            // Edit in KashCal (fork): only when the task is writable and the host wires it.
+            if (onEdit != null && canComplete) {
+                TextButton(
+                    onClick = onEdit,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                ) {
+                    Text(stringResource(R.string.task_editor_edit))
+                }
             }
         }
     }

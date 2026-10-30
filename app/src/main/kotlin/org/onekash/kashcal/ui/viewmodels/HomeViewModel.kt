@@ -96,10 +96,10 @@ import org.onekash.kashcal.ui.components.attendees.AttendeeStatus
 import org.onekash.kashcal.ui.components.attendees.AttendeeUiModel
 import kotlinx.coroutines.sync.withLock
 import org.onekash.kashcal.ui.components.generateSnackbarMessage
-import org.onekash.kashcal.data.tasks_org.TasksOrgTask
-import org.onekash.kashcal.domain.tasks.TaskCompletionResult
-import org.onekash.kashcal.domain.tasks.TaskCompletionUndo
-import org.onekash.kashcal.domain.tasks.TasksOrgCoordinator
+import org.onekash.kashcal.data.tasks_org.TasksOrgTask // FORK:tasks-org
+import org.onekash.kashcal.domain.tasks.TaskCompletionResult // FORK:tasks-org
+import org.onekash.kashcal.domain.tasks.TaskCompletionUndo // FORK:tasks-org
+import org.onekash.kashcal.domain.tasks.TasksOrgCoordinator // FORK:tasks-org
 import org.onekash.kashcal.ui.components.hub.normalizeInitials
 import org.onekash.kashcal.ui.components.weekview.WeekViewUtils
 import org.onekash.kashcal.ui.model.CalendarGroup
@@ -295,7 +295,7 @@ class HomeViewModel(
     private val applicationScope: CoroutineScope,
     private val currentDayCodeProvider: () -> Int,
     /** Completes Tasks.org tasks; null in tests that don't exercise them. */
-    private val tasksOrgCoordinator: org.onekash.kashcal.domain.tasks.TasksOrgCoordinator? = null
+    private val tasksOrgCoordinator: org.onekash.kashcal.domain.tasks.TasksOrgCoordinator? = null // FORK:tasks-org
 ) : ViewModel() {
 
     @Inject
@@ -314,7 +314,7 @@ class HomeViewModel(
         @ApplicationContext context: Context,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
         @ApplicationScope applicationScope: CoroutineScope,
-        tasksOrgCoordinator: org.onekash.kashcal.domain.tasks.TasksOrgCoordinator? = null,
+        tasksOrgCoordinator: org.onekash.kashcal.domain.tasks.TasksOrgCoordinator? = null, // FORK:tasks-org
     ) : this(
         eventCoordinator,
         eventReader,
@@ -331,7 +331,7 @@ class HomeViewModel(
         ioDispatcher,
         applicationScope,
         { DayPagerUtils.msToDayCode(System.currentTimeMillis()) },
-        tasksOrgCoordinator
+        tasksOrgCoordinator // FORK:tasks-org
     )
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -386,6 +386,16 @@ class HomeViewModel(
     /** Default reminder for timed events, in minutes before the start. */
     val defaultReminderTimed: StateFlow<Int> = dataStore.defaultReminderMinutes
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 15)
+
+    /**
+     * Whether the Tasks.org integration is on (fork). Every Tasks.org-specific UI affordance —
+     * the new-task FAB, the task editor — is gated on this, so with it off KashCal behaves
+     * exactly like the original. Emits false when the source isn't wired (tests, or no
+     * coordinator).
+     */
+    val tasksOrgEnabled: StateFlow<Boolean> = // FORK:tasks-org
+        (tasksOrgCoordinator?.enabled ?: flowOf(false))
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     /** Default reminder for all-day events, in minutes before the start. */
     val defaultReminderAllDay: StateFlow<Int> = dataStore.defaultAllDayReminder
@@ -875,7 +885,7 @@ class HomeViewModel(
     private var buildDotsJob: Job? = null
 
     /** Orders Tasks.org writes, so a quick reopen can't reach Tasks.org before its completion. */
-    private val tasksOrgWriteMutex = kotlinx.coroutines.sync.Mutex()
+    private val tasksOrgWriteMutex = kotlinx.coroutines.sync.Mutex() // FORK:tasks-org
 
     // Debounced occurrence extension; cancelled by the next one on a rapid swipe.
     private var extensionJob: Job? = null
@@ -2658,7 +2668,7 @@ class HomeViewModel(
                     when (val de = result.displayEvent) {
                         is DisplayEvent.Room -> de.event.calendarId in visibleCalendarIds
                         is DisplayEvent.Device -> true // only visible ones were searched
-                        is DisplayEvent.Task -> true // only shown lists were searched
+                        is DisplayEvent.Task -> true // only shown lists were searched // FORK:tasks-org
                     }
                 }
 
@@ -3602,7 +3612,7 @@ class HomeViewModel(
                 )
             )
             // A task is read-only (DayColumn never lets it be dragged), so it has no moved copy.
-            is DisplayEvent.Task -> this
+            is DisplayEvent.Task -> this // FORK:tasks-org
         }
     }
 
@@ -3625,7 +3635,7 @@ class HomeViewModel(
             is DisplayEvent.Device ->
                 RruleShift.zoneFor(displayEvent.instance.timezone, displayEvent.instance.isAllDay) to displayEvent.instance.startTs
             is DisplayEvent.Task ->
-                RruleShift.zoneFor(null, displayEvent.isAllDay) to displayEvent.startTs
+                RruleShift.zoneFor(null, displayEvent.isAllDay) to displayEvent.startTs // FORK:tasks-org
         }
         return Instant.ofEpochMilli(occurrenceStartTs).atZone(zone).toLocalDate() !=
             Instant.ofEpochMilli(droppedStartTs).atZone(zone).toLocalDate()
@@ -3658,7 +3668,7 @@ class HomeViewModel(
                 when (dropped) {
                     is DisplayEvent.Room -> blockedDragScopes(dropped, droppedStartTs)
                     is DisplayEvent.Device -> blockedDeviceDragScopes(dropped, droppedStartTs)
-                    is DisplayEvent.Task -> setOf(EditScope.ALL_EVENTS, EditScope.THIS_AND_FUTURE)
+                    is DisplayEvent.Task -> setOf(EditScope.ALL_EVENTS, EditScope.THIS_AND_FUTURE) // FORK:tasks-org
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -4027,7 +4037,7 @@ class HomeViewModel(
                         MoveSaveOutcome.SAVED
                     }
                     // A task is read-only (DayColumn never lets it be dragged): nothing to write.
-                    is DisplayEvent.Task -> MoveSaveOutcome.CHANGED
+                    is DisplayEvent.Task -> MoveSaveOutcome.CHANGED // FORK:tasks-org
                     is DisplayEvent.Device -> {
                         val instance = displayEvent.instance
                         val stored = deviceEventReader.getDeviceEvent(instance.eventId)
@@ -4440,6 +4450,10 @@ class HomeViewModel(
         }
     }
 
+    // region FORK:tasks-org — Tasks.org write operations (completion/undo, create, edit, delete).
+    // All of these are self-contained and only reachable while the integration is on; removing
+    // the fork = delete this whole region plus the tasksOrgEnabled/tasksOrgWriteMutex members
+    // and the `is DisplayEvent.Task ->` when-branches above (each FORK:tasks-org tagged).
     /**
      * Completes the Tasks.org task [task] or reopens it, without waiting, then shows a snackbar
      * with Undo. Tasks.org moves a repeating task to its next occurrence instead of completing
@@ -4504,6 +4518,146 @@ class HomeViewModel(
             if (!written) showSnackbar(context.getString(R.string.snackbar_task_update_failed))
         }
     }
+
+    /**
+     * Builds the editor state for a new Tasks.org task (fork), fetching the writable lists, and
+     * passes it to [onReady] on the main thread. [onReady] gets null when the source is off or
+     * there is no writable list. [defaultDueMs] seeds the due date (e.g. the tapped day).
+     */
+    fun prepareNewTask(
+        defaultDueMs: Long?,
+        defaultAllDay: Boolean,
+        onReady: (org.onekash.kashcal.ui.components.TaskEditorState?) -> Unit
+    ) {
+        val coordinator = tasksOrgCoordinator ?: return onReady(null)
+        viewModelScope.launch {
+            val lists = withContext(ioDispatcher) { coordinator.getWritableLists() }
+            if (lists.isEmpty()) {
+                onReady(null)
+            } else {
+                val tags = withContext(ioDispatcher) { coordinator.getTags() }
+                onReady(
+                    org.onekash.kashcal.ui.components.TaskEditorState.forNew(
+                        writableLists = lists,
+                        defaultListId = null,
+                        defaultDueMs = defaultDueMs,
+                        defaultAllDay = defaultAllDay,
+                        allTags = tags
+                    )
+                )
+            }
+        }
+    }
+
+    /** Builds the editor state to edit [task], fetching the writable lists and tags, via [onReady]. */
+    fun prepareEditTask(
+        task: TasksOrgTask,
+        onReady: (org.onekash.kashcal.ui.components.TaskEditorState?) -> Unit
+    ) {
+        val coordinator = tasksOrgCoordinator ?: return onReady(null)
+        viewModelScope.launch {
+            val lists = withContext(ioDispatcher) { coordinator.getWritableLists() }
+            val tags = withContext(ioDispatcher) { coordinator.getTags() }
+            val selected = withContext(ioDispatcher) { coordinator.getTaskTagIds(task.id) }.toSet()
+            val reminders = withContext(ioDispatcher) { coordinator.getReminders(task.id) }
+            onReady(
+                org.onekash.kashcal.ui.components.TaskEditorState.forEdit(
+                    task = task,
+                    writableLists = lists,
+                    allTags = tags,
+                    selectedTagIds = selected,
+                    reminders = reminders
+                )
+            )
+        }
+    }
+
+    /**
+     * Persists the editor's result: an insert for a new task, or a patch for an edit. Reports
+     * the outcome with a snackbar, distinguishing a read-only list from a plain refusal
+     * (report §4.4). [onDone] runs on the main thread once the write settles, so the UI can
+     * close the sheet.
+     */
+    fun saveTask(state: org.onekash.kashcal.ui.components.TaskEditorState, onDone: () -> Unit = {}) {
+        val coordinator = tasksOrgCoordinator ?: return
+        viewModelScope.launch {
+            val result = try {
+                tasksOrgWriteMutex.withLock {
+                    withContext(ioDispatcher) {
+                        if (state.isEditing) {
+                            coordinator.updateTask(state.original!!.id, state.buildPatch())
+                        } else {
+                            coordinator.createTask(state.toDraft())
+                        }
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Error saving Tasks.org task", e)
+                org.onekash.kashcal.data.tasks_org.TasksOrgWriteResult.Refused
+            }
+            // On success, reconcile tags against the written task (create uses the new id).
+            if (result is org.onekash.kashcal.data.tasks_org.TasksOrgWriteResult.Ok) {
+                try {
+                    withContext(ioDispatcher) {
+                        coordinator.setTaskTags(result.taskId, state.selectedTagIds, state.newTagNames)
+                        coordinator.setReminders(result.taskId, state.reminders)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error saving task tags or reminders", e)
+                }
+            }
+            onDone()
+            showSnackbar(
+                when (result) {
+                    is org.onekash.kashcal.data.tasks_org.TasksOrgWriteResult.Ok ->
+                        context.getString(
+                            if (state.isEditing) R.string.snackbar_task_saved else R.string.snackbar_task_created
+                        )
+                    org.onekash.kashcal.data.tasks_org.TasksOrgWriteResult.ReadOnly ->
+                        context.getString(R.string.snackbar_task_read_only)
+                    org.onekash.kashcal.data.tasks_org.TasksOrgWriteResult.Refused ->
+                        context.getString(R.string.snackbar_task_update_failed)
+                }
+            )
+        }
+    }
+
+    /**
+     * Deletes the Tasks.org task [taskId] and its subtasks; irreversible in Tasks.org, so the
+     * caller confirms first. Reports the outcome with a snackbar and runs [onDone] when settled.
+     */
+    fun deleteTask(taskId: Long, onDone: () -> Unit = {}) {
+        val coordinator = tasksOrgCoordinator ?: return
+        viewModelScope.launch {
+            val result = try {
+                tasksOrgWriteMutex.withLock {
+                    withContext(ioDispatcher) { coordinator.deleteTask(taskId) }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting Tasks.org task", e)
+                org.onekash.kashcal.data.tasks_org.TasksOrgWriteResult.Refused
+            }
+            onDone()
+            showSnackbar(
+                when (result) {
+                    is org.onekash.kashcal.data.tasks_org.TasksOrgWriteResult.Ok ->
+                        context.getString(R.string.snackbar_task_deleted)
+                    org.onekash.kashcal.data.tasks_org.TasksOrgWriteResult.ReadOnly ->
+                        context.getString(R.string.snackbar_task_read_only)
+                    org.onekash.kashcal.data.tasks_org.TasksOrgWriteResult.Refused ->
+                        context.getString(R.string.snackbar_task_delete_failed)
+                }
+            )
+        }
+    }
+    // endregion FORK:tasks-org
+
 
     /**
      * Deletes a Room event without waiting, so the quick view can close at once; also the

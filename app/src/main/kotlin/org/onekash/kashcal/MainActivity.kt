@@ -67,7 +67,9 @@ import org.onekash.kashcal.ui.components.category.LocalTagColors
 import org.onekash.kashcal.ui.components.DeviceEventQuickViewSheet
 import org.onekash.kashcal.ui.components.EventFormSheet
 import org.onekash.kashcal.ui.components.EventQuickViewSheet
-import org.onekash.kashcal.ui.components.TaskQuickViewSheet
+import org.onekash.kashcal.ui.components.TaskQuickViewSheet // FORK:tasks-org
+import org.onekash.kashcal.ui.components.TaskEditorSheet // FORK:tasks-org
+import org.onekash.kashcal.ui.components.TaskEditorState // FORK:tasks-org
 import org.onekash.kashcal.ui.components.IcsImportSheet
 import org.onekash.kashcal.ui.components.importSummary
 import org.onekash.kashcal.ui.components.NotificationPermissionDialog
@@ -188,6 +190,8 @@ class MainActivity : FragmentActivity() {
                 val defaultReminderAllDay by homeViewModel.defaultReminderAllDay.collectAsStateWithLifecycle()
                 val defaultEventDuration by homeViewModel.defaultEventDuration.collectAsStateWithLifecycle()
                 val quickAddEnabled by homeViewModel.quickAddEnabled.collectAsStateWithLifecycle()
+                // Fork: gates every Tasks.org-specific affordance (new-task FAB, editor).
+                val tasksOrgEnabled by homeViewModel.tasksOrgEnabled.collectAsStateWithLifecycle() // FORK:tasks-org
 
                 val coroutineScope = rememberCoroutineScope()
 
@@ -326,7 +330,11 @@ class MainActivity : FragmentActivity() {
 
                 // Tasks.org task quick view: the tapped task; null while closed. Toggling its
                 // completion closes it.
-                var taskQuickViewEvent by remember { mutableStateOf<DisplayEvent.Task?>(null) }
+                var taskQuickViewEvent by remember { mutableStateOf<DisplayEvent.Task?>(null) } // FORK:tasks-org
+
+                // Tasks.org task editor (fork): create/edit state; null while closed. Set once
+                // the writable lists have loaded via HomeViewModel.prepare*Task.
+                var taskEditorState by remember { mutableStateOf<TaskEditorState?>(null) } // FORK:tasks-org
 
                 // Device event quick view sheet state
                 var showDeviceQuickViewSheet by remember { mutableStateOf(false) }
@@ -546,16 +554,16 @@ class MainActivity : FragmentActivity() {
 
                 Log.d(TAG, "Composing with ${uiState.dayEventsCache.values.sumOf { it.size }} cached day events")
 
-                // Whether KashCal may complete Tasks.org tasks; re-read on resume, since the
-                // permission can be granted or revoked in Settings meanwhile.
+                // FORK:tasks-org — whether KashCal may complete Tasks.org tasks; re-read on
+                // resume, since the permission can be granted or revoked in Settings meanwhile.
                 val readTasksOrgWrite = {
                     androidx.core.content.ContextCompat.checkSelfPermission(
                         this@MainActivity,
                         org.onekash.kashcal.data.tasks_org.TasksOrgContract.PERMISSION_WRITE
                     ) == android.content.pm.PackageManager.PERMISSION_GRANTED
                 }
-                var canWriteTasksOrg by remember { mutableStateOf(readTasksOrgWrite()) }
-                androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+                var canWriteTasksOrg by remember { mutableStateOf(readTasksOrgWrite()) } // FORK:tasks-org
+                androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { // FORK:tasks-org
                     canWriteTasksOrg = readTasksOrgWrite()
                     onPauseOrDispose { }
                 }
@@ -565,7 +573,7 @@ class MainActivity : FragmentActivity() {
                 // through the occurrence stream.
                 CompositionLocalProvider(
                     LocalTagColors provides uiState.tagColors,
-                    org.onekash.kashcal.ui.components.LocalCanWriteTasksOrg provides canWriteTasksOrg,
+                    org.onekash.kashcal.ui.components.LocalCanWriteTasksOrg provides canWriteTasksOrg, // FORK:tasks-org
                 ) {
 
                 HomeScreen(
@@ -594,8 +602,8 @@ class MainActivity : FragmentActivity() {
                         deviceQuickViewEvent = deviceEvent
                         showDeviceQuickViewSheet = true
                     },
-                    onTaskClick = { task -> taskQuickViewEvent = task },
-                    onTaskCheckedChange = { task, completed, onResult ->
+                    onTaskClick = { task -> taskQuickViewEvent = task }, // FORK:tasks-org
+                    onTaskCheckedChange = { task, completed, onResult -> // FORK:tasks-org
                         homeViewModel.setTasksOrgTaskCompleted(task.task, completed, onResult)
                     },
                     onCreateEvent = {
@@ -638,6 +646,16 @@ class MainActivity : FragmentActivity() {
                         newEventStartTs = timestampMs
                         eventOccurrenceTs = null
                         showEventFormSheet = true
+                    },
+                    // Fork: the new-task FAB, shown only while the Tasks.org integration is on.
+                    showTaskFab = tasksOrgEnabled, // FORK:tasks-org
+                    onCreateTask = { // FORK:tasks-org
+                        Log.d(TAG, "Create task clicked")
+                        // Seed the due date from the selected day (all-day), as create-event does.
+                        val seedMs = uiState.selectedDate.takeIf { it != 0L }
+                        homeViewModel.prepareNewTask(defaultDueMs = seedMs, defaultAllDay = true) { state ->
+                            taskEditorState = state
+                        }
                     },
                     // Sync callbacks
                     onRefresh = { homeViewModel.refreshSync() },
@@ -1140,7 +1158,7 @@ class MainActivity : FragmentActivity() {
                 }
 
                 // Tasks.org task quick view
-                taskQuickViewEvent?.let { shown ->
+                taskQuickViewEvent?.let { shown -> // FORK:tasks-org — entire block
                     TaskQuickViewSheet(
                         displayEvent = shown,
                         canComplete = !shown.task.isReadOnly && canWriteTasksOrg,
@@ -1153,6 +1171,34 @@ class MainActivity : FragmentActivity() {
                         },
                         onDismiss = { taskQuickViewEvent = null },
                         showEventEmojis = uiState.showEventEmojis,
+                        timeFormat = uiState.timeFormat,
+                        // Fork: editing is offered only while the integration is on and the task
+                        // is writable; otherwise the sheet is view-only, as before.
+                        onEdit = if (tasksOrgEnabled) {
+                            {
+                                val task = shown.task
+                                taskQuickViewEvent = null
+                                homeViewModel.prepareEditTask(task) { state ->
+                                    taskEditorState = state
+                                }
+                            }
+                        } else null
+                    )
+                }
+
+                // Tasks.org task editor sheet (fork): create or edit, persisted via HomeViewModel.
+                // Only ever opened while the integration is on (the FAB and edit action are gated),
+                // so no extra guard is needed here.
+                taskEditorState?.let { editorState -> // FORK:tasks-org — entire block
+                    TaskEditorSheet(
+                        initial = editorState,
+                        onSave = { result ->
+                            homeViewModel.saveTask(result) { taskEditorState = null }
+                        },
+                        onDelete = { taskId ->
+                            homeViewModel.deleteTask(taskId) { taskEditorState = null }
+                        },
+                        onDismiss = { taskEditorState = null },
                         timeFormat = uiState.timeFormat
                     )
                 }

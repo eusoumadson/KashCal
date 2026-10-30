@@ -49,6 +49,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.outlined.CheckCircle // FORK:tasks-org
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -66,6 +67,7 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.SmallFloatingActionButton // FORK:tasks-org
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
@@ -141,8 +143,8 @@ import org.onekash.kashcal.domain.model.SearchResult
 import org.onekash.kashcal.ui.components.CalendarDrawer
 import org.onekash.kashcal.ui.components.DayEventsSheet
 import org.onekash.kashcal.ui.components.EventCard
-import org.onekash.kashcal.ui.components.OnTaskCheckedChange
-import org.onekash.kashcal.ui.components.TaskCard
+import org.onekash.kashcal.ui.components.OnTaskCheckedChange // FORK:tasks-org
+import org.onekash.kashcal.ui.components.TaskCard // FORK:tasks-org
 import org.onekash.kashcal.ui.components.HomeStopEffect
 import org.onekash.kashcal.ui.components.InvitationInboxSheet
 import org.onekash.kashcal.ui.components.PendingSnackbarEffect
@@ -226,11 +228,14 @@ fun HomeScreen(
     // Event callbacks
     onEventClick: (Event, Long?) -> Unit = { _, _ -> },  // (event, occurrenceStartTs)
     onDeviceEventClick: (DisplayEvent.Device) -> Unit = {},  // device calendar event clicked
-    onTaskClick: (DisplayEvent.Task) -> Unit = {},  // Tasks.org task clicked
+    onTaskClick: (DisplayEvent.Task) -> Unit = {},  // Tasks.org task clicked // FORK:tasks-org
     // Tasks.org task checkbox in the day and agenda lists; null shows tasks as plain cards
-    onTaskCheckedChange: OnTaskCheckedChange? = null,
+    onTaskCheckedChange: OnTaskCheckedChange? = null, // FORK:tasks-org
     onCreateEvent: () -> Unit = {},
     onCreateEventWithDateTime: (Long) -> Unit = {},  // timestamp for pre-filled event form
+    // FORK:tasks-org — show the secondary "new task" FAB, only when the integration is on.
+    showTaskFab: Boolean = false,
+    onCreateTask: () -> Unit = {},
     // Sync callbacks
     onRefresh: () -> Unit = {},
     // Search callbacks
@@ -610,11 +615,31 @@ fun HomeScreen(
         floatingActionButton = {
             // Insights is a read-only analytics view, so it has no create button.
             if (uiState.viewMode != ViewMode.INSIGHTS) {
-                FloatingActionButton(
-                    onClick = onCreateEvent,
-                    containerColor = MaterialTheme.colorScheme.primary
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_create_event))
+                    // FORK:tasks-org — a smaller secondary FAB for a new Tasks.org task, above
+                    // the event FAB. Shown only while the integration is on; with it off this
+                    // disappears and the screen matches the original app.
+                    if (showTaskFab) {
+                        SmallFloatingActionButton(
+                            onClick = onCreateTask,
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ) {
+                            Icon(
+                                Icons.Outlined.CheckCircle,
+                                contentDescription = stringResource(R.string.task_editor_new_task_action)
+                            )
+                        }
+                    }
+                    FloatingActionButton(
+                        onClick = onCreateEvent,
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_create_event))
+                    }
                 }
             }
         },
@@ -774,7 +799,7 @@ fun HomeScreen(
                                                     when (displayEvent) {
                                                         is DisplayEvent.Room -> onEventClick(displayEvent.event, displayEvent.occurrence.startTs)
                                                         is DisplayEvent.Device -> onDeviceEventClick(displayEvent)
-                                                        is DisplayEvent.Task -> onTaskClick(displayEvent)
+                                                        is DisplayEvent.Task -> onTaskClick(displayEvent) // FORK:tasks-org
                                                     }
                                                 }
                                             )
@@ -835,7 +860,7 @@ fun HomeScreen(
                                                     when (displayEvent) {
                                                         is DisplayEvent.Room -> onEventClick(displayEvent.event, displayEvent.occurrence.startTs)
                                                         is DisplayEvent.Device -> onDeviceEventClick(displayEvent)
-                                                        is DisplayEvent.Task -> onTaskClick(displayEvent)
+                                                        is DisplayEvent.Task -> onTaskClick(displayEvent) // FORK:tasks-org
                                                     }
                                                 }
                                             },
@@ -1820,7 +1845,7 @@ private fun ColumnScope.DayEventsPager(
     todayDayCode: Int,
     onEventClick: (Event, Long?) -> Unit,
     onDeviceEventClick: (DisplayEvent.Device) -> Unit = {},
-    onTaskClick: (DisplayEvent.Task) -> Unit = {},  // Tasks.org task clicked
+    onTaskClick: (DisplayEvent.Task) -> Unit = {},  // Tasks.org task clicked // FORK:tasks-org
     onTaskCheckedChange: OnTaskCheckedChange? = null,
     onDateSelected: (Long) -> Unit,
     onLoadEventsForRange: (Long) -> Unit,
@@ -2057,7 +2082,7 @@ private fun DayEventsPage(
                             when (displayEvent) {
                                 is DisplayEvent.Room -> onEventClick(displayEvent.event, displayEvent.occurrence.startTs)
                                 is DisplayEvent.Device -> onDeviceEventClick(displayEvent)
-                                is DisplayEvent.Task -> onTaskClick(displayEvent)
+                                is DisplayEvent.Task -> onTaskClick(displayEvent) // FORK:tasks-org
                             }
                         }
                     )
@@ -2260,7 +2285,7 @@ private fun SearchContent(
                             when (displayEvent) {
                                 is DisplayEvent.Room -> onResultClick(displayEvent.event, result.displayTs)
                                 is DisplayEvent.Device -> onDeviceEventClick(displayEvent)
-                                is DisplayEvent.Task -> onTaskClick(displayEvent)
+                                is DisplayEvent.Task -> onTaskClick(displayEvent) // FORK:tasks-org
                             }
                         }
                     )

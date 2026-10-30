@@ -8,7 +8,7 @@ import org.onekash.kashcal.data.contacts.ContactEventUtils
 import org.onekash.kashcal.data.db.entity.Calendar
 import org.onekash.kashcal.data.db.entity.Event
 import org.onekash.kashcal.data.db.entity.Occurrence
-import org.onekash.kashcal.data.tasks_org.TasksOrgTask
+import org.onekash.kashcal.data.tasks_org.TasksOrgTask // FORK:tasks-org
 import org.onekash.kashcal.domain.mapper.availabilityIntToTransp
 import org.onekash.kashcal.domain.mapper.statusIntToString
 import org.onekash.kashcal.util.DateTimeUtils
@@ -139,6 +139,10 @@ sealed interface DisplayEvent {
      * completion, which the task quick view and the list checkbox ([org.onekash.kashcal.ui.components.TaskCard])
      * toggle in Tasks.org.
      */
+    // FORK:tasks-org — entire Task variant added by the fork. It is a sealed-interface member,
+    // so every exhaustive `when (displayEvent)` across the UI gains an `is DisplayEvent.Task`
+    // branch (also FORK:tasks-org tagged). Removing the fork = delete this variant and those
+    // branches.
     @Immutable
     data class Task(val task: TasksOrgTask) : DisplayEvent {
         override val title get() = taskDisplayTitle(task.title, task.isCompleted)
@@ -163,18 +167,19 @@ sealed interface DisplayEvent {
 }
 
 /** Color of a Tasks.org list that has none, Tasks.org's own default blue. */
-internal const val DEFAULT_TASK_LIST_COLOR = 0xFF2196F3.toInt()
+internal const val DEFAULT_TASK_LIST_COLOR = 0xFF2196F3.toInt() // FORK:tasks-org
 
 /** Title prefix of an open task: U+2610 BALLOT BOX. */
-internal const val TASK_OPEN_PREFIX = "\u2610 "
+internal const val TASK_OPEN_PREFIX = "\u2610 " // FORK:tasks-org
 
 /** Title prefix of a completed task: U+2611 BALLOT BOX WITH CHECK. */
-internal const val TASK_DONE_PREFIX = "\u2611 "
+internal const val TASK_DONE_PREFIX = "\u2611 " // FORK:tasks-org
 
 /**
  * Returns [title] with a checkbox prefix showing whether the task is [completed]. Display only:
  * the title stored in Tasks.org never carries it.
  */
+// FORK:tasks-org — helper for the Task variant's display title.
 fun taskDisplayTitle(title: String, completed: Boolean): String =
     (if (completed) TASK_DONE_PREFIX else TASK_OPEN_PREFIX) + title
 

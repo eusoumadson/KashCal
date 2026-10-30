@@ -6,7 +6,12 @@ import org.onekash.kashcal.data.tasks_org.TasksOrgList
 import org.onekash.kashcal.data.tasks_org.TasksOrgManager
 import org.onekash.kashcal.data.tasks_org.TasksOrgRepository
 import org.onekash.kashcal.data.tasks_org.TasksOrgSchedule
+import org.onekash.kashcal.data.tasks_org.TasksOrgReminder
+import org.onekash.kashcal.data.tasks_org.TasksOrgTag
 import org.onekash.kashcal.data.tasks_org.TasksOrgTask
+import org.onekash.kashcal.data.tasks_org.TasksOrgTaskDraft
+import org.onekash.kashcal.data.tasks_org.TasksOrgTaskPatch
+import org.onekash.kashcal.data.tasks_org.TasksOrgWriteResult
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -89,6 +94,98 @@ class TasksOrgCoordinator @Inject constructor(
         }
         manager.notifyChanged()
         return written
+    }
+
+    /** Returns every Tasks.org list that accepts writes, for the create/edit list picker. */
+    suspend fun getWritableLists(): List<TasksOrgList> = repository.getLists().filter { !it.isReadOnly }
+
+    /**
+     * Creates a task from [draft] and re-queries the views. Nothing is queued: Tasks.org owns
+     * the task and syncs the change on its own.
+     */
+    suspend fun createTask(draft: TasksOrgTaskDraft): TasksOrgWriteResult {
+        val result = repository.createTask(draft)
+        manager.notifyChanged()
+        return result
+    }
+
+    /**
+     * Applies [patch] to the task [taskId]. A no-op patch is a success with no write. See the
+     * report (§4.3) for the provider side effects of changing `due_date`, `list_id` and
+     * `recurrence`; the caller should re-read the row afterwards if it needs the result.
+     */
+    suspend fun updateTask(taskId: Long, patch: TasksOrgTaskPatch): TasksOrgWriteResult {
+        val result = repository.updateTask(taskId, patch)
+        manager.notifyChanged()
+        return result
+    }
+
+    /**
+     * Deletes the task [taskId] and its subtasks. Irreversible in Tasks.org, so the caller
+     * confirms with the user first; there is no undo.
+     */
+    suspend fun deleteTask(taskId: Long): TasksOrgWriteResult {
+        val result = repository.deleteTask(taskId)
+        manager.notifyChanged()
+        return result
+    }
+
+    /** Every Tasks.org tag, for the editor's tag picker. */
+    suspend fun getTags(): List<TasksOrgTag> = repository.getTags()
+
+    /** The ids of the tags currently on the task [taskId]. */
+    suspend fun getTaskTagIds(taskId: Long): List<Long> = repository.getTagIdsForTask(taskId)
+
+    /**
+     * Makes the task [taskId]'s tags exactly [desiredTagIds] and [newTagNames]: existing tag
+     * ids are added, each name in [newTagNames] is created (idempotent) then added, and any
+     * current tag not in the desired set is removed. Re-queries the views once at the end.
+     *
+     * @return false when any write was refused
+     */
+    suspend fun setTaskTags(
+        taskId: Long,
+        desiredTagIds: Set<Long>,
+        newTagNames: List<String> = emptyList()
+    ): Boolean {
+        var ok = true
+        val resolvedNew = newTagNames.mapNotNull { repository.ensureTag(it) }
+        ok = ok && resolvedNew.size == newTagNames.size
+        val desired = desiredTagIds + resolvedNew
+        val current = repository.getTagIdsForTask(taskId).toSet()
+
+        (desired - current).forEach { ok = repository.addTagToTask(taskId, it) && ok }
+        (current - desired).forEach { ok = repository.removeTagFromTask(taskId, it) && ok }
+        manager.notifyChanged()
+        return ok
+    }
+
+    /** The time-based reminders currently on the task [taskId], for the editor. */
+    suspend fun getReminders(taskId: Long): List<TasksOrgReminder> = repository.getReminders(taskId)
+
+    /**
+     * Reconciles the task [taskId]'s reminders to [desired]: reminders already present (same id)
+     * are kept, reminders in [desired] with id 0 are added, and current reminders missing from
+     * [desired] are deleted. Reminders have no editable identity in the API, so editing one is
+     * delete-plus-add; this method handles that by id set difference. Re-queries once.
+     *
+     * @return false when any write was refused
+     */
+    suspend fun setReminders(taskId: Long, desired: List<TasksOrgReminder>): Boolean {
+        var ok = true
+        val current = repository.getReminders(taskId)
+        val keepIds = desired.mapNotNull { it.id.takeIf { id -> id != 0L } }.toSet()
+
+        // Delete the ones the user removed.
+        current.filter { it.id !in keepIds }.forEach {
+            ok = repository.deleteReminder(it.id) && ok
+        }
+        // Add the new ones (id == 0).
+        desired.filter { it.id == 0L }.forEach {
+            ok = (repository.addReminder(taskId, it) != null) && ok
+        }
+        manager.notifyChanged()
+        return ok
     }
 }
 

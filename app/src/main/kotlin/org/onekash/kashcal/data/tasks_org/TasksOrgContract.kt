@@ -50,8 +50,23 @@ object TasksOrgContract {
         const val COMPLETED_AT = "completed_at"
         /** RFC 5545 RRULE of a repeating task, or empty. */
         const val RECURRENCE = "recurrence"
+        /** What a repeating task counts the next occurrence from: [REPEAT_FROM_DUE_DATE] or [REPEAT_FROM_COMPLETION]. */
+        const val REPEAT_FROM = "repeat_from"
+        /** `high`, `medium`, `low`, `none`. */
+        const val PRIORITY = "priority"
         const val LIST_ID = "list_id"
+        const val PARENT_ID = "parent_id"
         const val IS_READ_ONLY = "is_read_only"
+        /** Comma-joined tag ids on the task; "" when it has none. Read-only. */
+        const val TAG_IDS = "tag_ids"
+
+        const val REPEAT_FROM_DUE_DATE = "due_date"
+        const val REPEAT_FROM_COMPLETION = "completion_date"
+
+        const val PRIORITY_HIGH = "high"
+        const val PRIORITY_MEDIUM = "medium"
+        const val PRIORITY_LOW = "low"
+        const val PRIORITY_NONE = "none"
 
         /** Tasks due after this instant (exclusive). */
         const val PARAM_DUE_AFTER = "due_after"
@@ -61,6 +76,12 @@ object TasksOrgContract {
         const val PARAM_SEARCH = "search"
 
         fun itemUri(id: Long): Uri = Uri.withAppendedPath(CONTENT_URI, id.toString())
+
+        /**
+         * An `ACTION_VIEW` intent on this item URI opens the task's edit screen in Tasks.org.
+         * A deep-link fallback for editing beyond what KashCal's own editor covers.
+         */
+        fun viewUri(id: Long): Uri = itemUri(id)
     }
 
     object Lists {
@@ -74,5 +95,68 @@ object TasksOrgContract {
         const val ACCESS = "access"
 
         const val ACCESS_READ_ONLY = "read_only"
+    }
+
+    /** Tags: named, colored labels a task can carry ([TaskTags] joins them to tasks). */
+    object Tags {
+        val CONTENT_URI: Uri = Uri.withAppendedPath(BASE_URI, "tags")
+
+        const val NAME = "name"
+        /** ARGB color, 0 when unset. */
+        const val COLOR = "color"
+
+        fun itemUri(id: Long): Uri = Uri.withAppendedPath(CONTENT_URI, id.toString())
+    }
+
+    /**
+     * The join between tasks and tags. A task's current tags are read off its `tag_ids`
+     * column; this collection is for adding and removing them.
+     */
+    object TaskTags {
+        val CONTENT_URI: Uri = Uri.withAppendedPath(BASE_URI, "task_tags")
+
+        const val TASK_ID = "task_id"
+        const val TAG_ID = "tag_id"
+
+        /** The URI that removes one (task, tag) pair by its natural key. */
+        fun deleteUri(taskId: Long, tagId: Long): Uri = CONTENT_URI.buildUpon()
+            .appendQueryParameter(TASK_ID, taskId.toString())
+            .appendQueryParameter(TAG_ID, tagId.toString())
+            .build()
+    }
+
+    /**
+     * Reminders on a task. KashCal's fork handles the time-based types only — [TYPE_DATE_TIME]
+     * (absolute), [TYPE_RELATIVE_DUE] and [TYPE_RELATIVE_START] (signed offset from the date).
+     * Location types (`location_arrival`/`location_departure`) need a place and are out of
+     * scope. Sending a column that doesn't apply to the type throws IllegalArgumentException.
+     */
+    object Reminders {
+        val CONTENT_URI: Uri = Uri.withAppendedPath(BASE_URI, "reminders")
+
+        const val TASK_ID = "task_id"
+        const val TYPE = "type"
+        /** Absolute trigger time (epoch millis); `date_time` and `snooze` only. */
+        const val TRIGGER_AT = "trigger_at"
+        /** Signed offset from the due/start date; negative is *before*. Relative/random only. */
+        const val OFFSET_MS = "offset_ms"
+        const val REPEAT_COUNT = "repeat_count"
+        const val INTERVAL_MS = "interval_ms"
+        const val PLACE_ID = "place_id"
+
+        const val TYPE_DATE_TIME = "date_time"
+        const val TYPE_RELATIVE_DUE = "relative_due"
+        const val TYPE_RELATIVE_START = "relative_start"
+        const val TYPE_SNOOZE = "snooze"
+        const val TYPE_RANDOM = "random"
+        const val TYPE_LOCATION_ARRIVAL = "location_arrival"
+        const val TYPE_LOCATION_DEPARTURE = "location_departure"
+
+        /** Only query key supported here: the task whose reminders to read. Repeatable. */
+        fun forTask(taskId: Long): Uri = CONTENT_URI.buildUpon()
+            .appendQueryParameter(TASK_ID, taskId.toString())
+            .build()
+
+        fun itemUri(id: Long): Uri = Uri.withAppendedPath(CONTENT_URI, id.toString())
     }
 }
