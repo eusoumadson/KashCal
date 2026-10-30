@@ -77,7 +77,8 @@ a aceleração, dá para instalar o APK do Tasks.org (`gh release download 15.13
 
 Aparelho: SM-G970F, Android 16, Tasks.org 15.12 real, build do fork instalado como
 `org.onekash.kashcal.forktest` (`--init-script` fora do repositório; o `applicationId` do repositório
-não foi alterado). Só foram escritas tarefas e uma tag criadas pelo teste (`KC-TEST_*`, `kctest`),
+era o do KashCal original na época). Desde a identidade própria do fork (`FORK_INTEGRATION.md` §8) o
+build `debug` já instala como `org.onekash.kashcal.tasks`, sem o script. Só foram escritas tarefas e uma tag criadas pelo teste (`KC-TEST_*`, `kctest`),
 todas removidas ao final. Tarefas, listas e lugares existentes só foram lidos.
 
 | Verificação | Resultado |
@@ -122,3 +123,20 @@ falha (não há como forçar a falha), fuso horário diferente do aparelho, lemb
 
 Observação de i18n: as strings novas do fork estão só em inglês, então aparecem em inglês num
 aparelho em português (o resto do app é traduzido pelo upstream).
+
+### Terceira rodada: identidade do app (30/10/2026)
+
+O fork passou a ser o app `org.onekash.kashcal.tasks` ("KashCal Tasks"), ao lado do KashCal original.
+
+| Verificação | Resultado |
+| --- | --- |
+| `assembleDebug` instala (`adb install -r`) sem desinstalar nada | ok: o KashCal original (2026.09.19) segue instalado e sem alteração |
+| `aapt2 dump badging` do APK de release (sem assinatura) | `package: org.onekash.kashcal.tasks`, `application-label: KashCal Tasks` |
+| `dumpsys account`: autenticadores | quatro tipos registrados, cada um com o seu app: `org.onekash.kashcal` e `.contacts` (original), `org.onekash.kashcal.tasks` e `.tasks.contacts` (fork). O `forktest` antigo não aparece: só o primeiro app instalado vale por tipo, o que confirma o problema de usar o tipo do original |
+| Atalhos estáticos do app | publicados para o pacote do fork |
+| Resolução do alias de lançador | `org.onekash.kashcal.tasks/org.onekash.kashcal.MainActivityDefault` |
+| Integração com o Tasks.org no app novo | ok: permissões concedidas por `pm grant`, listas lidas, tarefas aparecem |
+| Suíte completa de testes unitários | 14.761 testes, 0 falhas |
+
+Não verificado no aparelho: trocar o ícone do app pelas configurações (coberto por testes unitários) e criar
+uma conta no sistema com o novo tipo (exigiria adicionar uma conta CalDAV real).

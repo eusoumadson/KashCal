@@ -26,11 +26,11 @@ class DateIconRefresherTest {
     private var tasks: List<DateIconRefresher.OwnTask> = emptyList()
     private val refresher = DateIconRefresher(context, { anyActivityStarted }) { tasks }
 
-    private val launcherBase = ComponentName(context, context.packageName + ".MainActivityDay7")
+    private val launcherBase = ComponentName(context, LauncherAliases.className(".MainActivityDay7"))
 
     private fun launcherTask(top: ComponentName?) = DateIconRefresher.OwnTask(launcherBase, top)
 
-    private fun alias(suffix: String) = ComponentName(context, context.packageName + suffix)
+    private fun alias(suffix: String) = ComponentName(context, LauncherAliases.className(suffix))
 
     private fun enabledAliases(): List<String> = LauncherAliases.ALL.filter {
         val state = pm.getComponentEnabledSetting(alias(it))

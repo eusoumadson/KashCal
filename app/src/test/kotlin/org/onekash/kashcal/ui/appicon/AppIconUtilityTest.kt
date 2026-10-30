@@ -30,7 +30,7 @@ class AppIconUtilityTest {
     private val oct7 = LocalDate.of(2026, 10, 7)
     private val oct8 = LocalDate.of(2026, 10, 8)
 
-    private fun component(suffix: String) = ComponentName(context, context.packageName + suffix)
+    private fun component(suffix: String) = ComponentName(context, LauncherAliases.className(suffix))
 
     private fun stateOf(suffix: String): Int = pm.getComponentEnabledSetting(component(suffix))
 

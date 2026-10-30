@@ -221,4 +221,6 @@ Tasks.org" do quick view agora abre a **tarefa**, não só o app (com o app como
 - **Validar em dispositivo com o Tasks.org real** (roteiro em `TASKS_ORG_DEVICE_TEST.md`). O
   emulador `KashCal_API37` não inicia nesta máquina (sem aceleração de hardware), e o único
   dispositivo conectado é o telefone pessoal com dados reais, que não foi tocado.
-- Decisões de distribuição: `applicationId` e assinatura próprios, e levar a branch ao `main` do fork.
+- Decisões de distribuição: o `applicationId` (`org.onekash.kashcal.tasks`) e o nome ("KashCal Tasks") já
+  estão no repositório (ver `FORK_INTEGRATION.md` §8). Faltam a assinatura de release própria e levar a
+  branch ao `main` do fork.

@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import org.onekash.kashcal.BuildConfig
 import org.onekash.kashcal.R
 import java.time.LocalDate
 
@@ -95,10 +96,17 @@ object LauncherAliases {
 
     val ALL: List<String> = AppIconPreset.entries.mapNotNull { it.fixedAliasSuffix } + DAYS
 
+    /**
+     * The class name of the alias for [suffix]. Aliases are declared relative to the namespace, which
+     * differs from the application id in the fork (applicationIdSuffix), so the package name can't
+     * stand in for it. // FORK:tasks-org
+     */
+    fun className(suffix: String): String = BuildConfig::class.java.name.substringBeforeLast('.') + suffix
+
     /** Returns the component for [suffix], resolved against the application package. */
     fun componentName(context: Context, suffix: String): ComponentName {
         val appContext = context.applicationContext
-        return ComponentName(appContext, appContext.packageName + suffix)
+        return ComponentName(appContext, className(suffix))
     }
 }
 

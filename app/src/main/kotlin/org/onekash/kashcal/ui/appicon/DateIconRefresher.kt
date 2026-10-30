@@ -62,7 +62,7 @@ class DateIconRefresher internal constructor(
             Log.w(TAG, "Task lookup failed; date icon switch waits", it)
             return false
         }
-        val aliases = LauncherAliases.ALL.map { context.packageName + it }.toSet()
+        val aliases = LauncherAliases.ALL.map(LauncherAliases::className).toSet() // FORK:tasks-org
         return tasks
             .filter { it.base?.className in aliases }
             .all { it.top == null || it.top.packageName == context.packageName }

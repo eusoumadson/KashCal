@@ -7,6 +7,7 @@ import android.accounts.AccountManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import org.onekash.kashcal.BuildConfig
 import org.onekash.kashcal.MainActivity
 import org.onekash.kashcal.sync.adapter.KashCalAuthenticator.Companion.ACCOUNT_TYPE
 
@@ -23,7 +24,7 @@ class KashCalAuthenticator(
 ) : AbstractAccountAuthenticator(context) {
 
     companion object {
-        const val ACCOUNT_TYPE = "org.onekash.kashcal"
+        const val ACCOUNT_TYPE = BuildConfig.APPLICATION_ID // FORK:tasks-org
     }
 
     override fun addAccount(

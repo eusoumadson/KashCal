@@ -27,7 +27,7 @@ class LauncherAliasManifestTest {
     private val flags = PackageManager.MATCH_DISABLED_COMPONENTS or PackageManager.GET_META_DATA
 
     private fun info(suffix: String) =
-        pm.getActivityInfo(ComponentName(context, context.packageName + suffix), flags)
+        pm.getActivityInfo(ComponentName(context, LauncherAliases.className(suffix)), flags)
 
     @Test
     fun `every alias exists and only the default alias is enabled at install`() {
@@ -42,7 +42,7 @@ class LauncherAliasManifestTest {
 
     @Test
     fun `every alias carries the app shortcuts and keeps the app label`() {
-        val appName = context.getString(R.string.app_name)
+        val appName = context.getString(R.string.fork_app_name) // FORK:tasks-org
         LauncherAliases.ALL
             .filter { it != ".MainActivitySupporterCalendar" } // labeled "Calendar" by design
             .forEach { suffix ->
@@ -75,7 +75,7 @@ class LauncherAliasManifestTest {
             .map { it.activityInfo.name }
             .toSet()
         LauncherAliases.ALL.forEach { suffix ->
-            assertTrue("$suffix resolves MAIN + LAUNCHER", context.packageName + suffix in names)
+            assertTrue("$suffix resolves MAIN + LAUNCHER", LauncherAliases.className(suffix) in names)
         }
     }
 }

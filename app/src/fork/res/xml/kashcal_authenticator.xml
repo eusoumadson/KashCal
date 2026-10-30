@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FORK:tasks-org Overrides main's file: the account type follows the fork's applicationId so this
+     app and the original KashCal don't share an authenticator. Keep the rest in step with main. -->
+<account-authenticator
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accountType="@string/fork_account_type"
+    android:icon="@mipmap/ic_launcher"
+    android:smallIcon="@mipmap/ic_launcher"
+    android:label="@string/fork_account_label" />

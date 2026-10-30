@@ -48,6 +48,14 @@ android {
 
     defaultConfig {
         applicationId = "org.onekash.kashcal"
+        // FORK:tasks-org Installs next to the original KashCal instead of replacing it. The account
+        // types, label and launcher shortcuts derive from this; see FORK_INTEGRATION.md section 8.
+        applicationIdSuffix = ".tasks"
+        resValue("string", "fork_app_name", "KashCal Tasks")
+        resValue("string", "fork_account_label", "KashCal Tasks")
+        resValue("string", "fork_contacts_account_label", "KashCal Tasks Contacts")
+        resValue("string", "fork_account_type", "$applicationId$applicationIdSuffix")
+        resValue("string", "fork_contacts_account_type", "$applicationId$applicationIdSuffix.contacts")
         minSdk = 31
         targetSdk = 37
         versionCode = versionProps.getProperty("VERSION_CODE").toInt()
@@ -76,6 +84,12 @@ android {
         getByName("debug") {
             assets.srcDirs("$projectDir/schemas")
         }
+    }
+
+    // FORK:tasks-org Resources that must follow the fork's applicationId (account types, shortcut
+    // targets). They override the same-named files in main for both build types.
+    sourceSets {
+        listOf("debug", "release").forEach { getByName(it).res.srcDir("src/fork/res") }
     }
 
     signingConfigs {
@@ -137,6 +151,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        resValues = true // FORK:tasks-org for the fork_* resValue entries above
     }
 
     androidResources {

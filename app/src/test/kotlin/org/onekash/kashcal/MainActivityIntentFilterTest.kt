@@ -117,7 +117,7 @@ class MainActivityIntentFilterTest {
         val pkg = RuntimeEnvironment.getApplication().packageName
         LauncherAliases.ALL.forEach { suffix ->
             val info = pm.getActivityInfo(
-                ComponentName(pkg, pkg + suffix),
+                ComponentName(pkg, LauncherAliases.className(suffix)),
                 PackageManager.MATCH_DISABLED_COMPONENTS,
             )
             assertEquals(

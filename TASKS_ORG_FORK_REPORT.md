@@ -217,8 +217,9 @@ Alguns campos não são escrita pura de coluna:
 
 ### Fase 0 — Preparar o fork (infra)
 
-1. Decidir `applicationId` distinto (ex.: `org.onekash.kashcal.tasks`) para coexistir com o
-   KashCal oficial no mesmo device — ⚠️ cheque se o `applicationId` colide com assinatura/ícones.
+1. ✅ `applicationId` distinto (`org.onekash.kashcal.tasks`) para coexistir com o KashCal oficial no
+   mesmo device. Os tipos de conta e os aliases de ícone também tiveram de acompanhar o id; ver
+   `FORK_INTEGRATION.md` §8.
 2. Assinatura própria + canal de distribuição.
 3. Estratégia de branch: manter `upstream` como remote, sua `main` do fork rebaseando sobre ele.
 4. Manifesto: já tem `READ_TASKS`; **adicionar `WRITE_TASKS`** e o bloco `<queries>` com o

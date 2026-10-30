@@ -253,6 +253,7 @@ Ao adicionar qualquer coisa nova à feature, mantenha estas invariantes:
 - [ ] Todo acesso à API v0 passa pelo `TasksOrgV0Mapper` (nenhuma coluna/URI crua fora dele).
 - [ ] Escrita sempre em `Dispatchers.IO`, sempre serializada pelo `tasksOrgWriteMutex`.
 - [ ] `./gradlew :app:compileDebugKotlin` + os 133 testes passando.
+- [ ] Depois de um rebase, o upstream não mudou os XMLs copiados em `app/src/fork/res/xml/` (comando na §8).
 
 ---
 
@@ -282,7 +283,11 @@ branches `is DisplayEvent.Task ->` exigidos pelo compilador (§3.0), `DayEventsS
 **O que NÃO é tocado** (portanto igual ao original): adicionar conta CalDAV/iCloud, sincronização,
 calendários do dispositivo (`DeviceCalendars*`, `CalendarProviderManager`,
 `AndroidCalendarProviderRepository`), o Room e seu schema, o formulário de evento, notificações,
-build (`build.gradle.kts`, `libs.versions.toml`), CI e licenças.
+`libs.versions.toml`, CI e licenças. O `build.gradle.kts` só recebe inserções, todas da identidade do
+app (§8).
+
+**Identidade do app:** além das linhas acima, 5 linhas do original mudam e 4 testes ganham 8
+linhas trocadas por causa do `applicationId` próprio. Estão na §8 e não afetam a lógica da feature.
 
 **O que o usuário vê com a integração desligada:**
 
@@ -304,3 +309,53 @@ Tasks.org está instalado: sem ela não haveria como ligar a integração.
 revertido; os dots por mudança de tarefas agora são reconstruídos por `observeTasksOrgChanges()`,
 dentro da região do fork. O `LocalCanWriteTasksOrg` (que exigia editar o `CompositionLocalProvider`
 da `MainActivity`) foi trocado por `rememberCanWriteTasksOrg()` dentro de `TaskCard.kt`.
+
+---
+
+## 8. Identidade do app: instala ao lado do KashCal original
+
+O fork tem `applicationId` próprio (`org.onekash.kashcal.tasks`) e nome próprio ("KashCal Tasks"), para
+instalar **junto** do KashCal original sem tocar nele. O `namespace` continua `org.onekash.kashcal`,
+então os pacotes Kotlin e o `R` não mudam.
+
+Instalar um segundo app com o mesmo `applicationId` não funciona (assinatura diferente), e um
+`applicationIdSuffix` sozinho deixaria o fork quebrado ao lado do original: o Android só liga um
+autenticador por tipo de conta (vale o do app instalado primeiro), e os ícones do lançador são
+montados como `packageName + ".MainActivityDayN"`. Por isso a identidade tem estes pontos:
+
+| Onde | O que | Por quê |
+| --- | --- | --- |
+| `app/build.gradle.kts` | `applicationIdSuffix = ".tasks"`; 5 `resValue` `fork_*` (nome, rótulos das contas, tipos de conta); `resValues = true`; `sourceSets` dos tipos de build apontam para `src/fork/res` | Fonte única da identidade. Os tipos de conta saem de `applicationId + sufixo`. Só inserções. |
+| `AndroidManifest.xml` | `android:label="@string/fork_app_name"` (era `app_name`) | `app_name` é traduzido em ~70 idiomas, então um override em `values/` não vale no aparelho em pt-BR. |
+| `KashCalAuthenticator`, `KashCalContactsAuthenticator` | `ACCOUNT_TYPE = BuildConfig.APPLICATION_ID` (e `+ ".contacts"`) | Têm de ser iguais ao tipo declarado nos XMLs. No build sem sufixo dá o mesmo valor de antes. |
+| `AppIconPreset.kt` (`LauncherAliases.className`), `DateIconRefresher.kt` | Nome de classe do alias vem do namespace, não do `packageName` | Os aliases são declarados relativos ao namespace. |
+| `app/src/fork/res/xml/` (5 arquivos novos) | Cópias de `kashcal_authenticator`, `kashcal_contacts_authenticator`, `kashcal_syncadapter`, `kashcal_contacts_syncadapter` (tipo e rótulo via `@string/fork_*`) e `shortcuts` (`targetPackage` literal) | Sobrescrevem os de `main` nos builds `debug` e `release`. O `targetPackage` do atalho não aceita referência a string. |
+| Testes (4 arquivos) | `packageName + suffix` → `LauncherAliases.className(suffix)`; rótulo esperado vira `fork_app_name` | O Robolectric usa o `applicationId` como `packageName`. |
+
+**Depois de um rebase**, confira se o upstream mexeu nos arquivos copiados desde o commit em que as
+cópias foram feitas (`0164dad0`, o `main` da época). Troque `upstream/main` pelo nome do seu remote:
+
+```sh
+git diff 0164dad0 upstream/main -- app/src/main/res/xml/{kashcal_authenticator,kashcal_contacts_authenticator,kashcal_syncadapter,kashcal_contacts_syncadapter,shortcuts}.xml
+```
+
+Sem saída, nada a fazer. Se houver diferença, aplique-a também nas cópias de `app/src/fork/res/xml/`
+(mantendo as trocas de tipo/rótulo e o `targetPackage`) e atualize o commit de referência acima.
+
+**Para renomear ou trocar o sufixo:** nome em `fork_app_name`/`fork_account_label`/
+`fork_contacts_account_label` (gradle) e `targetPackage` nos 3 atalhos de `shortcuts.xml`. O resto
+deriva do sufixo.
+
+**O que o usuário percebe:**
+
+- É outro app: dados, contas, configurações, notificações e widgets próprios. Nada é copiado do
+  KashCal original; contas CalDAV precisam ser adicionadas de novo.
+- As contas aparecem no sistema como "KashCal Tasks" (tipos `org.onekash.kashcal.tasks` e
+  `org.onekash.kashcal.tasks.contacts`), separadas das do original.
+- O ícone ainda é o do KashCal (só o nome muda).
+- Se "Calendários de outros apps" estiver ligado nos dois, cada um pode listar os calendários que o
+  outro expõe ao sistema. Ligue só em um.
+- Os dois apps podem sincronizar a mesma conta CalDAV e gerar notificações em dobro; use as contas
+  em um deles.
+- Assinatura: o build `debug` usa a chave de debug da máquina; um `release` próprio precisa de
+  keystore sua (`KEYSTORE_*` em `local.properties` ou nos secrets do fork).

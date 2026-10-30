@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FORK:tasks-org Overrides main's file; see kashcal_authenticator.xml. -->
+<sync-adapter
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:contentAuthority="com.android.contacts"
+    android:accountType="@string/fork_contacts_account_type"
+    android:userVisible="false"
+    android:supportsUploading="false"
+    android:isAlwaysSyncable="false"
+    android:allowParallelSyncs="false" />
