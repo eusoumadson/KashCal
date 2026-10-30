@@ -38,10 +38,13 @@ Estes arquivos não existem no upstream; o rebase nunca conflita neles. Eles con
 
 ### `data/tasks_org/` (camada de dados + abstração da API v0)
 - `TasksOrgContract.kt` — constantes do provider `org.tasks.api/v0` (URIs, colunas, tags,
-  task_tags, reminders, `Tasks.viewUri()`).
+  task_tags, reminders, places, accounts, `Tasks.viewUri()`).
 - `TasksOrgModels.kt` — modelos (`TasksOrgTask`, `TasksOrgList`, `TasksOrgSchedule`,
-  `TasksOrgTaskDraft`, `TasksOrgTaskPatch` + `Field`, `TasksOrgWriteResult`, `TasksOrgTag`,
-  `TasksOrgReminder`, enums de prioridade/repeat_from).
+  `TasksOrgTaskDraft`, `TasksOrgTaskPatch` + `Field`, `TasksOrgTaskExtras`, `TasksOrgWriteResult`,
+  `TasksOrgTag`, `TasksOrgReminder`, `TasksOrgPlace`, `TasksOrgAccount`, `TasksOrgVersion`,
+  `TasksOrgLocation`, enums de prioridade/repeat_from).
+- `TasksOrgBatch.kt` — **plano do `applyBatch` atômico** (tarefa + tags + lembretes + lugar), em
+  funções puras sobre o mapper. Depende das regras de back-reference do provider.
 - `TasksOrgV0Mapper.kt` — **a camada de abstração**. Todo acesso a coluna/URI/quirk da v0 passa
   por aqui. Se a API v0 do Tasks.org evoluir e quebrar contrato, a adaptação é só neste arquivo.
 - `TasksOrgRepository.kt` — interface (read + write).
@@ -50,13 +53,19 @@ Estes arquivos não existem no upstream; o rebase nunca conflita neles. Eles con
 
 ### `domain/tasks/`
 - `TasksOrgCoordinator.kt` — liga/desliga a fonte, mostra/esconde listas, completion + undo,
-  create/update/delete, tags, lembretes.
+  salvar (atômico) e excluir tarefa, releitura da regra após editar, gestão de listas/tags/lugares.
+- `RecurrenceRule.kt` — `SimpleRecurrence`/`RecurrenceChoice`: o que o editor monta e como mantém
+  intacta uma regra criada no Tasks.org.
 
 ### `ui/` (telas e componentes próprios)
 - `ui/components/TaskCard.kt`, `TaskQuickViewSheet.kt` — cartão e sheet de detalhe da tarefa.
-- `ui/components/TaskEditorState.kt`, `TaskEditorSheet.kt` — **formulário próprio** de
-  criar/editar tarefa (não reusa o formulário de `Event`, de propósito — §6 do relatório).
-- `ui/screens/TasksOrgScreen.kt` — tela de settings da integração.
+- `ui/components/TaskEditorState.kt`, `TaskEditorSheet.kt`, `TaskEditorFields.kt` — **formulário
+  próprio** de criar/editar tarefa (não reusa o formulário de `Event`, de propósito — §6 do
+  relatório). `TaskEditorFields.kt` tem datas, repetição e lugar.
+- `ui/screens/settings/TasksOrgScreen.kt` e `TasksOrgManagementSection.kt` — tela de settings da
+  integração e a seção de gestão de listas, tags e lugares.
+- `ui/viewmodels/TasksOrgManageViewModel.kt` — ViewModel da gestão. **É um ViewModel próprio de
+  propósito**: estender `AccountSettingsViewModel`/`SettingsRoute` (core) criaria conflito de rebase.
 - `LocalCanWriteTasksOrg` (CompositionLocal) — exposto por um componente do fork.
 
 > Observação: `TaskQuickViewSheet` ganhou um parâmetro opcional `onEdit` e `TaskCard`/
@@ -151,8 +160,8 @@ Reaplicar: colar o bloco `Task` dentro da sealed interface + os 4 helpers no fim
 - **5 when-branches** `is DisplayEvent.Task ->` (ver §3.0).
 - **região `// region FORK:tasks-org ... // endregion`** — bloco contíguo com
   `setTasksOrgTaskCompleted`, `undoTasksOrgCompletion`, `prepareNewTask`, `prepareEditTask`,
-  `saveTask`, `deleteTask`. Todas abrem com `tasksOrgCoordinator ?: return`, então são no-op sem
-  a integração.
+  `saveTask` (salvamento atômico), `deleteTask`, `createPlace`. Todas abrem com
+  `tasksOrgCoordinator ?: return`, então são no-op sem a integração.
 
 Reaplicar: colar a região inteira (delimitada) + os 2 membros + o param do ctor + os branches.
 
@@ -193,11 +202,11 @@ inteiro para remover.
 # compila
 ./gradlew :app:compileDebugKotlin
 
-# testes da feature (devem passar: 26 + 13 + 14 + 11 = 64)
+# testes da feature (devem passar: 136)
 ./gradlew :app:testDebugUnitTest \
   --tests "org.onekash.kashcal.data.tasks_org.*" \
   --tests "org.onekash.kashcal.domain.tasks.*" \
-  --tests "org.onekash.kashcal.ui.components.TaskEditorStateTest"
+  --tests "org.onekash.kashcal.ui.components.TaskEditor*"
 ```
 
 Contagem esperada por classe:
@@ -205,9 +214,15 @@ Contagem esperada por classe:
 | Classe de teste | testes |
 | --- | :-: |
 | `AndroidTasksOrgRepositoryTest` | 26 |
+| `AndroidTasksOrgRepositoryFeaturesTest` | 29 |
 | `TasksOrgV0MapperTest` | 13 |
-| `TasksOrgCoordinatorTest` | 14 |
+| `TasksOrgV0MapperFeaturesTest` | 8 |
+| `TasksOrgCoordinatorTest` | 9 |
+| `TasksOrgCoordinatorSaveTest` | 7 |
+| `RecurrenceRuleTest` | 10 |
 | `TaskEditorStateTest` | 11 |
+| `TaskEditorStateFeaturesTest` | 12 |
+| `TaskEditorFieldsTest` | 11 |
 
 ---
 
@@ -236,4 +251,4 @@ Ao adicionar qualquer coisa nova à feature, mantenha estas invariantes:
 - [ ] Nenhum campo novo no `Event` do Room nem no formulário de evento.
 - [ ] Todo acesso à API v0 passa pelo `TasksOrgV0Mapper` (nenhuma coluna/URI crua fora dele).
 - [ ] Escrita sempre em `Dispatchers.IO`, sempre serializada pelo `tasksOrgWriteMutex`.
-- [ ] `./gradlew :app:compileDebugKotlin` + os 64 testes passando.
+- [ ] `./gradlew :app:compileDebugKotlin` + os 136 testes passando.

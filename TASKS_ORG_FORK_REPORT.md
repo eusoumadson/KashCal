@@ -266,20 +266,22 @@ suspend fun deleteTask(taskId: Long): Boolean                    // delete (+ co
 
 ### Fase 4 — Opcional / avançado
 
-**Status de implementação (fork):**
-- ✅ **Tags** (`/v0/tags` + `/v0/task_tags`): leitura, criação idempotente por nome, e
-  reconciliação (diff add/remove) das tags de uma tarefa. Exposto no editor como chips.
-- ✅ **Deep-link**: `TasksOrgContract.Tasks.viewUri(id)` — `ACTION_VIEW` abre a tela de edição
-  da tarefa no próprio Tasks.org (fallback para o que o editor do KashCal não cobre).
-- ✅ **Lembretes** (`/v0/reminders`): tipos baseados em tempo — `date_time` (absoluto),
-  `relative_due` e `relative_start` (offset com `repeat_count`/`interval_ms`). Leitura,
-  adição e remoção; no editor como chips com presets (no vencimento, 10 min / 1 h / 1 dia
-  antes). Tipos de localização e `snooze`/`random` ficam de fora (dependem de places / não
-  modelados).
-- ⬜ **Places / lembretes de local** (`/v0/places`): não implementado.
-- ⬜ **Batch** (`applyBatch`) para criar tarefa + tags + lembretes atomicamente: não
-  implementado (hoje tags/lembretes são aplicados em chamadas separadas após o insert).
-- ⬜ **Subtarefas** (`parent_id`, `child_count`): o contrato suporta; UI não implementada.
+**Status de implementação (fork):** tudo da Fase 4 foi implementado, exceto o que foi retirado
+do escopo por decisão. Detalhes e limites em `FORK_FEATURES.md`.
+- ✅ **Tags** (`/v0/tags` + `/v0/task_tags`): criar, associar, remover, e agora renomear, recolorir
+  e excluir nas configurações.
+- ✅ **Deep-link**: `ACTION_VIEW` na URI da tarefa; "Abrir no Tasks.org" abre a própria tarefa.
+- ✅ **Lembretes** (`/v0/reminders`): horário, relativo ao vencimento/início, aleatório, soneca e
+  de local (chegada/saída).
+- ✅ **Places** (`/v0/places`): escolher, criar (com geocoder do aparelho ou coordenadas
+  manuais), listar e excluir; uma tarefa tem no máximo um lugar.
+- ✅ **Batch** (`applyBatch`): tarefa + tags + lembretes + lugar numa transação (`TasksOrgBatch.kt`).
+- ✅ **Recorrência e início no editor**, aviso de efeito colateral e releitura da regra (§4.2, §4.3).
+- ✅ **Atrasadas** em "hoje"; prioridade, tags e subtarefas (contagem) no cartão.
+- ✅ **Gestão** de listas, tags e lugares; saúde das contas; checagem de versão (mínima 15.12).
+- ➖ **Subtarefas**: por decisão, o KashCal só mostra a contagem e **redireciona ao Tasks.org**.
+- ➖ **Tarefas sem data**: por decisão, não são exibidas.
+- ⬜ **Validação em dispositivo** com o Tasks.org real: roteiro em `TASKS_ORG_DEVICE_TEST.md`.
 
 ### Pendência transversal — fork "plug'n'play" para rebase com o upstream ✅
 
