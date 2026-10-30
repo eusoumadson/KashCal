@@ -70,3 +70,33 @@ O AVD `KashCal_API37` existe, mas não iniciou na máquina de desenvolvimento po
 aceleração (`hvf is not enabled on this aarch64 host`). Em outra máquina, ou depois de corrigir
 a aceleração, dá para instalar o APK do Tasks.org (`gh release download 15.13 -R tasks/tasks -p
 "tasks-fdroid-*.apk"`) e rodar este roteiro sem tocar nos dados do telefone.
+
+---
+
+## Resultados da execução em aparelho (30/10/2026)
+
+Aparelho: SM-G970F, Android 16, Tasks.org 15.12 real, build do fork instalado como
+`org.onekash.kashcal.forktest` (`--init-script` fora do repositório; o `applicationId` do repositório
+não foi alterado). Só foram escritas tarefas e uma tag criadas pelo teste (`KC-TEST_*`, `kctest`),
+todas removidas ao final. Tarefas, listas e lugares existentes só foram lidos.
+
+| Verificação | Resultado |
+| --- | --- |
+| Linha "Tasks.org tasks" nas configurações; detecta a versão 15.12 | ok |
+| Integração desligada: sem FAB de tarefa, sem tarefas | ok |
+| Ligar com permissões já concedidas: listas lidas, FAB "New task" aparece | ok |
+| Criar tarefa com prioridade, tag nova e lembrete "no vencimento" em um único salvamento | ok: título, data (dia inteiro), lembrete, lista, tag e prioridade conferidos no Tasks.org |
+| Tarefa atrasada (25/out) não aparece em hoje; aparece no dia 25, sem texto de atraso | ok |
+| Quick view mostra "Due dom., 25 de out. · O dia todo" | ok |
+| Concluir pelo checkbox: riscada e marcada, permanece no dia 25 | ok |
+| Editar: repetição semanal | ok: o Tasks.org mostra "Repetir semanalmente"; a regra sem prefixo `RRULE:` é aceita; título, lembrete, tag e prioridade preservados |
+| Excluir tarefa (simples e recorrente), com confirmação | ok |
+| Excluir tag | ok |
+| Criar lista | **falha no Tasks.org, não no fork**: as listas do aparelho estão numa conta CalDAV e o Tasks.org lança `NullPointerException` em `CaldavClient.makeCollection` (`ApiListManager.remote`). O fork mostra "Tasks.org refused the change" e não cria nada. |
+| Gestão visível com a integração desligada | **bug do fork, corrigido**: a seção só exigia a permissão de leitura; agora exige a integração ligada |
+
+Não exercitado: lugares e lembretes de local, data de início, lista somente leitura, rollback do
+`applyBatch` em falha, fuso horário diferente do aparelho.
+
+Observação de i18n: as strings novas do fork estão só em inglês, então aparecem em inglês num
+aparelho em português (o resto do app é traduzido pelo upstream).

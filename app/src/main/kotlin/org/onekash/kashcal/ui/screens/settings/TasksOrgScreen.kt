@@ -230,8 +230,9 @@ fun TasksOrgScreen(
                 }
             }
 
-            // Fork: version notice, account health, and managing lists, tags and places.
-            if (hasReadPermission) {
+            // Fork: version notice, account health, and managing lists, tags and places. Only
+            // while the integration is on, like everything else of the fork.
+            if (isEnabled && hasReadPermission) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 TasksOrgManagementSection()
             }
