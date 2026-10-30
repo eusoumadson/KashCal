@@ -40,8 +40,66 @@ class TasksOrgV0Mapper @Inject constructor() {
         title = cursor.string(TasksOrgContract.Lists.TITLE),
         color = cursor.long(TasksOrgContract.Lists.COLOR).toInt(),
         isReadOnly = cursor.string(TasksOrgContract.Lists.ACCESS) ==
-            TasksOrgContract.Lists.ACCESS_READ_ONLY
+            TasksOrgContract.Lists.ACCESS_READ_ONLY,
+        accountId = cursor.long(TasksOrgContract.Lists.ACCOUNT_ID)
     )
+
+    /** Maps a `/v0/places` row to a [TasksOrgPlace]. */
+    fun readPlace(cursor: Cursor): TasksOrgPlace = TasksOrgPlace(
+        id = cursor.long(TasksOrgContract.ID),
+        name = cursor.string(TasksOrgContract.Places.NAME),
+        displayName = cursor.string(TasksOrgContract.Places.DISPLAY_NAME),
+        address = cursor.string(TasksOrgContract.Places.ADDRESS),
+        latitude = cursor.double(TasksOrgContract.Places.LATITUDE),
+        longitude = cursor.double(TasksOrgContract.Places.LONGITUDE),
+        radius = cursor.long(TasksOrgContract.Places.RADIUS).toInt()
+    )
+
+    /** Maps a `/v0/accounts` row to a [TasksOrgAccount]. */
+    fun readAccount(cursor: Cursor): TasksOrgAccount = TasksOrgAccount(
+        id = cursor.long(TasksOrgContract.ID),
+        name = cursor.string(TasksOrgContract.Accounts.NAME),
+        type = cursor.string(TasksOrgContract.Accounts.TYPE),
+        error = cursor.string(TasksOrgContract.Accounts.ERROR),
+        repeatsOnServer = cursor.long(TasksOrgContract.Accounts.REPEATS_ON_SERVER) != 0L
+    )
+
+    // ---- Lists, tags and places: management writes ----
+
+    /** Insert values for a new list in [accountId]. */
+    fun listInsertValues(accountId: Long, title: String, color: Int): ContentValues = ContentValues().apply {
+        put(TasksOrgContract.Lists.ACCOUNT_ID, accountId)
+        put(TasksOrgContract.Lists.TITLE, title)
+        put(TasksOrgContract.Lists.COLOR, color)
+    }
+
+    /** Update values for a list; only the non-null arguments are written. */
+    fun listUpdateValues(title: String?, color: Int?): ContentValues = ContentValues().apply {
+        title?.let { put(TasksOrgContract.Lists.TITLE, it) }
+        color?.let { put(TasksOrgContract.Lists.COLOR, it) }
+    }
+
+    /** Update values for a tag; only the non-null arguments are written. */
+    fun tagUpdateValues(name: String?, color: Int?): ContentValues = ContentValues().apply {
+        name?.let { put(TasksOrgContract.Tags.NAME, it) }
+        color?.let { put(TasksOrgContract.Tags.COLOR, it) }
+    }
+
+    /** Insert values for a new place. */
+    fun placeInsertValues(draft: TasksOrgPlaceDraft): ContentValues = ContentValues().apply {
+        put(TasksOrgContract.Places.NAME, draft.name)
+        put(TasksOrgContract.Places.ADDRESS, draft.address)
+        put(TasksOrgContract.Places.LATITUDE, draft.latitude)
+        put(TasksOrgContract.Places.LONGITUDE, draft.longitude)
+        put(TasksOrgContract.Places.RADIUS, draft.radius)
+    }
+
+    /** Update values for a place: its name, address and radius (the coordinates are fixed). */
+    fun placeUpdateValues(name: String?, address: String?, radius: Int?): ContentValues = ContentValues().apply {
+        name?.let { put(TasksOrgContract.Places.NAME, it) }
+        address?.let { put(TasksOrgContract.Places.ADDRESS, it) }
+        radius?.let { put(TasksOrgContract.Places.RADIUS, it) }
+    }
 
     /** Maps a `/v0/tags` row to a [TasksOrgTag]. */
     fun readTag(cursor: Cursor): TasksOrgTag = TasksOrgTag(
@@ -69,16 +127,27 @@ class TasksOrgV0Mapper @Inject constructor() {
     }
 
     /**
-     * Maps a `/v0/reminders` row to a [TasksOrgReminder], or null for a type the fork doesn't
-     * model (location, snooze, random). Keeps the editor free of the provider's type strings.
+     * Maps a `/v0/reminders` row to a [TasksOrgReminder], or null for a type this version of the
+     * fork doesn't know, so a new reminder type in a later Tasks.org leaves the row alone
+     * instead of breaking the editor.
      */
     fun readReminder(cursor: Cursor): TasksOrgReminder? {
         val id = cursor.long(TasksOrgContract.ID)
         return when (cursor.string(TasksOrgContract.Reminders.TYPE)) {
             TasksOrgContract.Reminders.TYPE_DATE_TIME ->
                 TasksOrgReminder.AtTime(id = id, triggerAtMs = cursor.long(TasksOrgContract.Reminders.TRIGGER_AT))
+            TasksOrgContract.Reminders.TYPE_SNOOZE ->
+                TasksOrgReminder.Snooze(id = id, triggerAtMs = cursor.long(TasksOrgContract.Reminders.TRIGGER_AT))
             TasksOrgContract.Reminders.TYPE_RELATIVE_DUE -> relative(cursor, id, TasksOrgReminder.Relative.Anchor.DUE)
             TasksOrgContract.Reminders.TYPE_RELATIVE_START -> relative(cursor, id, TasksOrgReminder.Relative.Anchor.START)
+            TasksOrgContract.Reminders.TYPE_RANDOM ->
+                TasksOrgReminder.Random(id = id, periodMs = cursor.long(TasksOrgContract.Reminders.OFFSET_MS))
+            TasksOrgContract.Reminders.TYPE_LOCATION_ARRIVAL -> TasksOrgReminder.Location(
+                id, cursor.long(TasksOrgContract.Reminders.PLACE_ID), TasksOrgReminder.Location.Kind.ARRIVAL
+            )
+            TasksOrgContract.Reminders.TYPE_LOCATION_DEPARTURE -> TasksOrgReminder.Location(
+                id, cursor.long(TasksOrgContract.Reminders.PLACE_ID), TasksOrgReminder.Location.Kind.DEPARTURE
+            )
             else -> null
         }
     }
@@ -118,18 +187,41 @@ class TasksOrgV0Mapper @Inject constructor() {
                         put(TasksOrgContract.Reminders.INTERVAL_MS, reminder.intervalMs)
                     }
                 }
+                is TasksOrgReminder.Random -> {
+                    put(TasksOrgContract.Reminders.TYPE, TasksOrgContract.Reminders.TYPE_RANDOM)
+                    put(TasksOrgContract.Reminders.OFFSET_MS, reminder.periodMs)
+                }
+                is TasksOrgReminder.Snooze -> {
+                    put(TasksOrgContract.Reminders.TYPE, TasksOrgContract.Reminders.TYPE_SNOOZE)
+                    put(TasksOrgContract.Reminders.TRIGGER_AT, reminder.triggerAtMs)
+                }
+                is TasksOrgReminder.Location -> {
+                    put(
+                        TasksOrgContract.Reminders.TYPE,
+                        when (reminder.kind) {
+                            TasksOrgReminder.Location.Kind.ARRIVAL -> TasksOrgContract.Reminders.TYPE_LOCATION_ARRIVAL
+                            TasksOrgReminder.Location.Kind.DEPARTURE -> TasksOrgContract.Reminders.TYPE_LOCATION_DEPARTURE
+                        }
+                    )
+                    put(TasksOrgContract.Reminders.PLACE_ID, reminder.placeId)
+                }
             }
         }
 
     /**
-     * Maps a `/v0/tasks` row to a [TasksOrgTask] in [lists]' context; null for a task with no
-     * due date, which never lands on the calendar.
+     * Maps a `/v0/tasks` row to a [TasksOrgTask] in [lists]' and [tags]' context; null for a task
+     * with no due date, which never lands on the calendar.
      */
-    fun readTask(cursor: Cursor, lists: Map<Long, TasksOrgList>): TasksOrgTask? {
+    fun readTask(
+        cursor: Cursor,
+        lists: Map<Long, TasksOrgList>,
+        tags: Map<Long, TasksOrgTag> = emptyMap()
+    ): TasksOrgTask? {
         val due = cursor.long(TasksOrgContract.Tasks.DUE_DATE)
         if (due <= 0L) return null
         val listId = cursor.long(TasksOrgContract.Tasks.LIST_ID)
         val list = lists[listId]
+        val start = cursor.long(TasksOrgContract.Tasks.START_DATE)
         return taskAt(
             id = cursor.long(TasksOrgContract.ID),
             title = cursor.string(TasksOrgContract.Tasks.TITLE),
@@ -144,6 +236,14 @@ class TasksOrgV0Mapper @Inject constructor() {
             isReadOnly = cursor.long(TasksOrgContract.Tasks.IS_READ_ONLY) != 0L ||
                 list?.isReadOnly == true,
             priority = priorityFromApi(cursor.string(TasksOrgContract.Tasks.PRIORITY)),
+            tags = readTagIds(cursor).mapNotNull { tags[it]?.name },
+            childCount = cursor.long(TasksOrgContract.Tasks.CHILD_COUNT).toInt(),
+            uncompletedChildCount = cursor.long(TasksOrgContract.Tasks.UNCOMPLETED_CHILD_COUNT).toInt(),
+            placeId = cursor.long(TasksOrgContract.Tasks.PLACE_ID),
+            hideUntil = if (start > 0L) {
+                TasksOrgDate(start, cursor.long(TasksOrgContract.Tasks.START_ALL_DAY) != 0L)
+            } else null,
+            repeatFrom = repeatFromApi(cursor.string(TasksOrgContract.Tasks.REPEAT_FROM)),
             zone = zone
         )
     }
@@ -249,6 +349,10 @@ class TasksOrgV0Mapper @Inject constructor() {
         TasksOrgRepeatFrom.COMPLETION_DATE -> TasksOrgContract.Tasks.REPEAT_FROM_COMPLETION
     }
 
+    private fun repeatFromApi(raw: String): TasksOrgRepeatFrom =
+        if (raw == TasksOrgContract.Tasks.REPEAT_FROM_COMPLETION) TasksOrgRepeatFrom.COMPLETION_DATE
+        else TasksOrgRepeatFrom.DUE_DATE
+
     private fun priorityFromApi(raw: String): TasksOrgPriority = when (raw) {
         TasksOrgContract.Tasks.PRIORITY_HIGH -> TasksOrgPriority.HIGH
         TasksOrgContract.Tasks.PRIORITY_MEDIUM -> TasksOrgPriority.MEDIUM
@@ -265,6 +369,11 @@ class TasksOrgV0Mapper @Inject constructor() {
     private fun Cursor.long(column: String): Long {
         val index = getColumnIndex(column)
         return if (index < 0 || isNull(index)) 0L else getLong(index)
+    }
+
+    private fun Cursor.double(column: String): Double {
+        val index = getColumnIndex(column)
+        return if (index < 0 || isNull(index)) 0.0 else getDouble(index)
     }
 
     private fun Cursor.string(column: String): String {

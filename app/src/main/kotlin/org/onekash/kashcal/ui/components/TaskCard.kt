@@ -10,7 +10,12 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -34,6 +39,10 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import org.onekash.kashcal.R
+import org.onekash.kashcal.data.tasks_org.TasksOrgPriority
+import org.onekash.kashcal.data.tasks_org.TasksOrgTask
+import org.onekash.kashcal.data.tasks_org.placementOf
 import org.onekash.kashcal.domain.EmojiMatcher
 import org.onekash.kashcal.domain.model.DisplayEvent
 import org.onekash.kashcal.util.DateTimeUtils
@@ -102,6 +111,20 @@ internal fun TaskCard(
     val trailing = remember(task.startTs, task.isAllDay, task.isRecurring, timePattern, supportingText) {
         if (supportingText != null) "" else formatTaskCardTime(task.startTs, task.isAllDay, task.isRecurring, timePattern)
     }
+    // An overdue task shown on today says since when, in the error color.
+    val overdueText = if (task.isOverdue && supportingText == null) {
+        stringResource(R.string.task_overdue_since, DateTimeUtils.formatEventDateShort(task.dueCalendarTs(), task.dueAllDay))
+    } else null
+    val meta = remember(task.tags, task.childCount, task.uncompletedChildCount) {
+        formatTaskMeta(task.tags, task.childCount, task.uncompletedChildCount)
+    }
+    val priorityColor = priorityColor(task.priority)
+    val priorityDescription = when (task.priority) {
+        TasksOrgPriority.HIGH -> stringResource(R.string.task_priority_dot_high)
+        TasksOrgPriority.MEDIUM -> stringResource(R.string.task_priority_dot_medium)
+        TasksOrgPriority.LOW -> stringResource(R.string.task_priority_dot_low)
+        TasksOrgPriority.NONE -> ""
+    }
     val stripeColor = Color(displayEvent.calendarColor)
 
     Card(
@@ -147,14 +170,36 @@ internal fun TaskCard(
                     .weight(1f)
                     .padding(vertical = 8.dp)
             ) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    textDecoration = if (checked) TextDecoration.LineThrough else null
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (priorityColor != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(priorityColor)
+                                .semantics { contentDescription = priorityDescription }
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        textDecoration = if (checked) TextDecoration.LineThrough else null,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                }
+                if (meta.isNotEmpty()) {
+                    Text(
+                        meta,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 if (supportingText != null) {
                     Text(
                         supportingText,
@@ -163,7 +208,15 @@ internal fun TaskCard(
                     )
                 }
             }
-            if (trailing.isNotEmpty()) {
+            if (overdueText != null) {
+                Text(
+                    overdueText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    maxLines = 1,
+                    modifier = Modifier.padding(start = 8.dp, end = 12.dp)
+                )
+            } else if (trailing.isNotEmpty()) {
                 Text(
                     trailing,
                     style = MaterialTheme.typography.bodySmall,
@@ -191,3 +244,29 @@ internal fun formatTaskCardTime(
     val repeat = if (isRecurring) "\uD83D\uDD01" else ""
     return listOf(time, repeat).filter { it.isNotEmpty() }.joinToString(" ")
 }
+
+/** The dot color of a priority, or null for none (no dot). */
+internal fun priorityColor(priority: TasksOrgPriority): Color? = when (priority) {
+    TasksOrgPriority.HIGH -> Color(0xFFE53935)
+    TasksOrgPriority.MEDIUM -> Color(0xFFFB8C00)
+    TasksOrgPriority.LOW -> Color(0xFF1E88E5)
+    TasksOrgPriority.NONE -> null
+}
+
+/**
+ * The secondary line of a [TaskCard]: the tags as `#name` and, when the task has subtasks, how
+ * many are done. Empty when there is nothing to show. Subtasks are managed in Tasks.org; this
+ * only reports them.
+ */
+internal fun formatTaskMeta(tags: List<String>, childCount: Int, uncompletedChildCount: Int): String {
+    val tagText = tags.joinToString(" ") { "#$it" }
+    val subtaskText = if (childCount > 0) "\u2937 ${childCount - uncompletedChildCount}/$childCount" else ""
+    return listOf(tagText, subtaskText).filter { it.isNotEmpty() }.joinToString(" \u00B7 ")
+}
+
+/**
+ * The calendar timestamp of the task's real due date. It equals [TasksOrgTask.startTs] except
+ * for an overdue task pinned to today, whose own date is earlier.
+ */
+internal fun TasksOrgTask.dueCalendarTs(zone: ZoneId = ZoneId.systemDefault()): Long =
+    if (isOverdue) placementOf(dueTs, dueAllDay, zone).startTs else startTs

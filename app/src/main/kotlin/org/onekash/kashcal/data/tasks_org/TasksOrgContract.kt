@@ -59,6 +59,12 @@ object TasksOrgContract {
         const val IS_READ_ONLY = "is_read_only"
         /** Comma-joined tag ids on the task; "" when it has none. Read-only. */
         const val TAG_IDS = "tag_ids"
+        /** The task's saved place, 0 when it has none. Writing 0 removes the place and its reminders. */
+        const val PLACE_ID = "place_id"
+        /** Direct subtasks. Read-only. */
+        const val CHILD_COUNT = "child_count"
+        /** Of the direct subtasks, the ones not completed. Read-only. */
+        const val UNCOMPLETED_CHILD_COUNT = "uncompleted_child_count"
 
         const val REPEAT_FROM_DUE_DATE = "due_date"
         const val REPEAT_FROM_COMPLETION = "completion_date"
@@ -74,6 +80,10 @@ object TasksOrgContract {
         const val PARAM_DUE_BEFORE = "due_before"
         /** Free text matched against title and notes. */
         const val PARAM_SEARCH = "search"
+        /** `1` for tasks the app shows as overdue. */
+        const val PARAM_OVERDUE = "overdue"
+        /** `0` for open tasks, `1` for completed ones. */
+        const val PARAM_COMPLETED = "completed"
 
         fun itemUri(id: Long): Uri = Uri.withAppendedPath(CONTENT_URI, id.toString())
 
@@ -95,6 +105,43 @@ object TasksOrgContract {
         const val ACCESS = "access"
 
         const val ACCESS_READ_ONLY = "read_only"
+
+        /** The account a list belongs to; required, and writable only on insert. */
+        const val ACCOUNT_ID = "account_id"
+
+        fun itemUri(id: Long): Uri = Uri.withAppendedPath(CONTENT_URI, id.toString())
+    }
+
+    /** Saved locations that a task can be filed under and location reminders trigger on. */
+    object Places {
+        val CONTENT_URI: Uri = Uri.withAppendedPath(BASE_URI, "places")
+
+        const val NAME = "name"
+        /** Name, falling back to the address, then the coordinates. Read-only. */
+        const val DISPLAY_NAME = "display_name"
+        const val ADDRESS = "address"
+        /** Decimal degrees; required on insert and fixed afterwards. */
+        const val LATITUDE = "latitude"
+        const val LONGITUDE = "longitude"
+        /** Trigger radius in meters for location reminders; must be positive. */
+        const val RADIUS = "radius"
+
+        fun itemUri(id: Long): Uri = Uri.withAppendedPath(CONTENT_URI, id.toString())
+    }
+
+    /** Sync accounts of the Tasks.org app. Read-only. */
+    object Accounts {
+        val CONTENT_URI: Uri = Uri.withAppendedPath(BASE_URI, "accounts")
+
+        const val NAME = "name"
+        /** `caldav`, `tasks_org`, `google_tasks`, `microsoft`, `etebase`, `opentasks` or `local`. */
+        const val TYPE = "type"
+        /** Why the last sync failed; empty when healthy. */
+        const val ERROR = "error"
+        /** 1 when the server advances recurring tasks itself. */
+        const val REPEATS_ON_SERVER = "repeats_on_server"
+
+        const val TYPE_LOCAL = "local"
     }
 
     /** Tags: named, colored labels a task can carry ([TaskTags] joins them to tasks). */
@@ -126,10 +173,10 @@ object TasksOrgContract {
     }
 
     /**
-     * Reminders on a task. KashCal's fork handles the time-based types only — [TYPE_DATE_TIME]
-     * (absolute), [TYPE_RELATIVE_DUE] and [TYPE_RELATIVE_START] (signed offset from the date).
-     * Location types (`location_arrival`/`location_departure`) need a place and are out of
-     * scope. Sending a column that doesn't apply to the type throws IllegalArgumentException.
+     * Reminders on a task: time types ([TYPE_DATE_TIME], [TYPE_RELATIVE_DUE],
+     * [TYPE_RELATIVE_START], [TYPE_RANDOM], [TYPE_SNOOZE]) and location types
+     * ([TYPE_LOCATION_ARRIVAL], [TYPE_LOCATION_DEPARTURE], which need a place). Sending a column
+     * that doesn't apply to the type throws IllegalArgumentException.
      */
     object Reminders {
         val CONTENT_URI: Uri = Uri.withAppendedPath(BASE_URI, "reminders")

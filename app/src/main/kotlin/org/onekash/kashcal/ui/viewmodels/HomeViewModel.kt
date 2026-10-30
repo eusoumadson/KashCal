@@ -4536,13 +4536,15 @@ class HomeViewModel(
                 onReady(null)
             } else {
                 val tags = withContext(ioDispatcher) { coordinator.getTags() }
+                val places = withContext(ioDispatcher) { coordinator.getPlaces() }
                 onReady(
                     org.onekash.kashcal.ui.components.TaskEditorState.forNew(
                         writableLists = lists,
                         defaultListId = null,
                         defaultDueMs = defaultDueMs,
                         defaultAllDay = defaultAllDay,
-                        allTags = tags
+                        allTags = tags,
+                        allPlaces = places
                     )
                 )
             }
@@ -4560,13 +4562,15 @@ class HomeViewModel(
             val tags = withContext(ioDispatcher) { coordinator.getTags() }
             val selected = withContext(ioDispatcher) { coordinator.getTaskTagIds(task.id) }.toSet()
             val reminders = withContext(ioDispatcher) { coordinator.getReminders(task.id) }
+            val places = withContext(ioDispatcher) { coordinator.getPlaces() }
             onReady(
                 org.onekash.kashcal.ui.components.TaskEditorState.forEdit(
                     task = task,
                     writableLists = lists,
                     allTags = tags,
                     selectedTagIds = selected,
-                    reminders = reminders
+                    reminders = reminders,
+                    allPlaces = places
                 )
             )
         }
@@ -4581,13 +4585,18 @@ class HomeViewModel(
     fun saveTask(state: org.onekash.kashcal.ui.components.TaskEditorState, onDone: () -> Unit = {}) {
         val coordinator = tasksOrgCoordinator ?: return
         viewModelScope.launch {
-            val result = try {
+            // One atomic batch writes the task with its tags, reminders and place: a failure
+            // part-way leaves nothing behind.
+            val outcome = try {
                 tasksOrgWriteMutex.withLock {
                     withContext(ioDispatcher) {
-                        if (state.isEditing) {
-                            coordinator.updateTask(state.original!!.id, state.buildPatch())
+                        val original = state.original
+                        if (original != null) {
+                            coordinator.updateTask(original, state.buildPatch(), state.toExtras())
                         } else {
-                            coordinator.createTask(state.toDraft())
+                            org.onekash.kashcal.domain.tasks.TasksOrgSaveOutcome(
+                                coordinator.createTask(state.toDraft(), state.toExtras())
+                            )
                         }
                     }
                 }
@@ -4595,27 +4604,20 @@ class HomeViewModel(
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Error saving Tasks.org task", e)
-                org.onekash.kashcal.data.tasks_org.TasksOrgWriteResult.Refused
-            }
-            // On success, reconcile tags against the written task (create uses the new id).
-            if (result is org.onekash.kashcal.data.tasks_org.TasksOrgWriteResult.Ok) {
-                try {
-                    withContext(ioDispatcher) {
-                        coordinator.setTaskTags(result.taskId, state.selectedTagIds, state.newTagNames)
-                        coordinator.setReminders(result.taskId, state.reminders)
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error saving task tags or reminders", e)
-                }
+                org.onekash.kashcal.domain.tasks.TasksOrgSaveOutcome(
+                    org.onekash.kashcal.data.tasks_org.TasksOrgWriteResult.Refused
+                )
             }
             onDone()
             showSnackbar(
-                when (result) {
+                when (outcome.result) {
                     is org.onekash.kashcal.data.tasks_org.TasksOrgWriteResult.Ok ->
                         context.getString(
-                            if (state.isEditing) R.string.snackbar_task_saved else R.string.snackbar_task_created
+                            when {
+                                outcome.recurrenceAdjusted -> R.string.snackbar_task_saved_rule_adjusted
+                                state.isEditing -> R.string.snackbar_task_saved
+                                else -> R.string.snackbar_task_created
+                            }
                         )
                     org.onekash.kashcal.data.tasks_org.TasksOrgWriteResult.ReadOnly ->
                         context.getString(R.string.snackbar_task_read_only)
@@ -4623,6 +4625,34 @@ class HomeViewModel(
                         context.getString(R.string.snackbar_task_update_failed)
                 }
             )
+        }
+    }
+
+    /**
+     * Saves a new Tasks.org place from the task editor and reports it through [onResult] on the
+     * main thread, or null when Tasks.org refused it (a snackbar says so).
+     */
+    fun createPlace(
+        draft: org.onekash.kashcal.data.tasks_org.TasksOrgPlaceDraft,
+        onResult: (org.onekash.kashcal.data.tasks_org.TasksOrgPlace?) -> Unit
+    ) {
+        val coordinator = tasksOrgCoordinator ?: return onResult(null)
+        viewModelScope.launch {
+            val place = try {
+                withContext(ioDispatcher) {
+                    val result = coordinator.createPlace(draft)
+                    if (result is org.onekash.kashcal.data.tasks_org.TasksOrgWriteResult.Ok) {
+                        coordinator.getPlaces().firstOrNull { it.id == result.taskId }
+                    } else null
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Error creating Tasks.org place", e)
+                null
+            }
+            if (place == null) showSnackbar(context.getString(R.string.snackbar_place_create_failed))
+            onResult(place)
         }
     }
 

@@ -1199,7 +1199,8 @@ class MainActivity : FragmentActivity() {
                             homeViewModel.deleteTask(taskId) { taskEditorState = null }
                         },
                         onDismiss = { taskEditorState = null },
-                        timeFormat = uiState.timeFormat
+                        timeFormat = uiState.timeFormat,
+                        onCreatePlace = { draft, done -> homeViewModel.createPlace(draft, done) } // FORK:tasks-org
                     )
                 }
 

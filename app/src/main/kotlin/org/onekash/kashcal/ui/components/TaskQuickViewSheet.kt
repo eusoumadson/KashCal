@@ -1,6 +1,7 @@
 package org.onekash.kashcal.ui.components
 
 import android.content.Context
+import android.content.Intent
 import android.content.res.Resources
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.onekash.kashcal.R
 import org.onekash.kashcal.data.tasks_org.TasksOrgContract
+import org.onekash.kashcal.data.tasks_org.TasksOrgPriority
 import org.onekash.kashcal.domain.EmojiMatcher
 import org.onekash.kashcal.domain.model.DisplayEvent
 import org.onekash.kashcal.util.DateTimeUtils
@@ -114,11 +116,44 @@ fun TaskQuickViewSheet(
                         Text(
                             text = stringResource(
                                 R.string.task_due,
-                                formatTaskDue(task.startTs, task.isAllDay, resources, timePattern)
+                                // The real due date: an overdue task is placed on today.
+                                formatTaskDue(task.dueCalendarTs(), task.dueAllDay, resources, timePattern)
                             ),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (task.isOverdue) {
+                            Text(
+                                text = stringResource(
+                                    R.string.task_overdue_since,
+                                    DateTimeUtils.formatEventDateShort(task.dueCalendarTs(), task.dueAllDay)
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                        if (task.priority != TasksOrgPriority.NONE) {
+                            Text(
+                                text = stringResource(R.string.task_editor_priority_label) + ": " +
+                                    stringResource(priorityLabel(task.priority)),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = priorityColor(task.priority) ?: MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (task.tags.isNotEmpty()) {
+                            Text(
+                                text = task.tags.joinToString(" ") { "#$it" },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (task.hasSubtasks) {
+                            Text(
+                                text = stringResource(R.string.task_subtasks_summary, task.childCount, task.uncompletedChildCount),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         if (displayEvent.calendarName.isNotEmpty()) {
                             Text(
                                 text = displayEvent.calendarName,
@@ -156,10 +191,20 @@ fun TaskQuickViewSheet(
             }
 
             TextButton(
-                onClick = { openTasksOrg(context) },
+                onClick = { openTasksOrg(context, task.id) },
                 modifier = Modifier.padding(horizontal = 8.dp)
             ) {
                 Text(stringResource(R.string.task_open_in_tasks_org))
+            }
+
+            // Subtasks are managed in Tasks.org: open the task there.
+            if (task.hasSubtasks) {
+                TextButton(
+                    onClick = { openTasksOrg(context, task.id) },
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                ) {
+                    Text(stringResource(R.string.task_subtasks_manage))
+                }
             }
 
             // Edit in KashCal (fork): only when the task is writable and the host wires it.
@@ -218,7 +263,16 @@ internal fun formatTaskDue(startTs: Long, isAllDay: Boolean, resources: Resource
 }
 
 /** Opens the Tasks.org app; does nothing when it can't be launched. */
-private fun openTasksOrg(context: Context) {
+private fun openTasksOrg(context: Context, taskId: Long) {
+    // Opens the task itself; falls back to the app when Tasks.org has no screen for the URI.
+    try {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, TasksOrgContract.Tasks.viewUri(taskId)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+        return
+    } catch (_: Exception) {
+        // Fall through to the launcher.
+    }
     val intent = context.packageManager.getLaunchIntentForPackage(TasksOrgContract.PACKAGE) ?: return
     try {
         context.startActivity(intent)

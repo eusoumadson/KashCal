@@ -8,7 +8,9 @@ data class TasksOrgList(
     val id: Long,
     val title: String,
     val color: Int,
-    val isReadOnly: Boolean
+    val isReadOnly: Boolean,
+    /** The Tasks.org account the list belongs to; 0 when the provider omits it. */
+    val accountId: Long = 0L
 )
 
 /** A Tasks.org tag: a named, colored label a task can carry. [color] is ARGB, 0 when unset. */
@@ -20,12 +22,17 @@ data class TasksOrgTag(
 )
 
 /**
- * A time-based reminder on a Tasks.org task (fork, Phase 4). Only the time types are modelled;
- * location reminders are out of scope.
+ * A reminder on a Tasks.org task.
  *
+ * Time reminders:
  * - [AtTime] fires at an absolute instant ([triggerAtMs]).
  * - [Relative] fires at a signed [offsetMs] from the task's due or start date ([anchor]);
  *   negative is before. A repeating reminder also carries [repeatCount] and [intervalMs].
+ * - [Random] fires about every [periodMs] (at least a minute) after the last one.
+ * - [Snooze] quiets the task's other reminders until [triggerAtMs]. Tasks.org creates it when
+ *   the user snoozes; the editor can show it and remove it, never add one.
+ *
+ * [Location] fires on arriving at or leaving a saved place ([placeId]).
  *
  * [id] is 0 for a reminder not yet written to Tasks.org.
  */
@@ -46,7 +53,105 @@ sealed interface TasksOrgReminder {
     ) : TasksOrgReminder {
         enum class Anchor { DUE, START }
     }
+
+    @Immutable
+    data class Random(override val id: Long = 0L, val periodMs: Long) : TasksOrgReminder
+
+    @Immutable
+    data class Snooze(override val id: Long = 0L, val triggerAtMs: Long) : TasksOrgReminder
+
+    @Immutable
+    data class Location(override val id: Long = 0L, val placeId: Long, val kind: Kind) : TasksOrgReminder {
+        enum class Kind { ARRIVAL, DEPARTURE }
+    }
 }
+
+/** A saved location of Tasks.org. [displayName] falls back to the address, then coordinates. */
+@Immutable
+data class TasksOrgPlace(
+    val id: Long,
+    val name: String,
+    val displayName: String,
+    val address: String,
+    val latitude: Double,
+    val longitude: Double,
+    /** Trigger radius in meters for location reminders. */
+    val radius: Int
+)
+
+/** A new place. Tasks.org does no geocoding, so the coordinates are required. */
+data class TasksOrgPlaceDraft(
+    val name: String,
+    val address: String = "",
+    val latitude: Double,
+    val longitude: Double,
+    val radius: Int = DEFAULT_RADIUS_M
+) {
+    companion object {
+        /** Tasks.org's default trigger radius. */
+        const val DEFAULT_RADIUS_M = 250
+    }
+}
+
+/** A Tasks.org sync account. [error] is empty while healthy, else a coarse code. */
+@Immutable
+data class TasksOrgAccount(
+    val id: Long,
+    val name: String,
+    val type: String,
+    val error: String,
+    /** True when the server advances recurring tasks itself. */
+    val repeatsOnServer: Boolean
+) {
+    val needsAttention: Boolean get() = error.isNotEmpty()
+    val isLocal: Boolean get() = type == TasksOrgContract.Accounts.TYPE_LOCAL
+}
+
+/**
+ * The installed Tasks.org version. The `v0` API exists from 15.12 and is explicitly unstable, so
+ * the app tells the user when the installed version is older than that.
+ */
+@Immutable
+data class TasksOrgVersion(val name: String, val code: Long) {
+    /** True when the installed version has the public API ([MIN_SUPPORTED]). */
+    val isSupported: Boolean
+        get() = parseMajorMinor(name)?.let { compare(it, MIN_SUPPORTED) >= 0 } ?: true
+
+    companion object {
+        /** The release that introduced `v0`: 15.12. */
+        val MIN_SUPPORTED: Pair<Int, Int> = 15 to 12
+        const val MIN_SUPPORTED_NAME = "15.12"
+
+        /** Reads `major.minor` from names like `15.13`, `15.13.0` or `15.13-beta03`; null if unparseable. */
+        fun parseMajorMinor(name: String): Pair<Int, Int>? {
+            val m = Regex("""^(\d+)\.(\d+)""").find(name.trim()) ?: return null
+            return m.groupValues[1].toInt() to m.groupValues[2].toInt()
+        }
+
+        private fun compare(a: Pair<Int, Int>, b: Pair<Int, Int>): Int =
+            if (a.first != b.first) a.first.compareTo(b.first) else a.second.compareTo(b.second)
+    }
+}
+
+/** The place and triggers a task's location reminders use; at most one place per task. */
+data class TasksOrgLocation(val placeId: Long, val arrival: Boolean, val departure: Boolean) {
+    val hasTrigger: Boolean get() = arrival || departure
+}
+
+/**
+ * What a task carries besides its own columns, saved together with it in one atomic batch.
+ *
+ * - [tagIds] and [newTagNames] are the task's complete tag set; names are created first.
+ * - [reminders] are the complete non-location reminders. A reminder with an id is kept; id 0 is
+ *   added; a current reminder missing here is deleted.
+ * - [location] is the task's place and triggers; null means no place.
+ */
+data class TasksOrgTaskExtras(
+    val tagIds: Set<Long> = emptySet(),
+    val newTagNames: List<String> = emptyList(),
+    val reminders: List<TasksOrgReminder> = emptyList(),
+    val location: TasksOrgLocation? = null
+)
 
 /**
  * A Tasks.org task with a due date, placed on the calendar at that date.
@@ -82,10 +187,34 @@ data class TasksOrgTask(
     val listColor: Int,
     val isReadOnly: Boolean,
     /** Task priority; defaults to [TasksOrgPriority.NONE] when the provider omits it. */
-    val priority: TasksOrgPriority = TasksOrgPriority.NONE
+    val priority: TasksOrgPriority = TasksOrgPriority.NONE,
+    /**
+     * Whether the due date itself is all-day, as Tasks.org stores it. [isAllDay] says how the
+     * task is placed on the calendar; the two differ only for an overdue task pinned to today
+     * ([overdueSince]), so the editor and the schedule always use this one.
+     */
+    val dueAllDay: Boolean = isAllDay,
+    /** Names of the task's tags, in Tasks.org's order. */
+    val tags: List<String> = emptyList(),
+    /** Direct subtasks and, of those, the open ones. Subtasks are managed in Tasks.org. */
+    val childCount: Int = 0,
+    val uncompletedChildCount: Int = 0,
+    /** The task's saved place, 0 when it has none. */
+    val placeId: Long = 0L,
+    /** When the task is hidden until, or null. */
+    val hideUntil: TasksOrgDate? = null,
+    val repeatFrom: TasksOrgRepeatFrom = TasksOrgRepeatFrom.DUE_DATE,
+    /**
+     * The real due time of an open task that is overdue and shown on today instead of its own
+     * day; null for any other task. The calendar fields ([startTs] and the rest) then describe
+     * today, while [dueTs] keeps the real date.
+     */
+    val overdueSince: Long? = null
 ) {
     val isCompleted: Boolean get() = completedAt != null
     val isRecurring: Boolean get() = recurrence != null
+    val isOverdue: Boolean get() = overdueSince != null
+    val hasSubtasks: Boolean get() = childCount > 0
 }
 
 /**

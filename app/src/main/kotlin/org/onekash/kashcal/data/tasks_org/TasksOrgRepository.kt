@@ -23,6 +23,9 @@ interface TasksOrgRepository {
     /** True when KashCal holds [TasksOrgContract.PERMISSION_WRITE]. */
     fun hasWritePermission(): Boolean
 
+    /** The installed Tasks.org version, or null when it isn't installed. */
+    fun installedVersion(): TasksOrgVersion?
+
     /** Returns every Tasks.org list, in Tasks.org's order. */
     suspend fun getLists(): List<TasksOrgList>
 
@@ -30,14 +33,23 @@ interface TasksOrgRepository {
      * Returns the tasks due in [startMs]..[endMs] (inclusive), open and completed, that are in
      * none of [hiddenListIds], sorted by due time. Tasks without a due date are never returned.
      *
+     * An open task that is overdue and due before [startMs] is also returned, shown on the day
+     * of [nowMs] (see [TasksOrgTask.overdueSince]), when that day falls in the range. A search
+     * does not include them.
+     *
      * @param search when not null, only tasks whose title or notes contain it
+     * @param nowMs the instant "today" is taken from; a seam for tests
      */
     suspend fun getTasksDueInRange(
         startMs: Long,
         endMs: Long,
         hiddenListIds: Set<Long>,
-        search: String? = null
+        search: String? = null,
+        nowMs: Long = System.currentTimeMillis()
     ): List<TasksOrgTask>
+
+    /** Reads one task by id, or null when it can't be read or has no due date. */
+    suspend fun getTask(taskId: Long): TasksOrgTask?
 
     /**
      * Completes the task [taskId] at [completedAt], or reopens it when [completedAt] is null.
@@ -120,4 +132,58 @@ interface TasksOrgRepository {
 
     /** Deletes the reminder [reminderId]; returns false when refused or already gone. */
     suspend fun deleteReminder(reminderId: Long): Boolean
+
+    // ---- Atomic save: a task with its tags, reminders and place in one batch ----
+
+    /**
+     * Creates a task from [draft] together with [extras] (tags, reminders, place) in a single
+     * atomic batch: on any failure nothing is written.
+     */
+    suspend fun createTaskWithExtras(draft: TasksOrgTaskDraft, extras: TasksOrgTaskExtras): TasksOrgWriteResult
+
+    /**
+     * Applies [patch] to [taskId] and reconciles its tags, reminders and place with [extras] in
+     * a single atomic batch: on any failure nothing is written.
+     */
+    suspend fun updateTaskWithExtras(
+        taskId: Long,
+        patch: TasksOrgTaskPatch,
+        extras: TasksOrgTaskExtras
+    ): TasksOrgWriteResult
+
+    // ---- Management of lists, tags, places; read of accounts ----
+
+    /** The Tasks.org sync accounts; empty without the read permission. */
+    suspend fun getAccounts(): List<TasksOrgAccount>
+
+    /**
+     * Creates a list named [title] in [accountId] and returns its id in [TasksOrgWriteResult.Ok].
+     * Not idempotent in Tasks.org: a retry after a timeout can create a second list, so callers
+     * re-read the lists before retrying.
+     */
+    suspend fun createList(accountId: Long, title: String, color: Int = 0): TasksOrgWriteResult
+
+    /** Renames and/or recolors a list; a null argument is left as is. */
+    suspend fun updateList(listId: Long, title: String? = null, color: Int? = null): TasksOrgWriteResult
+
+    /** Deletes a list **and its tasks**; irreversible, so the caller confirms first. */
+    suspend fun deleteList(listId: Long): TasksOrgWriteResult
+
+    /** Renames and/or recolors a tag; renaming onto another tag's name is refused (no merge). */
+    suspend fun updateTag(tagId: Long, name: String? = null, color: Int? = null): TasksOrgWriteResult
+
+    /** Deletes a tag, removing it from every task. */
+    suspend fun deleteTag(tagId: Long): TasksOrgWriteResult
+
+    /** Every saved place; empty without the read permission. */
+    suspend fun getPlaces(): List<TasksOrgPlace>
+
+    /** Saves a place (idempotent by coordinates: the same coordinates return the saved place). */
+    suspend fun createPlace(draft: TasksOrgPlaceDraft): TasksOrgWriteResult
+
+    /** Changes a place's name, address and/or radius; a null argument is left as is. */
+    suspend fun updatePlace(placeId: Long, name: String? = null, address: String? = null, radius: Int? = null): TasksOrgWriteResult
+
+    /** Deletes a place, unfiling its tasks and dropping their location reminders. */
+    suspend fun deletePlace(placeId: Long): TasksOrgWriteResult
 }

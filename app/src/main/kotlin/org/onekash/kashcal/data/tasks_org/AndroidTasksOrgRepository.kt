@@ -8,6 +8,7 @@ import android.database.Cursor
 import android.net.Uri
 import android.util.Log
 import androidx.core.content.ContextCompat
+import androidx.core.content.pm.PackageInfoCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -47,6 +48,13 @@ class AndroidTasksOrgRepository @Inject constructor(
 
     override fun hasWritePermission(): Boolean = granted(TasksOrgContract.PERMISSION_WRITE)
 
+    override fun installedVersion(): TasksOrgVersion? = try {
+        val info = context.packageManager.getPackageInfo(TasksOrgContract.PACKAGE, 0)
+        TasksOrgVersion(info.versionName.orEmpty(), PackageInfoCompat.getLongVersionCode(info))
+    } catch (e: PackageManager.NameNotFoundException) {
+        null
+    }
+
     private fun granted(permission: String): Boolean =
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
@@ -59,21 +67,50 @@ class AndroidTasksOrgRepository @Inject constructor(
         startMs: Long,
         endMs: Long,
         hiddenListIds: Set<Long>,
-        search: String?
+        search: String?,
+        nowMs: Long
     ): List<TasksOrgTask> = withContext(Dispatchers.IO) {
         if (!hasReadPermission()) return@withContext emptyList()
         val lists = getLists().associateBy { it.id }
+        val tags = getTags().associateBy { it.id }
         // The provider's bounds are exclusive.
         val uri = TasksOrgContract.Tasks.CONTENT_URI.buildUpon()
             .appendQueryParameter(TasksOrgContract.Tasks.PARAM_DUE_AFTER, (startMs - 1).toString())
             .appendQueryParameter(TasksOrgContract.Tasks.PARAM_DUE_BEFORE, (endMs + 1).toString())
             .apply { search?.let { appendQueryParameter(TasksOrgContract.Tasks.PARAM_SEARCH, it) } }
             .build()
-        readPages(uri) { cursor -> mapper.readTask(cursor, lists) }
-            // Offset pages aren't a snapshot: a row that moves during the read can come twice.
+        val inRange = readPages(uri) { cursor -> mapper.readTask(cursor, lists, tags) }
+
+        // Overdue open tasks from before the range are shown on today, but only when today is in
+        // the range; a search looks for text, not for what needs doing.
+        val overdue = if (search == null && nowMs in startMs..endMs) {
+            val overdueUri = TasksOrgContract.Tasks.CONTENT_URI.buildUpon()
+                .appendQueryParameter(TasksOrgContract.Tasks.PARAM_OVERDUE, "1")
+                .appendQueryParameter(TasksOrgContract.Tasks.PARAM_COMPLETED, "0")
+                .appendQueryParameter(TasksOrgContract.Tasks.PARAM_DUE_AFTER, "0")
+                .appendQueryParameter(TasksOrgContract.Tasks.PARAM_DUE_BEFORE, startMs.toString())
+                .build()
+            readPages(overdueUri) { cursor -> mapper.readTask(cursor, lists, tags) }
+                .map { it.pinnedToDayOf(nowMs, mapper.zone) }
+        } else {
+            emptyList()
+        }
+
+        // Offset pages aren't a snapshot: a row that moves during the read can come twice.
+        (inRange + overdue)
             .distinctBy { it.id }
             .filter { it.listId !in hiddenListIds }
             .sortedBy { it.startTs }
+    }
+
+    override suspend fun getTask(taskId: Long): TasksOrgTask? = withContext(Dispatchers.IO) {
+        if (!hasReadPermission()) return@withContext null
+        val lists = getLists().associateBy { it.id }
+        val tags = getTags().associateBy { it.id }
+        guarded("read task $taskId", null) {
+            contentResolver.query(TasksOrgContract.Tasks.itemUri(taskId), null, null, null, null)
+                ?.use { cursor -> if (cursor.moveToFirst()) mapper.readTask(cursor, lists, tags) else null }
+        }
     }
 
     override suspend fun setCompleted(taskId: Long, completedAt: Long?): Boolean =
@@ -201,6 +238,110 @@ class AndroidTasksOrgRepository @Inject constructor(
         }
     }
 
+    override suspend fun createTaskWithExtras(
+        draft: TasksOrgTaskDraft,
+        extras: TasksOrgTaskExtras
+    ): TasksOrgWriteResult = withContext(Dispatchers.IO) {
+        if (!hasWritePermission()) return@withContext TasksOrgWriteResult.Refused
+        writeGuarded("create task with extras") {
+            val plan = mapper.planCreate(draft, extras)
+            val results = contentResolver.applyBatch(TasksOrgContract.AUTHORITY, ArrayList(plan.operations))
+            val uri = results.getOrNull(plan.taskIndex)?.uri ?: return@writeGuarded TasksOrgWriteResult.Refused
+            TasksOrgWriteResult.Ok(ContentUris.parseId(uri))
+        }
+    }
+
+    override suspend fun updateTaskWithExtras(
+        taskId: Long,
+        patch: TasksOrgTaskPatch,
+        extras: TasksOrgTaskExtras
+    ): TasksOrgWriteResult = withContext(Dispatchers.IO) {
+        if (!hasWritePermission()) return@withContext TasksOrgWriteResult.Refused
+        writeGuarded("update task $taskId with extras") {
+            val current = CurrentTaskState(
+                tagIds = getTagIdsForTask(taskId).toSet(),
+                reminders = getReminders(taskId),
+                placeId = readPlaceId(taskId)
+            )
+            val ops = mapper.planUpdate(taskId, patch, extras, current)
+            if (ops.isEmpty()) return@writeGuarded TasksOrgWriteResult.Ok(taskId)
+            contentResolver.applyBatch(TasksOrgContract.AUTHORITY, ArrayList(ops))
+            TasksOrgWriteResult.Ok(taskId)
+        }
+    }
+
+    /** The saved place of [taskId], 0 when it has none or can't be read. */
+    private fun readPlaceId(taskId: Long): Long = guarded("read place of task $taskId", 0L) {
+        contentResolver.query(
+            TasksOrgContract.Tasks.itemUri(taskId),
+            arrayOf(TasksOrgContract.Tasks.PLACE_ID), null, null, null
+        )?.use { c ->
+            if (c.moveToFirst()) c.getColumnIndex(TasksOrgContract.Tasks.PLACE_ID).takeIf { it >= 0 }?.let { c.getLong(it) } ?: 0L else 0L
+        } ?: 0L
+    }
+
+    override suspend fun getAccounts(): List<TasksOrgAccount> = withContext(Dispatchers.IO) {
+        if (!hasReadPermission()) return@withContext emptyList()
+        readPages(TasksOrgContract.Accounts.CONTENT_URI) { mapper.readAccount(it) }
+    }
+
+    override suspend fun createList(accountId: Long, title: String, color: Int): TasksOrgWriteResult =
+        insertGuarded("create list", TasksOrgContract.Lists.CONTENT_URI, mapper.listInsertValues(accountId, title, color))
+
+    override suspend fun updateList(listId: Long, title: String?, color: Int?): TasksOrgWriteResult =
+        updateGuarded("update list $listId", TasksOrgContract.Lists.itemUri(listId), mapper.listUpdateValues(title, color), listId)
+
+    override suspend fun deleteList(listId: Long): TasksOrgWriteResult =
+        deleteGuarded("delete list $listId", TasksOrgContract.Lists.itemUri(listId), listId)
+
+    override suspend fun updateTag(tagId: Long, name: String?, color: Int?): TasksOrgWriteResult =
+        updateGuarded("update tag $tagId", TasksOrgContract.Tags.itemUri(tagId), mapper.tagUpdateValues(name, color), tagId)
+
+    override suspend fun deleteTag(tagId: Long): TasksOrgWriteResult =
+        deleteGuarded("delete tag $tagId", TasksOrgContract.Tags.itemUri(tagId), tagId)
+
+    override suspend fun getPlaces(): List<TasksOrgPlace> = withContext(Dispatchers.IO) {
+        if (!hasReadPermission()) return@withContext emptyList()
+        readPages(TasksOrgContract.Places.CONTENT_URI) { mapper.readPlace(it) }
+    }
+
+    override suspend fun createPlace(draft: TasksOrgPlaceDraft): TasksOrgWriteResult =
+        insertGuarded("create place", TasksOrgContract.Places.CONTENT_URI, mapper.placeInsertValues(draft))
+
+    override suspend fun updatePlace(placeId: Long, name: String?, address: String?, radius: Int?): TasksOrgWriteResult =
+        updateGuarded("update place $placeId", TasksOrgContract.Places.itemUri(placeId), mapper.placeUpdateValues(name, address, radius), placeId)
+
+    override suspend fun deletePlace(placeId: Long): TasksOrgWriteResult =
+        deleteGuarded("delete place $placeId", TasksOrgContract.Places.itemUri(placeId), placeId)
+
+    private suspend fun insertGuarded(what: String, uri: Uri, values: ContentValues): TasksOrgWriteResult =
+        withContext(Dispatchers.IO) {
+            if (!hasWritePermission()) return@withContext TasksOrgWriteResult.Refused
+            writeGuarded(what) {
+                contentResolver.insert(uri, values)?.let { TasksOrgWriteResult.Ok(ContentUris.parseId(it)) }
+                    ?: TasksOrgWriteResult.Refused
+            }
+        }
+
+    private suspend fun updateGuarded(what: String, uri: Uri, values: ContentValues, id: Long): TasksOrgWriteResult =
+        withContext(Dispatchers.IO) {
+            if (values.size() == 0) return@withContext TasksOrgWriteResult.Ok(id)
+            if (!hasWritePermission()) return@withContext TasksOrgWriteResult.Refused
+            writeGuarded(what) {
+                if (contentResolver.update(uri, values, null, null) > 0) TasksOrgWriteResult.Ok(id)
+                else TasksOrgWriteResult.Refused
+            }
+        }
+
+    private suspend fun deleteGuarded(what: String, uri: Uri, id: Long): TasksOrgWriteResult =
+        withContext(Dispatchers.IO) {
+            if (!hasWritePermission()) return@withContext TasksOrgWriteResult.Refused
+            writeGuarded(what) {
+                if (contentResolver.delete(uri, null, null) > 0) TasksOrgWriteResult.Ok(id)
+                else TasksOrgWriteResult.Refused
+            }
+        }
+
     private fun update(taskId: Long, values: ContentValues): Int =
         contentResolver.update(TasksOrgContract.Tasks.itemUri(taskId), values, null, null)
 
@@ -265,6 +406,46 @@ class AndroidTasksOrgRepository @Inject constructor(
         }
 }
 
+/** Where a task sits on the calendar: start and end instants and the day codes they fall on. */
+internal data class CalendarPlacement(val startTs: Long, val endTs: Long, val startDay: Int, val endDay: Int)
+
+/**
+ * Places a task due at [dueTs] with the Room event time conventions (see [TasksOrgTask]). An
+ * all-day due date is read in [zone], where Tasks.org stores it.
+ */
+internal fun placementOf(dueTs: Long, isAllDay: Boolean, zone: ZoneId): CalendarPlacement {
+    val (startTs, endTs) = if (isAllDay) {
+        val dayStart = Instant.ofEpochMilli(dueTs).atZone(zone).toLocalDate()
+            .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        dayStart to dayStart + 24L * 60 * 60 * 1000 - 1
+    } else {
+        dueTs to dueTs
+    }
+    return CalendarPlacement(
+        startTs = startTs,
+        endTs = endTs,
+        startDay = DateTimeUtils.eventTsToDayCode(startTs, isAllDay, zone),
+        endDay = DateTimeUtils.eventTsToEndDayCode(endTs = endTs, startTs = startTs, isAllDay = isAllDay, localZone = zone)
+    )
+}
+
+/**
+ * Shows an overdue open task on the day of [nowMs] instead of its own day: all-day, so it sits
+ * with the day's all-day items. [TasksOrgTask.dueTs] and [TasksOrgTask.dueAllDay] keep the real
+ * due date; [TasksOrgTask.overdueSince] marks the task as pinned.
+ */
+internal fun TasksOrgTask.pinnedToDayOf(nowMs: Long, zone: ZoneId): TasksOrgTask {
+    val p = placementOf(nowMs, isAllDay = true, zone = zone)
+    return copy(
+        isAllDay = true,
+        startTs = p.startTs,
+        endTs = p.endTs,
+        startDay = p.startDay,
+        endDay = p.endDay,
+        overdueSince = dueTs
+    )
+}
+
 /**
  * Builds a [TasksOrgTask] placed at [dueTs] with the Room event time conventions (see
  * [TasksOrgTask]). An all-day due date is read in [zone], where Tasks.org stores it.
@@ -282,31 +463,38 @@ internal fun taskAt(
     listColor: Int,
     isReadOnly: Boolean,
     priority: TasksOrgPriority = TasksOrgPriority.NONE,
+    tags: List<String> = emptyList(),
+    childCount: Int = 0,
+    uncompletedChildCount: Int = 0,
+    placeId: Long = 0L,
+    hideUntil: TasksOrgDate? = null,
+    repeatFrom: TasksOrgRepeatFrom = TasksOrgRepeatFrom.DUE_DATE,
     zone: ZoneId = ZoneId.systemDefault()
 ): TasksOrgTask {
-    val (startTs, endTs) = if (isAllDay) {
-        val dayStart = Instant.ofEpochMilli(dueTs).atZone(zone).toLocalDate()
-            .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-        dayStart to dayStart + 24L * 60 * 60 * 1000 - 1
-    } else {
-        dueTs to dueTs
-    }
+    val p = placementOf(dueTs, isAllDay, zone)
     return TasksOrgTask(
         id = id,
         title = title,
         notes = notes,
         dueTs = dueTs,
         isAllDay = isAllDay,
-        startTs = startTs,
-        endTs = endTs,
-        startDay = DateTimeUtils.eventTsToDayCode(startTs, isAllDay, zone),
-        endDay = DateTimeUtils.eventTsToEndDayCode(endTs = endTs, startTs = startTs, isAllDay = isAllDay, localZone = zone),
+        startTs = p.startTs,
+        endTs = p.endTs,
+        startDay = p.startDay,
+        endDay = p.endDay,
         completedAt = completedAt,
         recurrence = recurrence,
         listId = listId,
         listTitle = listTitle,
         listColor = listColor,
         isReadOnly = isReadOnly,
-        priority = priority
+        priority = priority,
+        dueAllDay = isAllDay,
+        tags = tags,
+        childCount = childCount,
+        uncompletedChildCount = uncompletedChildCount,
+        placeId = placeId,
+        hideUntil = hideUntil,
+        repeatFrom = repeatFrom
     )
 }

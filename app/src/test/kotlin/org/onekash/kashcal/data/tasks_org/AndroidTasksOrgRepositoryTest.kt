@@ -352,8 +352,8 @@ class AndroidTasksOrgRepositoryTest {
     fun `reminders are read by type, added with their columns, and deleted`() = runTest {
         provider.reminders += FakeTasksOrgProvider.ReminderRow(id = 1, taskId = 7, type = "date_time", triggerAt = 5000L)
         provider.reminders += FakeTasksOrgProvider.ReminderRow(id = 2, taskId = 7, type = "relative_due", offsetMs = -600_000L)
-        // A location reminder the fork doesn't model is skipped.
-        provider.reminders += FakeTasksOrgProvider.ReminderRow(id = 3, taskId = 7, type = "location_arrival")
+        // A reminder type this version doesn't know is skipped, not an error.
+        provider.reminders += FakeTasksOrgProvider.ReminderRow(id = 3, taskId = 7, type = "some_future_type")
         provider.nextInsertId = 80L
 
         val read = repository.getReminders(7L)
@@ -429,9 +429,21 @@ class FakeTasksOrgProvider : ContentProvider() {
         val notes: String = "",
         val startDate: Long = 0,
         val startAllDay: Boolean = false,
+        val priority: String = "none",
+        val placeId: Long = 0,
+        val childCount: Int = 0,
+        val uncompletedChildCount: Int = 0,
+        val repeatFrom: String = "due_date",
     )
 
-    data class ListRow(val id: Long, val title: String, val color: Int, val access: String)
+    data class ListRow(val id: Long, val title: String, val color: Int, val access: String, val accountId: Long = 0)
+
+    data class PlaceRow(
+        val id: Long, val name: String, val latitude: Double, val longitude: Double,
+        val address: String = "", val radius: Int = 250,
+    )
+
+    data class AccountRow(val id: Long, val name: String, val type: String, val error: String = "", val repeatsOnServer: Boolean = false)
 
     data class TagRow(val id: Long, val name: String, val color: Int = 0)
 
@@ -443,12 +455,18 @@ class FakeTasksOrgProvider : ContentProvider() {
         val offsetMs: Long = 0,
         val repeatCount: Int = 0,
         val intervalMs: Long = 0,
+        val placeId: Long = 0,
     )
 
     val tasks = mutableListOf<TaskRow>()
     val lists = mutableListOf<ListRow>()
     val tags = mutableListOf<TagRow>()
     val reminders = mutableListOf<ReminderRow>()
+    val places = mutableListOf<PlaceRow>()
+    val accounts = mutableListOf<AccountRow>()
+
+    /** What the fake treats as "now" when it filters `overdue=1`. */
+    var now: Long = Long.MAX_VALUE
     /** task id -> its tag ids, returned in the task's tag_ids column and edited via task_tags. */
     val taskTags = mutableMapOf<Long, MutableSet<Long>>()
     val queries = mutableListOf<Uri>()
@@ -459,6 +477,9 @@ class FakeTasksOrgProvider : ContentProvider() {
 
     /** Ids of tasks whose write must throw UnsupportedOperationException (read-only target). */
     val readOnlyTaskIds = mutableSetOf<Long>()
+
+    /** Ids whose update matches no row (the task is gone): the provider returns 0. */
+    val missingTaskIds = mutableSetOf<Long>()
 
     /** Next id handed out by insert. */
     var nextInsertId = 100L
@@ -477,50 +498,53 @@ class FakeTasksOrgProvider : ContentProvider() {
         queries += uri
         val limit = uri.getQueryParameter(TasksOrgContract.PARAM_LIMIT)?.toInt() ?: 100
         val offset = uri.getQueryParameter(TasksOrgContract.PARAM_OFFSET)?.toInt() ?: 0
-        // An item URI, /v0/tasks/{id}: the one task with its scheduling columns.
+        // An item URI, /v0/tasks/{id}: the one task.
         val segments = uri.pathSegments
         if (segments.size == 3 && segments[1] == "tasks") {
             val id = segments[2].toLong()
-            return MatrixCursor(
-                arrayOf(
-                    TasksOrgContract.ID, TasksOrgContract.Tasks.DUE_DATE, TasksOrgContract.Tasks.DUE_ALL_DAY,
-                    TasksOrgContract.Tasks.START_DATE, TasksOrgContract.Tasks.START_ALL_DAY,
-                    TasksOrgContract.Tasks.RECURRENCE, TasksOrgContract.Tasks.TAG_IDS,
-                )
-            ).apply {
-                tasks.filter { it.id == id }.forEach { t ->
-                    val tagIds = taskTags[t.id].orEmpty().joinToString(",")
-                    addRow(arrayOf<Any>(t.id, t.due, if (t.allDay) 1 else 0, t.startDate,
-                        if (t.startAllDay) 1 else 0, t.recurrence, tagIds))
-                }
-            }
+            return taskCursor(tasks.filter { it.id == id })
         }
         return when (uri.pathSegments.last()) {
             "tasks" -> {
                 val after = uri.getQueryParameter(TasksOrgContract.Tasks.PARAM_DUE_AFTER)?.toLong()
                 val before = uri.getQueryParameter(TasksOrgContract.Tasks.PARAM_DUE_BEFORE)?.toLong()
-                MatrixCursor(
-                    arrayOf(
-                        TasksOrgContract.ID, TasksOrgContract.Tasks.TITLE, TasksOrgContract.Tasks.NOTES,
-                        TasksOrgContract.Tasks.DUE_DATE, TasksOrgContract.Tasks.DUE_ALL_DAY,
-                        TasksOrgContract.Tasks.COMPLETED_AT, TasksOrgContract.Tasks.RECURRENCE,
-                        TasksOrgContract.Tasks.LIST_ID, TasksOrgContract.Tasks.IS_READ_ONLY,
-                    )
-                ).apply {
-                    // The real provider filters with dueDate > after AND dueDate < before, so an
-                    // undated task (0) falls out of any positive range; keep it to test the mapping.
-                    tasks.filter { t -> t.due == 0L || ((after == null || t.due > after) && (before == null || t.due < before)) }
-                        .drop(offset).take(limit)
-                        .forEach { t ->
-                            addRow(arrayOf<Any>(t.id, t.title, t.notes, t.due, if (t.allDay) 1 else 0,
-                                t.completedAt, t.recurrence, t.listId, 0))
-                        }
-                }
+                val overdue = uri.getQueryParameter(TasksOrgContract.Tasks.PARAM_OVERDUE) == "1"
+                val completed = uri.getQueryParameter(TasksOrgContract.Tasks.PARAM_COMPLETED)
+                // The real provider filters with dueDate > after AND dueDate < before, so an
+                // undated task (0) falls out of any positive range; keep it to test the mapping,
+                // unless the query asks for a dated task (due_after=0).
+                taskCursor(
+                    tasks.filter { t ->
+                        val inRange = if (after == 0L) t.due > 0L && (before == null || t.due < before)
+                        else t.due == 0L || ((after == null || t.due > after) && (before == null || t.due < before))
+                        inRange &&
+                            (!overdue || (t.due in 1 until now)) &&
+                            (completed == null || (completed == "1") == (t.completedAt > 0L))
+                    }.drop(offset).take(limit)
+                )
             }
             "lists" -> MatrixCursor(
-                arrayOf(TasksOrgContract.ID, TasksOrgContract.Lists.TITLE, TasksOrgContract.Lists.COLOR, TasksOrgContract.Lists.ACCESS)
+                arrayOf(TasksOrgContract.ID, TasksOrgContract.Lists.TITLE, TasksOrgContract.Lists.COLOR,
+                    TasksOrgContract.Lists.ACCESS, TasksOrgContract.Lists.ACCOUNT_ID)
             ).apply {
-                lists.drop(offset).take(limit).forEach { addRow(arrayOf<Any>(it.id, it.title, it.color, it.access)) }
+                lists.drop(offset).take(limit).forEach { addRow(arrayOf<Any>(it.id, it.title, it.color, it.access, it.accountId)) }
+            }
+            "places" -> MatrixCursor(
+                arrayOf(TasksOrgContract.ID, TasksOrgContract.Places.NAME, TasksOrgContract.Places.DISPLAY_NAME,
+                    TasksOrgContract.Places.ADDRESS, TasksOrgContract.Places.LATITUDE,
+                    TasksOrgContract.Places.LONGITUDE, TasksOrgContract.Places.RADIUS)
+            ).apply {
+                places.drop(offset).take(limit).forEach {
+                    addRow(arrayOf<Any>(it.id, it.name, it.name.ifEmpty { it.address }, it.address, it.latitude, it.longitude, it.radius))
+                }
+            }
+            "accounts" -> MatrixCursor(
+                arrayOf(TasksOrgContract.ID, TasksOrgContract.Accounts.NAME, TasksOrgContract.Accounts.TYPE,
+                    TasksOrgContract.Accounts.ERROR, TasksOrgContract.Accounts.REPEATS_ON_SERVER)
+            ).apply {
+                accounts.drop(offset).take(limit).forEach {
+                    addRow(arrayOf<Any>(it.id, it.name, it.type, it.error, if (it.repeatsOnServer) 1 else 0))
+                }
             }
             "tags" -> MatrixCursor(
                 arrayOf(TasksOrgContract.ID, TasksOrgContract.Tags.NAME, TasksOrgContract.Tags.COLOR)
@@ -534,14 +558,36 @@ class FakeTasksOrgProvider : ContentProvider() {
                         TasksOrgContract.ID, TasksOrgContract.Reminders.TYPE,
                         TasksOrgContract.Reminders.TRIGGER_AT, TasksOrgContract.Reminders.OFFSET_MS,
                         TasksOrgContract.Reminders.REPEAT_COUNT, TasksOrgContract.Reminders.INTERVAL_MS,
+                        TasksOrgContract.Reminders.PLACE_ID,
                     )
                 ).apply {
                     reminders.filter { taskId == null || it.taskId == taskId }
                         .drop(offset).take(limit)
-                        .forEach { addRow(arrayOf<Any>(it.id, it.type, it.triggerAt, it.offsetMs, it.repeatCount, it.intervalMs)) }
+                        .forEach { addRow(arrayOf<Any>(it.id, it.type, it.triggerAt, it.offsetMs, it.repeatCount, it.intervalMs, it.placeId)) }
                 }
             }
             else -> throw IllegalArgumentException("Unknown URI: $uri")
+        }
+    }
+
+    private fun taskCursor(rows: List<TaskRow>): Cursor = MatrixCursor(
+        arrayOf(
+            TasksOrgContract.ID, TasksOrgContract.Tasks.TITLE, TasksOrgContract.Tasks.NOTES,
+            TasksOrgContract.Tasks.DUE_DATE, TasksOrgContract.Tasks.DUE_ALL_DAY,
+            TasksOrgContract.Tasks.START_DATE, TasksOrgContract.Tasks.START_ALL_DAY,
+            TasksOrgContract.Tasks.COMPLETED_AT, TasksOrgContract.Tasks.RECURRENCE,
+            TasksOrgContract.Tasks.REPEAT_FROM, TasksOrgContract.Tasks.PRIORITY,
+            TasksOrgContract.Tasks.LIST_ID, TasksOrgContract.Tasks.IS_READ_ONLY,
+            TasksOrgContract.Tasks.TAG_IDS, TasksOrgContract.Tasks.PLACE_ID,
+            TasksOrgContract.Tasks.CHILD_COUNT, TasksOrgContract.Tasks.UNCOMPLETED_CHILD_COUNT,
+        )
+    ).apply {
+        rows.forEach { t ->
+            addRow(arrayOf<Any>(
+                t.id, t.title, t.notes, t.due, if (t.allDay) 1 else 0, t.startDate, if (t.startAllDay) 1 else 0,
+                t.completedAt, t.recurrence, t.repeatFrom, t.priority, t.listId, 0,
+                taskTags[t.id].orEmpty().joinToString(","), t.placeId, t.childCount, t.uncompletedChildCount,
+            ))
         }
     }
 
@@ -551,6 +597,29 @@ class FakeTasksOrgProvider : ContentProvider() {
             throw UnsupportedOperationException("read-only task")
         }
         updates += uri to ContentValues(values)
+        if (uri.lastPathSegment?.toLongOrNull() in missingTaskIds) return 0
+        // Keep the in-memory rows in step for the cases the tests read back.
+        val id = uri.lastPathSegment?.toLongOrNull()
+        when (uri.pathSegments.getOrNull(1)) {
+            "lists" -> lists.indexOfFirst { it.id == id }.takeIf { it >= 0 }?.let { i ->
+                lists[i] = lists[i].copy(
+                    title = values?.getAsString(TasksOrgContract.Lists.TITLE) ?: lists[i].title,
+                    color = values?.getAsInteger(TasksOrgContract.Lists.COLOR) ?: lists[i].color
+                )
+            }
+            "tags" -> tags.indexOfFirst { it.id == id }.takeIf { it >= 0 }?.let { i ->
+                tags[i] = tags[i].copy(
+                    name = values?.getAsString(TasksOrgContract.Tags.NAME) ?: tags[i].name,
+                    color = values?.getAsInteger(TasksOrgContract.Tags.COLOR) ?: tags[i].color
+                )
+            }
+            "places" -> places.indexOfFirst { it.id == id }.takeIf { it >= 0 }?.let { i ->
+                places[i] = places[i].copy(
+                    name = values?.getAsString(TasksOrgContract.Places.NAME) ?: places[i].name,
+                    radius = values?.getAsInteger(TasksOrgContract.Places.RADIUS) ?: places[i].radius
+                )
+            }
+        }
         return 1
     }
 
@@ -583,10 +652,30 @@ class FakeTasksOrgProvider : ContentProvider() {
                     offsetMs = values?.getAsLong(TasksOrgContract.Reminders.OFFSET_MS) ?: 0L,
                     repeatCount = values?.getAsInteger(TasksOrgContract.Reminders.REPEAT_COUNT) ?: 0,
                     intervalMs = values?.getAsLong(TasksOrgContract.Reminders.INTERVAL_MS) ?: 0L,
+                    placeId = values?.getAsLong(TasksOrgContract.Reminders.PLACE_ID) ?: 0L,
                 )
                 ContentUris.withAppendedId(TasksOrgContract.Reminders.CONTENT_URI, id)
             }
-            else -> ContentUris.withAppendedId(TasksOrgContract.Tasks.CONTENT_URI, nextInsertId)
+            "lists" -> {
+                val id = nextInsertId++
+                lists += ListRow(id, values?.getAsString(TasksOrgContract.Lists.TITLE).orEmpty(),
+                    values?.getAsInteger(TasksOrgContract.Lists.COLOR) ?: 0, "owner",
+                    values?.getAsLong(TasksOrgContract.Lists.ACCOUNT_ID) ?: 0L)
+                ContentUris.withAppendedId(TasksOrgContract.Lists.CONTENT_URI, id)
+            }
+            "places" -> {
+                val lat = values?.getAsDouble(TasksOrgContract.Places.LATITUDE) ?: 0.0
+                val lon = values?.getAsDouble(TasksOrgContract.Places.LONGITUDE) ?: 0.0
+                // Unique by coordinate: the same coordinates return the saved place.
+                val existing = places.firstOrNull { it.latitude == lat && it.longitude == lon }
+                val id = existing?.id ?: (nextInsertId++).also {
+                    places += PlaceRow(it, values?.getAsString(TasksOrgContract.Places.NAME).orEmpty(), lat, lon,
+                        values?.getAsString(TasksOrgContract.Places.ADDRESS).orEmpty(),
+                        values?.getAsInteger(TasksOrgContract.Places.RADIUS) ?: 250)
+                }
+                ContentUris.withAppendedId(TasksOrgContract.Places.CONTENT_URI, id)
+            }
+            else -> ContentUris.withAppendedId(TasksOrgContract.Tasks.CONTENT_URI, nextInsertId++)
         }
     }
 
@@ -604,6 +693,13 @@ class FakeTasksOrgProvider : ContentProvider() {
                 val removed = taskTags[taskId]?.remove(tagId) == true
                 return if (removed) 1 else 0
             }
+        }
+        // lists, tags and places item URIs: /v0/<collection>/{id}
+        val itemId = uri.lastPathSegment?.toLongOrNull()
+        when (uri.pathSegments.getOrNull(1)) {
+            "lists" -> return if (lists.removeAll { it.id == itemId }) 1 else 0
+            "tags" -> return if (tags.removeAll { it.id == itemId }) 1 else 0
+            "places" -> return if (places.removeAll { it.id == itemId }) 1 else 0
         }
         // reminders item URI: /v0/reminders/{id}
         val segs = uri.pathSegments

@@ -229,6 +229,12 @@ fun TasksOrgScreen(
                     }
                 }
             }
+
+            // Fork: version notice, account health, and managing lists, tags and places.
+            if (hasReadPermission) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                TasksOrgManagementSection()
+            }
         }
     }
 }

@@ -126,26 +126,6 @@ class TasksOrgCoordinatorTest {
     }
 
     @Test
-    fun `createTask delegates and re-queries`() = runTest {
-        val draft = TasksOrgTaskDraft(title = "New")
-        coEvery { repository.createTask(draft) } returns TasksOrgWriteResult.Ok(7L)
-
-        assertEquals(TasksOrgWriteResult.Ok(7L), coordinator.createTask(draft))
-        coVerify { repository.createTask(draft) }
-        verify { manager.notifyChanged() }
-    }
-
-    @Test
-    fun `updateTask delegates and re-queries`() = runTest {
-        val patch = TasksOrgTaskPatch(title = TasksOrgTaskPatch.Field.Value("Edited"))
-        coEvery { repository.updateTask(5L, patch) } returns TasksOrgWriteResult.Ok(5L)
-
-        assertEquals(TasksOrgWriteResult.Ok(5L), coordinator.updateTask(5L, patch))
-        coVerify { repository.updateTask(5L, patch) }
-        verify { manager.notifyChanged() }
-    }
-
-    @Test
     fun `deleteTask delegates and re-queries`() = runTest {
         coEvery { repository.deleteTask(5L) } returns TasksOrgWriteResult.Ok(5L)
 
@@ -154,54 +134,114 @@ class TasksOrgCoordinatorTest {
         verify { manager.notifyChanged() }
     }
 
-    @Test
-    fun `a read-only write is surfaced to the caller`() = runTest {
-        val patch = TasksOrgTaskPatch(title = TasksOrgTaskPatch.Field.Value("x"))
-        coEvery { repository.updateTask(5L, patch) } returns TasksOrgWriteResult.ReadOnly
-
-        assertEquals(TasksOrgWriteResult.ReadOnly, coordinator.updateTask(5L, patch))
-    }
-
-    @Test
-    fun `setTaskTags adds the missing tags, creates new ones and removes the dropped ones`() = runTest {
-        // Task currently has tags {1, 2}; we want {2, 3} plus a brand-new "ops".
-        coEvery { repository.getTagIdsForTask(5L) } returns listOf(1L, 2L)
-        coEvery { repository.ensureTag("ops") } returns 9L
-        coEvery { repository.addTagToTask(any(), any()) } returns true
-        coEvery { repository.removeTagFromTask(any(), any()) } returns true
-
-        assertTrue(coordinator.setTaskTags(5L, desiredTagIds = setOf(2L, 3L), newTagNames = listOf("ops")))
-
-        // 3 and 9 are added (not already present); 1 is removed; 2 stays.
-        coVerify { repository.addTagToTask(5L, 3L) }
-        coVerify { repository.addTagToTask(5L, 9L) }
-        coVerify { repository.removeTagFromTask(5L, 1L) }
-        coVerify(exactly = 0) { repository.addTagToTask(5L, 2L) }
-        coVerify(exactly = 0) { repository.removeTagFromTask(5L, 2L) }
-        verify { manager.notifyChanged() }
-    }
-
-    @Test
-    fun `setReminders adds the new ones and deletes the removed ones, keeping the rest`() = runTest {
-        val kept = TasksOrgReminder.AtTime(id = 1L, triggerAtMs = 5000L)
-        val removed = TasksOrgReminder.Relative(id = 2L, anchor = TasksOrgReminder.Relative.Anchor.DUE, offsetMs = -600_000L)
-        coEvery { repository.getReminders(5L) } returns listOf(kept, removed)
-        coEvery { repository.addReminder(any(), any()) } returns 99L
-        coEvery { repository.deleteReminder(any()) } returns true
-
-        // Desired: keep the id-1 reminder, drop id-2, and add a brand-new one (id 0).
-        val added = TasksOrgReminder.Relative(id = 0L, anchor = TasksOrgReminder.Relative.Anchor.DUE, offsetMs = -3_600_000L)
-        assertTrue(coordinator.setReminders(5L, listOf(kept, added)))
-
-        coVerify { repository.deleteReminder(2L) }
-        coVerify { repository.addReminder(5L, added) }
-        coVerify(exactly = 0) { repository.deleteReminder(1L) }
-        verify { manager.notifyChanged() }
-    }
-
     private fun task(completedAt: Long? = null, recurrence: String? = null) = TasksOrgTask(
         id = 5L, title = "Task", notes = "", dueTs = 1000L, isAllDay = false, startTs = 1000L, endTs = 1000L,
         startDay = 20261029, endDay = 20261029, completedAt = completedAt, recurrence = recurrence,
         listId = 1L, listTitle = "Inbox", listColor = 0, isReadOnly = false
     )
+}
+
+/** The coordinator's atomic save and the read-back that tells whether Tasks.org adjusted a rule. */
+class TasksOrgCoordinatorSaveTest {
+
+    private val repository: TasksOrgRepository = mockk()
+    private val manager: TasksOrgManager = mockk(relaxed = true)
+    private val dataStore: KashCalDataStore = mockk(relaxed = true)
+    private val coordinator = TasksOrgCoordinator(repository, manager, dataStore)
+
+    private fun task(recurrence: String? = null) = TasksOrgTask(
+        id = 5L, title = "T", notes = "", dueTs = 1000L, isAllDay = false,
+        startTs = 1000L, endTs = 1000L, startDay = 20261029, endDay = 20261029,
+        completedAt = null, recurrence = recurrence, listId = 1L, listTitle = "", listColor = 0, isReadOnly = false
+    )
+
+    private val moveDue = TasksOrgTaskPatch(due = TasksOrgTaskPatch.Field.Value(org.onekash.kashcal.data.tasks_org.TasksOrgDate(9_000L, false)))
+    private val extras = org.onekash.kashcal.data.tasks_org.TasksOrgTaskExtras()
+
+    @Test
+    fun `create saves in one batch and re-queries`() = runTest {
+        coEvery { repository.createTaskWithExtras(any(), any()) } returns TasksOrgWriteResult.Ok(7L)
+
+        val result = coordinator.createTask(TasksOrgTaskDraft(title = "T"), extras)
+
+        assertEquals(TasksOrgWriteResult.Ok(7L), result)
+        coVerify(exactly = 1) { repository.createTaskWithExtras(any(), extras) }
+        verify { manager.notifyChanged() }
+    }
+
+    @Test
+    fun `an edit that moves the date of a repeating task reports a rule Tasks_org changed`() = runTest {
+        coEvery { repository.updateTaskWithExtras(5L, moveDue, extras) } returns TasksOrgWriteResult.Ok(5L)
+        // Read back: the monthly 2nd-Tuesday rule was re-anchored.
+        coEvery { repository.getTask(5L) } returns task(recurrence = "FREQ=MONTHLY;BYDAY=3WE")
+
+        val outcome = coordinator.updateTask(task(recurrence = "FREQ=MONTHLY;BYDAY=2TU"), moveDue, extras)
+
+        assertEquals(TasksOrgWriteResult.Ok(5L), outcome.result)
+        assertTrue(outcome.recurrenceAdjusted)
+    }
+
+    @Test
+    fun `an edit that leaves the rule as it was reports no adjustment`() = runTest {
+        coEvery { repository.updateTaskWithExtras(5L, moveDue, extras) } returns TasksOrgWriteResult.Ok(5L)
+        // The stored form may drop the RRULE prefix; that is not a change.
+        coEvery { repository.getTask(5L) } returns task(recurrence = "FREQ=DAILY")
+
+        val outcome = coordinator.updateTask(task(recurrence = "RRULE:FREQ=DAILY"), moveDue, extras)
+
+        assertFalse(outcome.recurrenceAdjusted)
+    }
+
+    @Test
+    fun `no read-back is made when the date did not move, the task doesn't repeat or the rule was edited`() = runTest {
+        coEvery { repository.updateTaskWithExtras(any(), any(), any()) } returns TasksOrgWriteResult.Ok(5L)
+
+        val titleOnly = TasksOrgTaskPatch(title = TasksOrgTaskPatch.Field.Value("x"))
+        assertFalse(coordinator.updateTask(task(recurrence = "FREQ=DAILY"), titleOnly, extras).recurrenceAdjusted)
+        assertFalse(coordinator.updateTask(task(recurrence = null), moveDue, extras).recurrenceAdjusted)
+        val ruleEdited = moveDue.copy(recurrence = TasksOrgTaskPatch.Field.Value("FREQ=WEEKLY"))
+        assertFalse(coordinator.updateTask(task(recurrence = "FREQ=DAILY"), ruleEdited, extras).recurrenceAdjusted)
+
+        coVerify(exactly = 0) { repository.getTask(any()) }
+    }
+
+    @Test
+    fun `a read-only target is surfaced to the caller`() = runTest {
+        coEvery { repository.updateTaskWithExtras(any(), any(), any()) } returns TasksOrgWriteResult.ReadOnly
+
+        val outcome = coordinator.updateTask(task(), moveDue, extras)
+
+        assertEquals(TasksOrgWriteResult.ReadOnly, outcome.result)
+        assertFalse(outcome.recurrenceAdjusted)
+    }
+
+    @Test
+    fun `a refused edit is not read back`() = runTest {
+        coEvery { repository.updateTaskWithExtras(any(), any(), any()) } returns TasksOrgWriteResult.Refused
+
+        val outcome = coordinator.updateTask(task(recurrence = "FREQ=DAILY"), moveDue, extras)
+
+        assertEquals(TasksOrgWriteResult.Refused, outcome.result)
+        assertFalse(outcome.recurrenceAdjusted)
+        coVerify(exactly = 0) { repository.getTask(any()) }
+    }
+
+    @Test
+    fun `list, tag and place changes re-query the views`() = runTest {
+        coEvery { repository.createList(any(), any(), any()) } returns TasksOrgWriteResult.Ok(1L)
+        coEvery { repository.updateList(any(), any(), any()) } returns TasksOrgWriteResult.Ok(1L)
+        coEvery { repository.deleteList(any()) } returns TasksOrgWriteResult.Ok(1L)
+        coEvery { repository.updateTag(any(), any(), any()) } returns TasksOrgWriteResult.Ok(1L)
+        coEvery { repository.deleteTag(any()) } returns TasksOrgWriteResult.Ok(1L)
+        coEvery { repository.deletePlace(any()) } returns TasksOrgWriteResult.Ok(1L)
+
+        coordinator.createList(4L, "x")
+        coordinator.updateList(1L, "y")
+        coordinator.deleteList(1L)
+        coordinator.updateTag(1L, "y")
+        coordinator.deleteTag(1L)
+        coordinator.deletePlace(1L)
+
+        verify(exactly = 6) { manager.notifyChanged() }
+    }
 }

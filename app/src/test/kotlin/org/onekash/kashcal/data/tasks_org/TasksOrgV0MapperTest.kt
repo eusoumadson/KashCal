@@ -142,3 +142,146 @@ class TasksOrgV0MapperTest {
         assertFalse(values.containsKey(TasksOrgContract.Reminders.OFFSET_MS))
     }
 }
+
+/** The fork's later mapper pieces: every reminder type, the richer task row, places and accounts. */
+@RunWith(RobolectricTestRunner::class)
+@Config(manifest = Config.NONE, sdk = [33])
+class TasksOrgV0MapperFeaturesTest {
+
+    private val saoPaulo = ZoneId.of("America/Sao_Paulo")
+    private val mapper = TasksOrgV0Mapper().apply { zone = saoPaulo }
+
+    private fun cursor(columns: Array<String>, vararg row: Any): android.database.Cursor =
+        android.database.MatrixCursor(columns).apply { addRow(row) }.also { it.moveToFirst() }
+
+    private val reminderColumns = arrayOf(
+        TasksOrgContract.ID, TasksOrgContract.Reminders.TYPE, TasksOrgContract.Reminders.TRIGGER_AT,
+        TasksOrgContract.Reminders.OFFSET_MS, TasksOrgContract.Reminders.PLACE_ID
+    )
+
+    @Test
+    fun `every reminder type is read`() {
+        assertEquals(
+            TasksOrgReminder.Random(id = 4, periodMs = 86_400_000L),
+            mapper.readReminder(cursor(reminderColumns, 4L, "random", 0L, 86_400_000L, 0L))
+        )
+        assertEquals(
+            TasksOrgReminder.Snooze(id = 5, triggerAtMs = 777L),
+            mapper.readReminder(cursor(reminderColumns, 5L, "snooze", 777L, 0L, 0L))
+        )
+        assertEquals(
+            TasksOrgReminder.Location(6, 9L, TasksOrgReminder.Location.Kind.ARRIVAL),
+            mapper.readReminder(cursor(reminderColumns, 6L, "location_arrival", 0L, 0L, 9L))
+        )
+        assertEquals(
+            TasksOrgReminder.Location(7, 9L, TasksOrgReminder.Location.Kind.DEPARTURE),
+            mapper.readReminder(cursor(reminderColumns, 7L, "location_departure", 0L, 0L, 9L))
+        )
+    }
+
+    @Test
+    fun `a reminder type from a later Tasks_org is skipped`() {
+        assertEquals(null, mapper.readReminder(cursor(reminderColumns, 8L, "something_new", 0L, 0L, 0L)))
+    }
+
+    @Test
+    fun `each new reminder type sends only the columns that apply to it`() {
+        val random = mapper.reminderInsertValues(1L, TasksOrgReminder.Random(periodMs = 120_000L))
+        assertEquals("random", random.getAsString(TasksOrgContract.Reminders.TYPE))
+        assertEquals(120_000L, random.getAsLong(TasksOrgContract.Reminders.OFFSET_MS))
+        assertFalse(random.containsKey(TasksOrgContract.Reminders.TRIGGER_AT))
+        assertFalse(random.containsKey(TasksOrgContract.Reminders.PLACE_ID))
+
+        val snooze = mapper.reminderInsertValues(1L, TasksOrgReminder.Snooze(triggerAtMs = 55L))
+        assertEquals("snooze", snooze.getAsString(TasksOrgContract.Reminders.TYPE))
+        assertEquals(55L, snooze.getAsLong(TasksOrgContract.Reminders.TRIGGER_AT))
+        assertFalse(snooze.containsKey(TasksOrgContract.Reminders.OFFSET_MS))
+
+        val arrival = mapper.reminderInsertValues(1L, TasksOrgReminder.Location(placeId = 9L, kind = TasksOrgReminder.Location.Kind.ARRIVAL))
+        assertEquals("location_arrival", arrival.getAsString(TasksOrgContract.Reminders.TYPE))
+        assertEquals(9L, arrival.getAsLong(TasksOrgContract.Reminders.PLACE_ID))
+        assertFalse(arrival.containsKey(TasksOrgContract.Reminders.TRIGGER_AT))
+        assertFalse(arrival.containsKey(TasksOrgContract.Reminders.OFFSET_MS))
+    }
+
+    @Test
+    fun `a task row carries tags, subtasks, place, start and repeat basis`() {
+        val columns = arrayOf(
+            TasksOrgContract.ID, TasksOrgContract.Tasks.TITLE, TasksOrgContract.Tasks.DUE_DATE, TasksOrgContract.Tasks.DUE_ALL_DAY,
+            TasksOrgContract.Tasks.START_DATE, TasksOrgContract.Tasks.START_ALL_DAY, TasksOrgContract.Tasks.REPEAT_FROM,
+            TasksOrgContract.Tasks.TAG_IDS, TasksOrgContract.Tasks.CHILD_COUNT, TasksOrgContract.Tasks.UNCOMPLETED_CHILD_COUNT,
+            TasksOrgContract.Tasks.PLACE_ID, TasksOrgContract.Tasks.LIST_ID, TasksOrgContract.Tasks.PRIORITY
+        )
+        val tags = mapOf(1L to TasksOrgTag(1, "a", 0), 3L to TasksOrgTag(3, "c", 0))
+        val task = mapper.readTask(
+            cursor(columns, 7L, "T", 1_000L, 0, 500L, 1, "completion_date", "1,2,3", 4, 2, 9L, 1L, "medium"),
+            mapOf(1L to TasksOrgList(1, "L", 0, false)), tags
+        )!!
+
+        // Tag 2 is unknown (deleted or not loaded) and is skipped, order is kept.
+        assertEquals(listOf("a", "c"), task.tags)
+        assertEquals(4, task.childCount)
+        assertEquals(2, task.uncompletedChildCount)
+        assertEquals(9L, task.placeId)
+        assertEquals(TasksOrgDate(500L, allDay = true), task.hideUntil)
+        assertEquals(TasksOrgRepeatFrom.COMPLETION_DATE, task.repeatFrom)
+        assertEquals(TasksOrgPriority.MEDIUM, task.priority)
+    }
+
+    @Test
+    fun `a task without a start date has none`() {
+        val columns = arrayOf(TasksOrgContract.ID, TasksOrgContract.Tasks.DUE_DATE)
+        val task = mapper.readTask(cursor(columns, 1L, 1_000L), emptyMap())!!
+        assertEquals(null, task.hideUntil)
+        assertEquals(TasksOrgRepeatFrom.DUE_DATE, task.repeatFrom)
+        assertEquals(emptyList<String>(), task.tags)
+    }
+
+    @Test
+    fun `a place and an account are read`() {
+        val place = mapper.readPlace(
+            cursor(
+                arrayOf(TasksOrgContract.ID, TasksOrgContract.Places.NAME, TasksOrgContract.Places.DISPLAY_NAME,
+                    TasksOrgContract.Places.ADDRESS, TasksOrgContract.Places.LATITUDE, TasksOrgContract.Places.LONGITUDE,
+                    TasksOrgContract.Places.RADIUS),
+                3L, "Home", "Home", "221B Baker St", 51.5, -0.1, 150
+            )
+        )
+        assertEquals(TasksOrgPlace(3, "Home", "Home", "221B Baker St", 51.5, -0.1, 150), place)
+
+        val account = mapper.readAccount(
+            cursor(
+                arrayOf(TasksOrgContract.ID, TasksOrgContract.Accounts.NAME, TasksOrgContract.Accounts.TYPE,
+                    TasksOrgContract.Accounts.ERROR, TasksOrgContract.Accounts.REPEATS_ON_SERVER),
+                2L, "me", "caldav", "unauthorized", 1
+            )
+        )
+        assertEquals(TasksOrgAccount(2, "me", "caldav", "unauthorized", true), account)
+        assertTrue(account.needsAttention)
+    }
+
+    @Test
+    fun `list, tag and place writes send only what is given`() {
+        val list = mapper.listInsertValues(4L, "Groceries", 7)
+        assertEquals(4L, list.getAsLong(TasksOrgContract.Lists.ACCOUNT_ID))
+
+        assertEquals(setOf(TasksOrgContract.Lists.TITLE), mapper.listUpdateValues("x", null).keySet())
+        assertEquals(setOf(TasksOrgContract.Lists.COLOR), mapper.listUpdateValues(null, 3).keySet())
+        assertEquals(setOf(TasksOrgContract.Tags.NAME), mapper.tagUpdateValues("x", null).keySet())
+        assertEquals(setOf(TasksOrgContract.Places.RADIUS), mapper.placeUpdateValues(null, null, 90).keySet())
+        // Coordinates are fixed after creation, so an update never sends them.
+        assertFalse(mapper.placeUpdateValues("n", "a", 1).containsKey(TasksOrgContract.Places.LATITUDE))
+    }
+
+    @Test
+    fun `a start date patch writes its flag with it, and clearing zeroes both`() {
+        val set = mapper.updateValues(TasksOrgTaskPatch(start = TasksOrgTaskPatch.Field.Value(TasksOrgDate(
+            LocalDateTime.of(2026, 11, 1, 15, 0).atZone(saoPaulo).toInstant().toEpochMilli(), allDay = true))))
+        assertEquals(LocalDateTime.of(2026, 11, 1, 0, 0).atZone(saoPaulo).toInstant().toEpochMilli(), set.getAsLong(TasksOrgContract.Tasks.START_DATE))
+        assertEquals(1, set.getAsInteger(TasksOrgContract.Tasks.START_ALL_DAY))
+
+        val cleared = mapper.updateValues(TasksOrgTaskPatch(start = TasksOrgTaskPatch.Field.Value(null)))
+        assertEquals(0L, cleared.getAsLong(TasksOrgContract.Tasks.START_DATE))
+        assertEquals(0, cleared.getAsInteger(TasksOrgContract.Tasks.START_ALL_DAY))
+    }
+}

@@ -1,36 +1,30 @@
 package org.onekash.kashcal.ui.components
 
+import android.content.Intent
 import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,12 +37,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.onekash.kashcal.R
+import org.onekash.kashcal.data.tasks_org.TasksOrgContract
+import org.onekash.kashcal.data.tasks_org.TasksOrgLocation
+import org.onekash.kashcal.data.tasks_org.TasksOrgPlace
+import org.onekash.kashcal.data.tasks_org.TasksOrgPlaceDraft
 import org.onekash.kashcal.data.tasks_org.TasksOrgPriority
 import org.onekash.kashcal.data.tasks_org.TasksOrgReminder
+import org.onekash.kashcal.data.tasks_org.TasksOrgRepeatFrom
+import org.onekash.kashcal.domain.tasks.RecurrenceChoice
 import org.onekash.kashcal.util.DateTimeUtils
-import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.ZoneId
 
 /**
@@ -60,6 +58,11 @@ import java.time.ZoneId
  * [TaskEditorState.forEdit]) and persists the result. The sheet enforces a non-blank title and
  * writes the all-day flag alongside the date by construction ([TaskEditorState.toDraft] /
  * [TaskEditorState.buildPatch]).
+ *
+ * Subtasks are not edited here: Tasks.org manages them, so an edited task offers a button that
+ * opens it there.
+ *
+ * @param onCreatePlace saves a new place and reports it (null when Tasks.org refused it)
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -69,7 +72,8 @@ fun TaskEditorSheet(
     onDelete: (Long) -> Unit,
     onDismiss: () -> Unit,
     timeFormat: String = "system",
-    zone: ZoneId = ZoneId.systemDefault()
+    zone: ZoneId = ZoneId.systemDefault(),
+    onCreatePlace: (TasksOrgPlaceDraft, (TasksOrgPlace?) -> Unit) -> Unit = { _, done -> done(null) }
 ) {
     val context = LocalContext.current
     val is24Hour = remember(timeFormat) {
@@ -86,23 +90,33 @@ fun TaskEditorSheet(
     var listId by rememberSaveable { mutableStateOf(initial.listId) }
     var dueMs by rememberSaveable { mutableStateOf(initial.dueMs) }
     var isAllDay by rememberSaveable { mutableStateOf(initial.isAllDay) }
+    var startMs by rememberSaveable { mutableStateOf(initial.startMs) }
+    var startAllDay by rememberSaveable { mutableStateOf(initial.startAllDay) }
     var priority by rememberSaveable { mutableStateOf(initial.priority) }
-    var selectedTagIds by rememberSaveable {
-        mutableStateOf(initial.selectedTagIds.toList())
-    }
-    // Reminders aren't Parcelable-trivial; kept in a plain remember keyed to the editor.
+    var selectedTagIds by rememberSaveable { mutableStateOf(initial.selectedTagIds.toList()) }
+    var newTagNames by rememberSaveable { mutableStateOf(initial.newTagNames) }
+    var newTagText by rememberSaveable { mutableStateOf("") }
+    // Not Parcelable-trivial; plain remember. The host closes the editor on recreation anyway.
     var reminders by remember { mutableStateOf(initial.reminders) }
+    var recurrence by remember { mutableStateOf(initial.recurrence) }
+    var repeatFrom by remember { mutableStateOf(initial.repeatFrom) }
+    var places by remember { mutableStateOf(initial.allPlaces) }
+    var location by remember { mutableStateOf(initial.location) }
 
-    var showDatePicker by remember { mutableStateOf(false) }
-    var showTimePicker by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showTitleError by remember { mutableStateOf(false) }
+    var showNewPlace by remember { mutableStateOf(false) }
+    var showRepeatDueNote by remember { mutableStateOf(false) }
 
     fun current(): TaskEditorState = initial.copy(
-        title = title, notes = notes, listId = listId, dueMs = dueMs,
-        isAllDay = isAllDay, priority = priority, selectedTagIds = selectedTagIds.toSet(),
-        reminders = reminders
+        title = title, notes = notes, listId = listId, dueMs = dueMs, isAllDay = isAllDay,
+        startMs = startMs, startAllDay = startAllDay, priority = priority,
+        selectedTagIds = selectedTagIds.toSet(), newTagNames = newTagNames, reminders = reminders,
+        recurrence = recurrence, repeatFrom = repeatFrom, allPlaces = places, location = location
     )
+
+    // Drives the side-effect notice as the user edits, not only the initial state.
+    val liveState = current()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -145,10 +159,7 @@ fun TaskEditorSheet(
             )
 
             if (initial.writableLists.size > 1) {
-                Text(
-                    stringResource(R.string.task_editor_list_label),
-                    style = MaterialTheme.typography.labelLarge
-                )
+                Text(stringResource(R.string.task_editor_list_label), style = MaterialTheme.typography.labelLarge)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     initial.writableLists.forEach { list ->
                         FilterChip(
@@ -161,61 +172,58 @@ fun TaskEditorSheet(
             }
 
             // ----- Due date -----
-            Text(
-                stringResource(R.string.task_editor_due_label),
-                style = MaterialTheme.typography.labelLarge
+            TaskDateField(
+                label = stringResource(R.string.task_editor_due_label),
+                emptyLabel = stringResource(R.string.task_editor_set_due),
+                ms = dueMs,
+                allDay = isAllDay,
+                timeFormat = timeFormat,
+                is24Hour = is24Hour,
+                zone = zone,
+                onChange = { ms, allDay ->
+                    dueMs = ms
+                    isAllDay = allDay
+                    // A repeat rule needs a due date.
+                    if (ms == null) recurrence = RecurrenceChoice.None
+                }
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                AssistChip(
-                    onClick = { showDatePicker = true },
-                    label = {
-                        Text(
-                            dueMs?.let { DateTimeUtils.formatEventDateShort(it, isAllDay) }
-                                ?: stringResource(R.string.task_editor_set_due)
-                        )
+
+            // ----- Start date (hidden until) -----
+            TaskDateField(
+                label = stringResource(R.string.task_editor_start_label),
+                emptyLabel = stringResource(R.string.task_editor_set_start),
+                ms = startMs,
+                allDay = startAllDay,
+                timeFormat = timeFormat,
+                is24Hour = is24Hour,
+                zone = zone,
+                onChange = { ms, allDay -> startMs = ms; startAllDay = allDay }
+            )
+
+            // ----- Repeat -----
+            TaskRecurrenceSection(
+                choice = recurrence,
+                onChoice = { choice ->
+                    recurrence = choice
+                    if (choice != RecurrenceChoice.None && dueMs == null) {
+                        // Without a due date Tasks.org would pick today; say so and do it here.
+                        dueMs = LocalDate.now(zone).atStartOfDay(zone).toInstant().toEpochMilli()
+                        isAllDay = true
+                        showRepeatDueNote = true
                     }
-                )
-                if (dueMs != null && !isAllDay) {
-                    Spacer(Modifier.width(8.dp))
-                    AssistChip(
-                        onClick = { showTimePicker = true },
-                        label = {
-                            Text(
-                                DateTimeUtils.formatEventTime(
-                                    dueMs!!, false, DateTimeUtils.getTimePattern(timeFormat, is24Hour)
-                                )
-                            )
-                        }
-                    )
-                }
-                if (dueMs != null) {
-                    Spacer(Modifier.width(8.dp))
-                    TextButton(onClick = { dueMs = null }) { Text("\u2715") }
-                }
+                },
+                repeatFrom = repeatFrom,
+                onRepeatFrom = { repeatFrom = it }
+            )
+            if (showRepeatDueNote && recurrence != RecurrenceChoice.None) {
+                NoteText(stringResource(R.string.task_repeat_needs_due))
             }
-            if (dueMs != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        stringResource(R.string.task_editor_all_day),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Switch(
-                        checked = isAllDay,
-                        onCheckedChange = { allDay ->
-                            isAllDay = allDay
-                            // Snap to local midnight / noon so the flag and value agree.
-                            dueMs = dueMs?.let { adjustForAllDay(it, allDay, zone) }
-                        }
-                    )
-                }
+            if (liveState.dueChangeHasSideEffects) {
+                NoteText(stringResource(R.string.task_editor_side_effects_note))
             }
 
             // ----- Priority -----
-            Text(
-                stringResource(R.string.task_editor_priority_label),
-                style = MaterialTheme.typography.labelLarge
-            )
+            Text(stringResource(R.string.task_editor_priority_label), style = MaterialTheme.typography.labelLarge)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TasksOrgPriority.entries.forEach { p ->
                     FilterChip(
@@ -226,35 +234,60 @@ fun TaskEditorSheet(
                 }
             }
 
-            // ----- Tags (fork, Phase 4): toggle existing Tasks.org tags on the task. -----
-            if (initial.allTags.isNotEmpty()) {
-                Text(
-                    stringResource(R.string.task_editor_tags_label),
-                    style = MaterialTheme.typography.labelLarge
-                )
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    initial.allTags.forEach { tag ->
-                        val selected = tag.id in selectedTagIds
-                        FilterChip(
-                            selected = selected,
-                            onClick = {
-                                selectedTagIds = if (selected) {
-                                    selectedTagIds - tag.id
-                                } else {
-                                    selectedTagIds + tag.id
-                                }
-                            },
-                            label = { Text(tag.name) }
-                        )
-                    }
+            // ----- Tags: toggle existing ones, or type a new one. -----
+            Text(stringResource(R.string.task_editor_tags_label), style = MaterialTheme.typography.labelLarge)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                initial.allTags.forEach { tag ->
+                    val selected = tag.id in selectedTagIds
+                    FilterChip(
+                        selected = selected,
+                        onClick = {
+                            selectedTagIds = if (selected) selectedTagIds - tag.id else selectedTagIds + tag.id
+                        },
+                        label = { Text(tag.name) }
+                    )
+                }
+                newTagNames.forEach { name ->
+                    FilterChip(
+                        selected = true,
+                        onClick = { newTagNames = newTagNames - name },
+                        label = { Text("$name  \u2715") }
+                    )
                 }
             }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = newTagText,
+                    onValueChange = { newTagText = it },
+                    label = { Text(stringResource(R.string.task_editor_new_tag_hint)) },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(
+                    enabled = newTagText.isNotBlank(),
+                    onClick = {
+                        val name = newTagText.trim()
+                        val existing = initial.allTags.firstOrNull { it.name.equals(name, ignoreCase = true) }
+                        when {
+                            // Tag names are unique case-insensitively: an existing name selects it.
+                            existing != null -> if (existing.id !in selectedTagIds) selectedTagIds = selectedTagIds + existing.id
+                            newTagNames.none { it.equals(name, ignoreCase = true) } -> newTagNames = newTagNames + name
+                        }
+                        newTagText = ""
+                    }
+                ) { Text(stringResource(R.string.task_editor_add_tag)) }
+            }
 
-            // ----- Reminders (fork, Phase 4): time-based reminders on the task. -----
-            Text(
-                stringResource(R.string.task_editor_reminders_label),
-                style = MaterialTheme.typography.labelLarge
+            // ----- Place and location reminders -----
+            TaskPlaceSection(
+                places = places,
+                location = location,
+                onLocation = { location = it },
+                onNewPlace = { showNewPlace = true }
             )
+
+            // ----- Reminders -----
+            Text(stringResource(R.string.task_editor_reminders_label), style = MaterialTheme.typography.labelLarge)
             if (reminders.isNotEmpty()) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     reminders.forEach { reminder ->
@@ -280,12 +313,14 @@ fun TaskEditorSheet(
                 }
             }
 
-            if (initial.isRecurring) {
-                Text(
-                    "\uD83D\uDD01 " + stringResource(R.string.task_editor_recurring_note),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            // ----- Subtasks live in Tasks.org -----
+            initial.original?.let { task ->
+                if (task.hasSubtasks) {
+                    NoteText(stringResource(R.string.task_subtasks_summary, task.childCount, task.uncompletedChildCount))
+                }
+                TextButton(onClick = { openTaskInTasksOrg(context, task.id) }) {
+                    Text(stringResource(R.string.task_subtasks_manage))
+                }
             }
 
             // ----- Actions -----
@@ -299,67 +334,26 @@ fun TaskEditorSheet(
                     }
                 }
                 Spacer(Modifier.width(0.dp).weight(1f))
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(R.string.task_editor_cancel))
-                }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.task_editor_cancel)) }
                 Button(onClick = {
-                    if (title.isBlank()) {
-                        showTitleError = true
-                    } else {
-                        onSave(current())
-                    }
-                }) {
-                    Text(stringResource(R.string.task_editor_save))
-                }
+                    if (title.isBlank()) showTitleError = true else onSave(current())
+                }) { Text(stringResource(R.string.task_editor_save)) }
             }
         }
     }
 
-    if (showDatePicker) {
-        val pickerState = rememberDatePickerState(
-            initialSelectedDateMillis = dueMs ?: System.currentTimeMillis()
-        )
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    pickerState.selectedDateMillis?.let { picked ->
-                        // DatePicker returns UTC midnight; keep the existing time of day for a
-                        // timed task, else snap to all-day midnight/noon in the local zone.
-                        dueMs = combineDateWithExistingTime(picked, dueMs, isAllDay, zone)
+    if (showNewPlace) {
+        NewPlaceDialog(
+            onDismiss = { showNewPlace = false },
+            onSave = { draft ->
+                showNewPlace = false
+                onCreatePlace(draft) { created ->
+                    if (created != null) {
+                        places = places.filter { it.id != created.id } + created
+                        location = TasksOrgLocation(created.id, arrival = true, departure = false)
                     }
-                    showDatePicker = false
-                }) { Text(stringResource(R.string.task_editor_save)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text(stringResource(R.string.task_editor_cancel))
                 }
             }
-        ) { DatePicker(state = pickerState) }
-    }
-
-    if (showTimePicker && dueMs != null) {
-        val initialTime = remember { Instant.ofEpochMilli(dueMs!!).atZone(zone).toLocalTime() }
-        val timeState = rememberTimePickerState(
-            initialHour = initialTime.hour,
-            initialMinute = initialTime.minute,
-            is24Hour = is24Hour
-        )
-        AlertDialog(
-            onDismissRequest = { showTimePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    dueMs = dueMs?.let { setTimeOfDay(it, timeState.hour, timeState.minute, zone) }
-                    showTimePicker = false
-                }) { Text(stringResource(R.string.task_editor_save)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showTimePicker = false }) {
-                    Text(stringResource(R.string.task_editor_cancel))
-                }
-            },
-            text = { TimePicker(state = timeState) }
         )
     }
 
@@ -383,7 +377,23 @@ fun TaskEditorSheet(
     }
 }
 
-private fun priorityLabel(p: TasksOrgPriority): Int = when (p) {
+@Composable
+private fun NoteText(text: String) {
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+/** Opens the task [taskId] in Tasks.org, where subtasks are managed. */
+internal fun openTaskInTasksOrg(context: android.content.Context, taskId: Long) {
+    val intent = Intent(Intent.ACTION_VIEW, TasksOrgContract.Tasks.viewUri(taskId))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    try {
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        // Tasks.org uninstalled since the editor opened, or no activity handles the URI.
+    }
+}
+
+internal fun priorityLabel(p: TasksOrgPriority): Int = when (p) {
     TasksOrgPriority.HIGH -> R.string.task_priority_high
     TasksOrgPriority.MEDIUM -> R.string.task_priority_medium
     TasksOrgPriority.LOW -> R.string.task_priority_low
@@ -404,6 +414,7 @@ private fun reminderPresets(hasDue: Boolean): List<ReminderPreset> = buildList {
     add(ReminderPreset(R.string.task_reminder_10_min) { relativeBefore(10 * 60_000L) })
     add(ReminderPreset(R.string.task_reminder_1_hour) { relativeBefore(60 * 60_000L) })
     add(ReminderPreset(R.string.task_reminder_1_day) { relativeBefore(24 * 60 * 60_000L) })
+    add(ReminderPreset(R.string.task_reminder_add_random) { TasksOrgReminder.Random(periodMs = 24 * 60 * 60_000L) })
 }
 
 /** A reminder that fires [beforeMs] before the due date. */
@@ -411,10 +422,11 @@ private fun relativeBefore(beforeMs: Long): TasksOrgReminder =
     TasksOrgReminder.Relative(anchor = TasksOrgReminder.Relative.Anchor.DUE, offsetMs = -beforeMs)
 
 /** Two reminders are "the same" for de-duping by type, anchor and timing (ignoring id). */
-private fun sameReminder(a: TasksOrgReminder, b: TasksOrgReminder): Boolean = when {
+internal fun sameReminder(a: TasksOrgReminder, b: TasksOrgReminder): Boolean = when {
     a is TasksOrgReminder.AtTime && b is TasksOrgReminder.AtTime -> a.triggerAtMs == b.triggerAtMs
     a is TasksOrgReminder.Relative && b is TasksOrgReminder.Relative ->
         a.anchor == b.anchor && a.offsetMs == b.offsetMs
+    a is TasksOrgReminder.Random && b is TasksOrgReminder.Random -> a.periodMs == b.periodMs
     else -> false
 }
 
@@ -422,8 +434,11 @@ private fun sameReminder(a: TasksOrgReminder, b: TasksOrgReminder): Boolean = wh
 @Composable
 private fun reminderLabel(reminder: TasksOrgReminder, is24Hour: Boolean, timeFormat: String): String =
     when (reminder) {
-        is TasksOrgReminder.AtTime -> DateTimeUtils.formatEventDateShort(reminder.triggerAtMs, false) +
-            " " + DateTimeUtils.formatEventTime(reminder.triggerAtMs, false, DateTimeUtils.getTimePattern(timeFormat, is24Hour))
+        is TasksOrgReminder.AtTime -> formatInstant(reminder.triggerAtMs, is24Hour, timeFormat)
+        is TasksOrgReminder.Snooze ->
+            stringResource(R.string.task_reminder_snoozed_until, formatInstant(reminder.triggerAtMs, is24Hour, timeFormat))
+        is TasksOrgReminder.Random ->
+            stringResource(R.string.task_reminder_random, durationLabel(reminder.periodMs))
         is TasksOrgReminder.Relative -> {
             val before = reminder.offsetMs < 0
             val mins = kotlin.math.abs(reminder.offsetMs) / 60_000L
@@ -434,42 +449,27 @@ private fun reminderLabel(reminder: TasksOrgReminder, is24Hour: Boolean, timeFor
                 else -> quantityLikeLabel(mins, R.string.task_reminder_mins_before, before)
             }
         }
+        // Location reminders are edited through the place section, never as chips here.
+        is TasksOrgReminder.Location -> ""
     }
+
+@Composable
+private fun formatInstant(ms: Long, is24Hour: Boolean, timeFormat: String): String =
+    DateTimeUtils.formatEventDateShort(ms, false) + " " +
+        DateTimeUtils.formatEventTime(ms, false, DateTimeUtils.getTimePattern(timeFormat, is24Hour))
+
+@Composable
+private fun durationLabel(ms: Long): String {
+    val mins = ms / 60_000L
+    return when {
+        mins % (24 * 60) == 0L -> stringResource(R.string.task_duration_days, mins / (24 * 60))
+        mins % 60 == 0L -> stringResource(R.string.task_duration_hours, mins / 60)
+        else -> stringResource(R.string.task_duration_minutes, mins)
+    }
+}
 
 @Composable
 private fun quantityLikeLabel(value: Long, res: Int, before: Boolean): String {
     val base = stringResource(res, value)
     return if (before) base else "+$base"
-}
-
-/**
- * Keeps the calendar day of [utcMidnightMs] (as a [DatePicker] returns it) while preserving the
- * time of day of [existing] for a timed task, or snapping to local midnight for an all-day one.
- */
-private fun combineDateWithExistingTime(
-    utcMidnightMs: Long,
-    existing: Long?,
-    allDay: Boolean,
-    zone: ZoneId
-): Long {
-    val date = Instant.ofEpochMilli(utcMidnightMs).atZone(ZoneId.of("UTC")).toLocalDate()
-    val time = if (allDay || existing == null) {
-        LocalTime.MIDNIGHT
-    } else {
-        Instant.ofEpochMilli(existing).atZone(zone).toLocalTime()
-    }
-    return date.atTime(time).atZone(zone).toInstant().toEpochMilli()
-}
-
-/** Replaces the time of day of [ms] with [hour]:[minute] in [zone]. */
-private fun setTimeOfDay(ms: Long, hour: Int, minute: Int, zone: ZoneId): Long {
-    val date = Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
-    return date.atTime(hour, minute).atZone(zone).toInstant().toEpochMilli()
-}
-
-/** Snaps [ms] to local midnight when turning all-day on; leaves it otherwise. */
-private fun adjustForAllDay(ms: Long, allDay: Boolean, zone: ZoneId): Long {
-    if (!allDay) return ms
-    val date: LocalDate = Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
-    return date.atStartOfDay(zone).toInstant().toEpochMilli()
 }
