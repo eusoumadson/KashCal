@@ -239,11 +239,10 @@ Tasks.org" do quick view agora abre a **tarefa**, não só o app (com o app como
   batch, mas não o rollback em caso de falha. Essa garantia vem do `applyBatch` do Tasks.org.
 - Não há testes de UI (Compose) nem instrumentados.
 
-## 13. Pendências
+## 13. Pendências e distribuição
 
-- **Validar em dispositivo com o Tasks.org real** (roteiro em `TASKS_ORG_DEVICE_TEST.md`). O
-  emulador `KashCal_API37` não inicia nesta máquina (sem aceleração de hardware), e o único
-  dispositivo conectado é o telefone pessoal com dados reais, que não foi tocado.
-- Decisões de distribuição: o `applicationId` (`org.onekash.kashcal.tasks`) e o nome ("KashCal Tasks") já
-  estão no repositório (ver `FORK_INTEGRATION.md` §8). Faltam a assinatura de release própria e levar a
-  branch ao `main` do fork.
+- **Validação em aparelho**: feita com o Tasks.org 15.12 real (rodadas em `TASKS_ORG_DEVICE_TEST.md`).
+- **Tradução**: as strings do fork estão em inglês (`values/`) e em português do Brasil
+  (`values-pt-rBR/` e `values-pt/`, o fallback para `pt-PT`). A fonte das traduções é
+  `app/src/fork/tools/gen_strings_pt.py`; outros idiomas caem no inglês.
+- **Assinatura e instalação** (sem publicação): ver `FORK_INTEGRATION.md` §9.

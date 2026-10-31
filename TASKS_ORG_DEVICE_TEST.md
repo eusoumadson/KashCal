@@ -121,8 +121,8 @@ Tasks.org" foi conferido), lista somente leitura (o aparelho não tem), rollback
 falha (não há como forçar a falha), fuso horário diferente do aparelho, lembrete de local ligado
 (a chegada foi desligada por engano e o lugar foi apagado depois; só a gravação sem gatilho foi vista).
 
-Observação de i18n: as strings novas do fork estão só em inglês, então aparecem em inglês num
-aparelho em português (o resto do app é traduzido pelo upstream).
+Observação de i18n: as strings do fork foram traduzidas depois, para o português do Brasil
+(ver a quinta rodada); outros idiomas ficam em inglês.
 
 ### Terceira rodada: identidade do app (30/10/2026)
 
@@ -155,3 +155,16 @@ uma conta no sistema com o novo tipo (exigiria adicionar uma conta CalDAV real).
 | `org.onekash.kashcal.forktest` desinstalado | ok |
 
 Não verificado no aparelho: os ícones de data (só os testes unitários) e o ícone tematizado, que não leva selo.
+
+### Quinta rodada: tradução, assinatura e build de release (30/10/2026)
+
+| Verificação | Resultado |
+| --- | --- |
+| `assembleRelease` com a keystore do fork | ok: APK assinado só com v3 (`apksigner verify`) |
+| Instalar o release por cima do debug | recusado pelo Android (assinaturas diferentes), como esperado; desinstalei só o `org.onekash.kashcal.tasks` de teste e instalei o release |
+| KashCal original e `.debug` | intactos |
+| Abrir o build com R8 | abre sem falha |
+| Ativar a integração | o diálogo de permissão do sistema aparece, uma permissão cobre leitura e escrita; as listas são lidas |
+| Strings em português | configurações, editor, chips de repetição e lembretes, gestão e confirmações aparecem em português |
+| Criar tarefa com tag nova, lembrete e repetição, depois excluí-la | ok no build de release (a escrita atômica sobrevive ao R8) |
+| Excluir a tag de teste | ok; o lugar "Abertura" e o lugar existente não foram tocados |

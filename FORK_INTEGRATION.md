@@ -360,5 +360,38 @@ deriva do sufixo.
   outro expõe ao sistema. Ligue só em um.
 - Os dois apps podem sincronizar a mesma conta CalDAV e gerar notificações em dobro; use as contas
   em um deles.
-- Assinatura: o build `debug` usa a chave de debug da máquina; um `release` próprio precisa de
-  keystore sua (`KEYSTORE_*` em `local.properties` ou nos secrets do fork).
+- Assinatura: o build `debug` usa a chave de debug da máquina; o `release` usa a keystore do fork
+  (§9). Os dois não se atualizam um sobre o outro: trocar de um para o outro exige desinstalar.
+
+---
+
+## 9. Assinatura e instalação local (sem publicação)
+
+O `release` do fork é assinado com uma keystore própria, que **não faz parte do repositório**:
+
+- Arquivo: `~/.kashcal-fork/kashcal-tasks-release.jks` (PKCS12, RSA 4096, alias `kashcal-tasks`,
+  válida por cerca de 27 anos), com permissão só para o dono.
+- Senhas: em `local.properties` (ignorado pelo git), nas chaves `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`,
+  `KEY_ALIAS` e `KEY_PASSWORD`. O `app/build.gradle.kts` do upstream já lê esses nomes; nenhuma linha
+  dele mudou por causa da assinatura. O APK sai só com assinatura v3.
+- **Faça backup do `.jks` e da senha.** Quem perde a chave não consegue mais atualizar o app
+  instalado: só desinstalando (e perdendo os dados do app).
+
+Para compilar e instalar no telefone (cabo USB, depuração ligada):
+
+```sh
+./gradlew :app:assembleRelease
+adb install -r app/build/outputs/apk/release/app-release.apk
+```
+
+Notas:
+
+- O pacote é `org.onekash.kashcal.tasks`; o KashCal original (`org.onekash.kashcal`) nunca é tocado.
+- Um build `debug` instalado antes tem outra assinatura e precisa ser desinstalado
+  (`adb uninstall org.onekash.kashcal.tasks`) antes do primeiro `release`. Dali em diante o
+  `adb install -r` atualiza por cima, mantendo os dados, desde que o `versionCode` (em
+  `version.properties`) não diminua.
+- A primeira abertura pede a permissão do Tasks.org pelo diálogo normal do sistema.
+- Para publicar no futuro, o workflow `release.yml` espera os secrets `KEYSTORE_BASE64`,
+  `KEYSTORE_PASSWORD`, `KEY_ALIAS` e `KEY_PASSWORD` no GitHub do fork.
+
