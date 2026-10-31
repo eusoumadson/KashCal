@@ -92,7 +92,8 @@ class EventCoordinator @Inject constructor(
     private val widgetUpdateManager: WidgetUpdateManager,
     private val inviteNotifier: org.onekash.kashcal.sync.notification.InviteNotifier,
     private val icsRefreshScheduleReconciler: IcsRefreshScheduleReconciler,
-    private val dataStore: KashCalDataStore
+    private val dataStore: KashCalDataStore,
+    private val travelReminderScheduler: org.onekash.kashcal.reminder.travel.TravelReminderScheduler? = null // FORK:travel-time
 ) {
     /** Serializes [setCalendarMuted]'s alarm step. */
     private val muteStepMutex = Mutex()
@@ -267,7 +268,9 @@ class EventCoordinator @Inject constructor(
      * takes the one occurrence linked to it.
      */
     private suspend fun scheduleRemindersForEvent(event: Event) {
-        if (event.reminders.isNullOrEmpty()) return
+        val hasStandardReminders = !event.reminders.isNullOrEmpty()
+        val hasTravelAlert = !event.travelMode.isNullOrBlank() // FORK:travel-time
+        if (!hasStandardReminders && !hasTravelAlert) return
 
         // The event is already saved when this runs, so a reminder failure must
         // not fail the caller: reporting failure invites a retry that creates a
@@ -283,11 +286,18 @@ class EventCoordinator @Inject constructor(
                 )
             }
 
-            reminderScheduler.scheduleRemindersForEvent(
-                event = event,
-                occurrences = occurrences,
-                calendarColor = calendar.color
-            )
+            if (hasStandardReminders) {
+                reminderScheduler.scheduleRemindersForEvent(
+                    event = event,
+                    occurrences = occurrences,
+                    calendarColor = calendar.color
+                )
+            }
+
+            // FORK:travel-time
+            if (hasTravelAlert) {
+                travelReminderScheduler?.scheduleForEvent(event, occurrences)
+            }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Log.e(TAG, "Failed to schedule reminders for event ${event.id}", e)
@@ -303,6 +313,7 @@ class EventCoordinator @Inject constructor(
     private suspend fun rescheduleRemindersForEvent(event: Event) {
         try {
             reminderScheduler.cancelRemindersForEvent(event.id)
+            travelReminderScheduler?.cancelForEvent(event.id) // FORK:travel-time
             scheduleRemindersForEvent(event)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to reschedule reminders for event ${event.id}, " +
@@ -551,6 +562,7 @@ class EventCoordinator @Inject constructor(
         val isLocal = calendar?.let { isLocalCalendar(it) } ?: false
 
         reminderScheduler.cancelRemindersForEvent(eventId)
+        travelReminderScheduler?.cancelForEvent(eventId) // FORK:travel-time
 
         eventWriter.deleteEvent(eventId, isLocal)
         triggerImmediatePushIfNeeded(isLocal)
@@ -1194,6 +1206,7 @@ class EventCoordinator @Inject constructor(
     private suspend fun cancelRemindersQuietly(eventId: Long) {
         try {
             reminderScheduler.cancelRemindersForEvent(eventId)
+            travelReminderScheduler?.cancelForEvent(eventId) // FORK:travel-time
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Log.w(TAG, "Reminder cancel failed for event $eventId, ReminderRefreshWorker will recover", e)
@@ -1442,6 +1455,7 @@ class EventCoordinator @Inject constructor(
             if (status.trim().uppercase() == "DECLINED") {
                 try {
                     reminderScheduler.cancelRemindersForEvent(eventId)
+                    travelReminderScheduler?.cancelForEvent(eventId) // FORK:travel-time
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     Log.w(TAG, "Reminder cancel failed for event $eventId, " +

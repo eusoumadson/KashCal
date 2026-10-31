@@ -322,7 +322,30 @@ data class Event(
      * SCHEDULE-STATUS) leave it unchanged.
      */
     @ColumnInfo(name = "updated_at")
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+
+    // ========== FORK:travel-time — departure alert (device-local, never synced) ==========
+
+    /**
+     * Departure alert transport mode: a `TravelMode` name ("CAR", "FOOT", "TRANSIT"), or null
+     * when the event has no departure alert. Kept on this device only; a server pull keeps it.
+     */
+    @ColumnInfo(name = "travel_mode")
+    val travelMode: String? = null,
+
+    /**
+     * Minutes before "time to leave" for the early heads-up alert; null or 0 means no early
+     * alert.
+     */
+    @ColumnInfo(name = "travel_depart_buffer_min")
+    val travelDepartBufferMin: Int? = null,
+
+    /**
+     * Fixed departure address of the alert; null means the device's position when the alarm
+     * computes the trip.
+     */
+    @ColumnInfo(name = "travel_origin_fixed")
+    val travelOriginFixed: String? = null
 ) {
     // ========== Computed Properties ==========
 

@@ -1,10 +1,15 @@
 package org.onekash.kashcal.ui.components
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.text.format.DateFormat
 import android.util.Log
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.LocalOffer
@@ -51,6 +57,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -84,6 +91,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -303,6 +311,12 @@ data class EventFormState(
     // Advanced fields
     val isAllDay: Boolean = false,
     val location: String = "",
+    // FORK:travel-time
+    val locationLat: Double? = null,
+    val locationLon: Double? = null,
+    val travelMode: String? = null,
+    val travelDepartBufferMin: Int? = null,
+    val travelOriginFixed: String? = null,
     val description: String = "",
     val rrule: String? = null,
     val timezone: String? = null,  // null = device default
@@ -381,6 +395,12 @@ internal fun eventFormHasUnsavedChanges(
         current.selectedCalendarId != initial.selectedCalendarId ||
         current.isAllDay != initial.isAllDay ||
         current.location != initial.location ||
+        // FORK:travel-time
+        current.locationLat != initial.locationLat ||
+        current.locationLon != initial.locationLon ||
+        current.travelMode != initial.travelMode ||
+        current.travelDepartBufferMin != initial.travelDepartBufferMin ||
+        current.travelOriginFixed != initial.travelOriginFixed ||
         current.description != initial.description ||
         current.reminders != initial.reminders ||
         current.rrule != initial.rrule ||
@@ -559,6 +579,12 @@ internal fun EventFormState.withDuplicateOf(source: Event): EventFormState {
     return withDateFields(source.toFormDateFields(null)).copy(
         title = source.title,
         location = source.location.orEmpty(),
+        // FORK:travel-time
+        locationLat = source.geoLat,
+        locationLon = source.geoLon,
+        travelMode = source.travelMode,
+        travelDepartBufferMin = source.travelDepartBufferMin,
+        travelOriginFixed = source.travelOriginFixed,
         description = source.description.orEmpty(),
         isAllDay = source.isAllDay,
         timezone = recognisedZone.takeUnless { source.isAllDay },
@@ -1149,6 +1175,30 @@ fun EventFormContent(
         }
     }
 
+    // FORK:travel-time
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { /* result processed */ }
+
+    val checkAndRequestLocationPermission = {
+        val fineGranted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val coarseGranted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!fineGranted && !coarseGranted) {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
     // Form state
     var state by remember { mutableStateOf(EventFormState()) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
@@ -1425,6 +1475,12 @@ fun EventFormContent(
                     // save keeps the stored one when no zone is picked.
                     timezone = event.timezone?.takeIf { TimezoneUtils.resolveZoneOrNull(it) != null },
                     location = event.location.orEmpty(),
+                    // FORK:travel-time
+                    locationLat = event.geoLat,
+                    locationLon = event.geoLon,
+                    travelMode = event.travelMode,
+                    travelDepartBufferMin = event.travelDepartBufferMin,
+                    travelOriginFixed = event.travelOriginFixed,
                     description = event.description.orEmpty(),
                     rrule = event.rrule,
                     reminders = parsedReminders,
@@ -2041,7 +2097,12 @@ fun EventFormContent(
                                 // A location is one logical line; without
                                 // singleLine the Enter key inserts a newline.
                                 val newValue = raw.replace("\n", "")
-                                state = state.copy(location = newValue)
+                                state = state.copy(
+                                    location = newValue,
+                                    // FORK:travel-time
+                                    locationLat = if (newValue == state.location) state.locationLat else null,
+                                    locationLon = if (newValue == state.location) state.locationLon else null
+                                )
                                 locationSearchJob?.cancel()
                                 if (locationSuggestionService != null &&
                                     newValue.length >= 5 &&
@@ -2092,7 +2153,12 @@ fun EventFormContent(
                                 DropdownMenuItem(
                                     text = { Text(suggestion.displayName) },
                                     onClick = {
-                                        state = state.copy(location = suggestion.displayName)
+                                        // FORK:travel-time
+                                        state = state.copy(
+                                            location = suggestion.displayName,
+                                            locationLat = suggestion.latitude,
+                                            locationLon = suggestion.longitude
+                                        )
                                         locationExpanded = false
                                         locationSuggestions = emptyList()
                                     },
@@ -2291,6 +2357,179 @@ fun EventFormContent(
                     },
                     truncatedReminderCount = state.truncatedReminderCount
                 )
+
+                // FORK:travel-time Departure Alerts
+                if (!state.isAllDay) {
+                    val isTravelEnabled = state.travelMode != null
+                    val travelExpanded = expandedPicker == "travel"
+
+                    EventFormRow(
+                        icon = Icons.Default.DirectionsCar,
+                        iconContentDescription = stringResource(R.string.travel_alerts_form_toggle),
+                        isExpanded = travelExpanded,
+                        showExpandIcon = isTravelEnabled && !isReadOnly,
+                        onToggle = {
+                            if (!isReadOnly && isTravelEnabled) {
+                                expandedPicker = if (travelExpanded) null else "travel"
+                            }
+                        },
+                        expandedContent = if (isTravelEnabled) {
+                            {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 52.dp, end = 16.dp, bottom = 12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    // Mode chips (Car, Walking, Transit)
+                                    Row(
+                                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        FilterChip(
+                                            selected = state.travelMode == "CAR",
+                                            onClick = { if (!isReadOnly) state = state.copy(travelMode = "CAR") },
+                                            enabled = !isReadOnly,
+                                            label = { Text(stringResource(R.string.travel_mode_car)) }
+                                        )
+                                        FilterChip(
+                                            selected = state.travelMode == "FOOT",
+                                            onClick = { if (!isReadOnly) state = state.copy(travelMode = "FOOT") },
+                                            enabled = !isReadOnly,
+                                            label = { Text(stringResource(R.string.travel_mode_foot)) }
+                                        )
+                                        FilterChip(
+                                            selected = state.travelMode == "TRANSIT",
+                                            onClick = { if (!isReadOnly) state = state.copy(travelMode = "TRANSIT") },
+                                            enabled = !isReadOnly,
+                                            label = { Text(stringResource(R.string.travel_mode_transit)) }
+                                        )
+                                    }
+
+                                    // Buffer chips (At time to leave, 5m, 10m, 15m, 30m)
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(
+                                            stringResource(R.string.travel_alerts_buffer_label),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Row(
+                                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            FilterChip(
+                                                selected = (state.travelDepartBufferMin ?: 0) == 0,
+                                                onClick = { if (!isReadOnly) state = state.copy(travelDepartBufferMin = 0) },
+                                                enabled = !isReadOnly,
+                                                label = { Text(stringResource(R.string.travel_alerts_buffer_none)) }
+                                            )
+                                            FilterChip(
+                                                selected = state.travelDepartBufferMin == 5,
+                                                onClick = { if (!isReadOnly) state = state.copy(travelDepartBufferMin = 5) },
+                                                enabled = !isReadOnly,
+                                                label = { Text(stringResource(R.string.travel_alerts_buffer_5min)) }
+                                            )
+                                            FilterChip(
+                                                selected = state.travelDepartBufferMin == 10,
+                                                onClick = { if (!isReadOnly) state = state.copy(travelDepartBufferMin = 10) },
+                                                enabled = !isReadOnly,
+                                                label = { Text(stringResource(R.string.travel_alerts_buffer_10min)) }
+                                            )
+                                            FilterChip(
+                                                selected = state.travelDepartBufferMin == 15,
+                                                onClick = { if (!isReadOnly) state = state.copy(travelDepartBufferMin = 15) },
+                                                enabled = !isReadOnly,
+                                                label = { Text(stringResource(R.string.travel_alerts_buffer_15min)) }
+                                            )
+                                            FilterChip(
+                                                selected = state.travelDepartBufferMin == 30,
+                                                onClick = { if (!isReadOnly) state = state.copy(travelDepartBufferMin = 30) },
+                                                enabled = !isReadOnly,
+                                                label = { Text(stringResource(R.string.travel_alerts_buffer_30min)) }
+                                            )
+                                        }
+                                    }
+
+                                    // Origin selector (Current location vs Fixed address)
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(
+                                            stringResource(R.string.travel_alerts_origin_label),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        val isFixedOrigin = state.travelOriginFixed != null
+                                        Row(
+                                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            FilterChip(
+                                                selected = !isFixedOrigin,
+                                                onClick = {
+                                                    if (!isReadOnly) {
+                                                        state = state.copy(travelOriginFixed = null)
+                                                        checkAndRequestLocationPermission()
+                                                    }
+                                                },
+                                                enabled = !isReadOnly,
+                                                label = { Text(stringResource(R.string.travel_alerts_origin_current)) }
+                                            )
+                                            FilterChip(
+                                                selected = isFixedOrigin,
+                                                onClick = {
+                                                    if (!isReadOnly && !isFixedOrigin) {
+                                                        state = state.copy(travelOriginFixed = "")
+                                                    }
+                                                },
+                                                enabled = !isReadOnly,
+                                                label = { Text(stringResource(R.string.travel_alerts_origin_fixed)) }
+                                            )
+                                        }
+
+                                        if (isFixedOrigin) {
+                                            OutlinedTextField(
+                                                value = state.travelOriginFixed.orEmpty(),
+                                                onValueChange = { if (!isReadOnly) state = state.copy(travelOriginFixed = it) },
+                                                placeholder = { Text(stringResource(R.string.travel_alerts_origin_fixed_hint)) },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                singleLine = true,
+                                                enabled = !isReadOnly
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else null
+                    ) {
+                        Text(
+                            stringResource(R.string.travel_alerts_form_toggle),
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (!isReadOnly) {
+                            Switch(
+                                checked = isTravelEnabled,
+                                onCheckedChange = { enabled ->
+                                    if (enabled) {
+                                        state = state.copy(
+                                            travelMode = state.travelMode ?: "CAR",
+                                            travelDepartBufferMin = state.travelDepartBufferMin ?: 0
+                                        )
+                                        expandedPicker = "travel"
+                                        if (state.travelOriginFixed.isNullOrBlank()) {
+                                            checkAndRequestLocationPermission()
+                                        }
+                                    } else {
+                                        state = state.copy(travelMode = null)
+                                        if (expandedPicker == "travel") expandedPicker = null
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
 
                 RecurrencePickerRow(
                     selectedRrule = state.rrule,

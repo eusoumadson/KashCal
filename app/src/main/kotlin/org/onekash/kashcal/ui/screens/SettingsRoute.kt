@@ -67,6 +67,7 @@ import org.onekash.kashcal.ui.screens.settings.BirthdaysAndAnniversariesScreen
 import org.onekash.kashcal.ui.screens.settings.CalDavConnectionState
 import org.onekash.kashcal.ui.screens.settings.DeviceCalendarsScreen
 import org.onekash.kashcal.ui.screens.settings.TasksOrgScreen
+import org.onekash.kashcal.ui.screens.settings.TravelAlertsScreen // FORK:travel-time
 import org.onekash.kashcal.ui.screens.settings.OfflineCalendarsScreen
 import org.onekash.kashcal.ui.screens.settings.toAccountUiModel
 import org.onekash.kashcal.ui.screens.settings.ICloudConnectionState
@@ -423,6 +424,7 @@ fun SettingsRoute(
         var showDeviceCalendarsScreen by rememberSaveable { mutableStateOf(false) }
         var showOfflineCalendarsScreen by rememberSaveable { mutableStateOf(false) }
         var showTasksOrgScreen by rememberSaveable { mutableStateOf(false) }
+        var showTravelAlertsScreen by rememberSaveable { mutableStateOf(false) } // FORK:travel-time
 
         // ICS import state
         var icsImportFile by remember { mutableStateOf<IcsImportFile?>(null) }
@@ -554,6 +556,7 @@ fun SettingsRoute(
                 showDeviceCalendarsScreen ||
                 showOfflineCalendarsScreen
                 || showTasksOrgScreen // FORK:tasks-org
+                || showTravelAlertsScreen // FORK:travel-time
         ) {
             if (showTagsScreen) {
                 closeTags()
@@ -565,6 +568,7 @@ fun SettingsRoute(
             showDeviceCalendarsScreen = false
             showOfflineCalendarsScreen = false
             showTasksOrgScreen = false
+            showTravelAlertsScreen = false // FORK:travel-time
         }
 
         // State-based navigation between the root and detail screens, animated as a directional
@@ -577,6 +581,7 @@ fun SettingsRoute(
             deviceCalendars = showDeviceCalendarsScreen,
             offlineCalendars = showOfflineCalendarsScreen,
             tasksOrg = showTasksOrgScreen,
+            travelAlerts = showTravelAlertsScreen, // FORK:travel-time
         )
 
         Box(modifier = Modifier.fillMaxSize()) {
@@ -763,6 +768,12 @@ fun SettingsRoute(
                             onRefresh = viewModel::refreshTasksOrg
                         )
                     }
+                    // FORK:travel-time
+                    SettingsDestination.TravelAlerts -> {
+                        TravelAlertsScreen(
+                            onNavigateBack = { showTravelAlertsScreen = false }
+                        )
+                    }
                     SettingsDestination.OfflineCalendars -> {
                         val offlineDefaultCalendarId by viewModel.offlineDefaultCalendarId.collectAsStateWithLifecycle()
                         OfflineCalendarsScreen(
@@ -939,6 +950,7 @@ fun SettingsRoute(
                             },
                             tasksOrgInstalled = tasksOrgInstalled,
                             tasksOrgEnabled = tasksOrgEnabled,
+                            onNavigateToTravelAlerts = { viewModel.onSearchClose(); showTravelAlertsScreen = true }, // FORK:travel-time
                             onNavigateToOfflineCalendars = { viewModel.onSearchClose(); showOfflineCalendarsScreen = true },
                             offlineCalendarCount = offlineCalendars.size,
                             // Inline search

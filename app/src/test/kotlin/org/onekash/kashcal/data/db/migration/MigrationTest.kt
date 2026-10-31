@@ -2410,11 +2410,95 @@ class MigrationTest {
         assertTrue(triggerExists(PendingOperationTriggers.EVENT_DELETE_TRIGGER))
     }
 
+    // ==================== Migration 27 -> 28 (FORK:travel-time) ====================
+
+    private fun migrateUpToV27() {
+        migrateUpToV26()
+        Migrations.MIGRATION_26_27.migrate(db)
+    }
+
+    private fun columnType(table: String, column: String): String? =
+        db.query("PRAGMA table_info($table)").use { c ->
+            var found: String? = null
+            while (c.moveToNext()) {
+                if (c.getString(c.getColumnIndex("name")) == column) found = c.getString(c.getColumnIndex("type"))
+            }
+            found
+        }
+
+    @Test
+    fun `migration 27 to 28 adds the departure alert columns`() {
+        migrateUpToV27()
+
+        Migrations.MIGRATION_27_28.migrate(db)
+
+        assertEquals("TEXT", columnType("events", "travel_mode"))
+        assertEquals("INTEGER", columnType("events", "travel_depart_buffer_min"))
+        assertEquals("TEXT", columnType("events", "travel_origin_fixed"))
+        assertEquals("TEXT", columnType("scheduled_reminders", "reminder_type"))
+        assertEquals("INTEGER", columnType("scheduled_reminders", "estimated_travel_min"))
+        assertEquals("TEXT", columnType("scheduled_reminders", "travel_note"))
+    }
+
+    @Test
+    fun `migration 27 to 28 keeps existing events with no alert and reminders as TIME_BEFORE`() {
+        migrateUpToV27()
+        seedV24Calendars()
+        insertEvent(1)
+        db.execSQL(
+            "INSERT INTO scheduled_reminders (id, event_id, occurrence_time, trigger_time, reminder_offset, " +
+                "status, snooze_count, event_title, is_all_day, calendar_color, created_at) " +
+                "VALUES (7, 1, 100, 40, '-PT15M', 'PENDING', 0, 'Title 1', 0, 0, 0)"
+        )
+
+        Migrations.MIGRATION_27_28.migrate(db)
+
+        db.query("SELECT travel_mode, travel_depart_buffer_min, travel_origin_fixed FROM events WHERE id = 1").use { c ->
+            assertTrue(c.moveToFirst())
+            assertTrue(c.isNull(0))
+            assertTrue(c.isNull(1))
+            assertTrue(c.isNull(2))
+        }
+        db.query("SELECT reminder_type, estimated_travel_min, travel_note FROM scheduled_reminders WHERE id = 7").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("TIME_BEFORE", c.getString(0))
+            assertTrue(c.isNull(1))
+            assertTrue(c.isNull(2))
+        }
+    }
+
+    @Test
+    fun `migration 27 to 28 is idempotent`() {
+        migrateUpToV27()
+
+        Migrations.MIGRATION_27_28.migrate(db)
+        Migrations.MIGRATION_27_28.migrate(db)
+
+        assertTrue(columnExists("events", "travel_mode"))
+        assertTrue(columnExists("scheduled_reminders", "travel_note"))
+    }
+
+    @Test
+    fun `migration 27 to 28 refuses a mistyped travel column and changes nothing`() {
+        migrateUpToV27()
+        db.execSQL("ALTER TABLE events ADD COLUMN travel_mode INTEGER")
+
+        try {
+            Migrations.MIGRATION_27_28.migrate(db)
+            org.junit.Assert.fail("expected the shape check to throw")
+        } catch (e: IllegalStateException) {
+            assertTrue(e.message!!.contains("travel_mode"))
+        }
+
+        assertFalse(columnExists("events", "travel_origin_fixed"))
+        assertFalse(columnExists("scheduled_reminders", "reminder_type"))
+    }
+
     // ==================== Migration Chain/Registry Tests ====================
 
     @Test
     fun `all migrations array contains expected migrations`() {
-        assertEquals(25, Migrations.ALL_MIGRATIONS.size)
+        assertEquals(26, Migrations.ALL_MIGRATIONS.size)
     }
 
     @Test
@@ -2471,12 +2555,14 @@ class MigrationTest {
         assertEquals(26, migrations[23].endVersion)
         assertEquals(26, migrations[24].startVersion)
         assertEquals(27, migrations[24].endVersion)
+        assertEquals(27, migrations[25].startVersion) // FORK:travel-time
+        assertEquals(28, migrations[25].endVersion)
     }
 
     @Test
     fun `migration versions form valid chain with gaps`() {
         val migrations = Migrations.ALL_MIGRATIONS.toList()
-        // Manual: 1→2, 2→3, then 4→5 through 26→27 (3→4 is the AutoMigration)
+        // Manual: 1→2, 2→3, then 4→5 through 27→28 (3→4 is the AutoMigration)
         assertTrue(migrations[0].endVersion == migrations[1].startVersion) // 2
         assertTrue(migrations[2].startVersion == 4) // gap at 3→4
         for (i in 2 until migrations.size - 1) {

@@ -38,7 +38,8 @@ class ReminderRefreshWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val reminderScheduler: ReminderScheduler,
     private val deviceCalendarReminderScheduler: DeviceCalendarReminderScheduler,
-    private val dataStore: KashCalDataStore
+    private val dataStore: KashCalDataStore,
+    private val travelReminderScheduler: org.onekash.kashcal.reminder.travel.TravelReminderScheduler? = null // FORK:travel-time
 ) : CoroutineWorker(context, params) {
 
     companion object {
@@ -138,6 +139,16 @@ class ReminderRefreshWorker @AssistedInject constructor(
                 throw e
             } catch (e: Exception) {
                 Log.w(TAG, "Device calendar reminder scheduling failed, continuing", e)
+            }
+
+            // FORK:travel-time: Schedule upcoming travel alarms
+            try {
+                travelReminderScheduler?.scheduleUpcomingTravelAlarms()
+                Log.d(TAG, "Travel alarms scheduled")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Travel alarm scheduling failed, continuing", e)
             }
 
             Log.i(TAG, "Reminder refresh complete: $scheduled new Room reminders scheduled")

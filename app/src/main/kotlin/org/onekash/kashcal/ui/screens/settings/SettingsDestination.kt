@@ -13,6 +13,7 @@ enum class SettingsDestination(val depth: Int) {
     Tags(depth = 1),
     DeviceCalendars(depth = 1),
     TasksOrg(depth = 1), // FORK:tasks-org
+    TravelAlerts(depth = 1), // FORK:travel-time
     OfflineCalendars(depth = 1);
 
     /** True when navigating from this destination to [target] moves deeper (root -> detail). */
@@ -31,6 +32,7 @@ enum class SettingsDestination(val depth: Int) {
             deviceCalendars: Boolean,
             offlineCalendars: Boolean,
             tasksOrg: Boolean = false,
+            travelAlerts: Boolean = false, // FORK:travel-time
         ): SettingsDestination = when {
             accounts -> Accounts
             birthdaysAnniversaries -> BirthdaysAnniversaries
@@ -39,6 +41,7 @@ enum class SettingsDestination(val depth: Int) {
             deviceCalendars -> DeviceCalendars
             offlineCalendars -> OfflineCalendars
             tasksOrg -> TasksOrg
+            travelAlerts -> TravelAlerts // FORK:travel-time
             else -> Root
         }
     }

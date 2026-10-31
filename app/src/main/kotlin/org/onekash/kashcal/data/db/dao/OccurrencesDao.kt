@@ -93,7 +93,8 @@ interface OccurrencesDao {
                e.import_source AS e_import_source, e.itip_dtstamp AS e_itip_dtstamp,
                e.priority AS e_priority, e.geo_lat AS e_geo_lat, e.geo_lon AS e_geo_lon,
                e.color AS e_color, e.url AS e_url, e.categories AS e_categories,
-               e.created_at AS e_created_at, e.updated_at AS e_updated_at, e.local_modified_at AS e_local_modified_at
+               e.created_at AS e_created_at, e.updated_at AS e_updated_at, e.local_modified_at AS e_local_modified_at,
+               e.travel_mode AS e_travel_mode, e.travel_depart_buffer_min AS e_travel_depart_buffer_min, e.travel_origin_fixed AS e_travel_origin_fixed
         FROM occurrences o
         JOIN events e ON (o.exception_event_id IS NOT NULL AND o.exception_event_id = e.id)
                       OR (o.exception_event_id IS NULL AND o.event_id = e.id)
@@ -127,7 +128,8 @@ interface OccurrencesDao {
                e.import_source AS e_import_source, e.itip_dtstamp AS e_itip_dtstamp,
                e.priority AS e_priority, e.geo_lat AS e_geo_lat, e.geo_lon AS e_geo_lon,
                e.color AS e_color, e.url AS e_url, e.categories AS e_categories,
-               e.created_at AS e_created_at, e.updated_at AS e_updated_at, e.local_modified_at AS e_local_modified_at
+               e.created_at AS e_created_at, e.updated_at AS e_updated_at, e.local_modified_at AS e_local_modified_at,
+               e.travel_mode AS e_travel_mode, e.travel_depart_buffer_min AS e_travel_depart_buffer_min, e.travel_origin_fixed AS e_travel_origin_fixed
         FROM occurrences o
         JOIN events e ON (o.exception_event_id IS NOT NULL AND o.exception_event_id = e.id)
                       OR (o.exception_event_id IS NULL AND o.event_id = e.id)
@@ -166,7 +168,8 @@ interface OccurrencesDao {
                e.import_source AS e_import_source, e.itip_dtstamp AS e_itip_dtstamp,
                e.priority AS e_priority, e.geo_lat AS e_geo_lat, e.geo_lon AS e_geo_lon,
                e.color AS e_color, e.url AS e_url, e.categories AS e_categories,
-               e.created_at AS e_created_at, e.updated_at AS e_updated_at, e.local_modified_at AS e_local_modified_at
+               e.created_at AS e_created_at, e.updated_at AS e_updated_at, e.local_modified_at AS e_local_modified_at,
+               e.travel_mode AS e_travel_mode, e.travel_depart_buffer_min AS e_travel_depart_buffer_min, e.travel_origin_fixed AS e_travel_origin_fixed
         FROM occurrences o
         JOIN events e ON (o.exception_event_id IS NOT NULL AND o.exception_event_id = e.id)
                       OR (o.exception_event_id IS NULL AND o.event_id = e.id)

@@ -717,6 +717,64 @@ class KashCalDataStore(
         setPreference(PreferencesKeys.HIDDEN_TASKS_ORG_LIST_IDS, ids.map { it.toString() }.toSet())
     }
 
+    // ========== Departure alerts (FORK:travel-time) ==========
+
+    val travelTomTomApiKey: Flow<String>
+        get() = getPreference(PreferencesKeys.TRAVEL_TOMTOM_API_KEY, "")
+
+    suspend fun getTravelTomTomApiKey(): String = travelTomTomApiKey.first()
+
+    /** Stores the trimmed key; a blank key clears it. */
+    suspend fun setTravelTomTomApiKey(key: String) {
+        setPreference(PreferencesKeys.TRAVEL_TOMTOM_API_KEY, key.trim())
+    }
+
+    val travelTomTomEnabled: Flow<Boolean>
+        get() = getPreference(PreferencesKeys.TRAVEL_TOMTOM_ENABLED, true)
+
+    suspend fun getTravelTomTomEnabled(): Boolean = travelTomTomEnabled.first()
+
+    suspend fun setTravelTomTomEnabled(enabled: Boolean) {
+        setPreference(PreferencesKeys.TRAVEL_TOMTOM_ENABLED, enabled)
+    }
+
+    val travelStadiaApiKey: Flow<String>
+        get() = getPreference(PreferencesKeys.TRAVEL_STADIA_API_KEY, "")
+
+    suspend fun getTravelStadiaApiKey(): String = travelStadiaApiKey.first()
+
+    /** Stores the trimmed key; a blank key clears it. */
+    suspend fun setTravelStadiaApiKey(key: String) {
+        setPreference(PreferencesKeys.TRAVEL_STADIA_API_KEY, key.trim())
+    }
+
+    val travelStadiaEnabled: Flow<Boolean>
+        get() = getPreference(PreferencesKeys.TRAVEL_STADIA_ENABLED, true)
+
+    suspend fun getTravelStadiaEnabled(): Boolean = travelStadiaEnabled.first()
+
+    suspend fun setTravelStadiaEnabled(enabled: Boolean) {
+        setPreference(PreferencesKeys.TRAVEL_STADIA_ENABLED, enabled)
+    }
+
+    val travelValhallaEnabled: Flow<Boolean>
+        get() = getPreference(PreferencesKeys.TRAVEL_VALHALLA_ENABLED, true)
+
+    suspend fun getTravelValhallaEnabled(): Boolean = travelValhallaEnabled.first()
+
+    suspend fun setTravelValhallaEnabled(enabled: Boolean) {
+        setPreference(PreferencesKeys.TRAVEL_VALHALLA_ENABLED, enabled)
+    }
+
+    val travelRushHourEnabled: Flow<Boolean>
+        get() = getPreference(PreferencesKeys.TRAVEL_RUSH_HOUR_ENABLED, true)
+
+    suspend fun getTravelRushHourEnabled(): Boolean = travelRushHourEnabled.first()
+
+    suspend fun setTravelRushHourEnabled(enabled: Boolean) {
+        setPreference(PreferencesKeys.TRAVEL_RUSH_HOUR_ENABLED, enabled)
+    }
+
     // ========== Device Calendars ==========
 
     val deviceCalendarsEnabled: Flow<Boolean>

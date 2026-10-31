@@ -60,6 +60,14 @@
     <uses-permission android:name="org.tasks.permission.READ_TASKS" />
     <uses-permission android:name="org.tasks.permission.WRITE_TASKS" />
 
+    <!-- FORK:travel-time — departure alerts: the device position when the alarm computes the
+         trip. Foreground location is asked when the user turns a departure alert on; background
+         location (a separate system step on Android 11+) lets the worker read it while the app
+         is closed. Neither is needed with a fixed origin address. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
     <!-- Sync adapter registration (for CalendarProvider intent routing) -->
     <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
     <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />

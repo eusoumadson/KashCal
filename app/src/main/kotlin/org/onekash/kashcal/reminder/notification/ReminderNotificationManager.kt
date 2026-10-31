@@ -4,10 +4,12 @@ import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.text.format.DateFormat
 import androidx.core.app.NotificationCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import org.onekash.kashcal.R
+import org.onekash.kashcal.data.db.entity.ReminderType
 import org.onekash.kashcal.data.db.entity.ScheduledReminder
 import org.onekash.kashcal.data.preferences.KashCalDataStore
 import org.onekash.kashcal.reminder.receiver.ReminderActionReceiver
@@ -49,6 +51,9 @@ class ReminderNotificationManager @Inject constructor(
         private const val REQUEST_CODE_OPEN = 0
         private const val REQUEST_CODE_SNOOZE = 700_000_000
         private const val REQUEST_CODE_DISMISS = 1_400_000_000
+        // FORK:travel-time
+        private const val REQUEST_CODE_MAP = 2_100_000_000
+        private const val REQUEST_CODE_TRANSIT = 2_120_000_000
     }
 
     /**
@@ -84,11 +89,30 @@ class ReminderNotificationManager @Inject constructor(
 
     /** Builds the notification for [reminder]; it can suspend to read the time format. */
     suspend fun buildNotification(reminder: ScheduledReminder): Notification {
-        val contentText = formatNotificationContent(reminder)
+        val isTravelReminder = reminder.reminderType == ReminderType.TRAVEL_DEPART ||
+            reminder.reminderType == ReminderType.TRAVEL_BUFFER
 
-        val builder = NotificationCompat.Builder(context, ReminderNotificationChannels.CHANNEL_REMINDERS)
+        val channelId = if (isTravelReminder) {
+            ReminderNotificationChannels.CHANNEL_TRAVEL_REMINDERS
+        } else {
+            ReminderNotificationChannels.CHANNEL_REMINDERS
+        }
+
+        val contentTitle = if (isTravelReminder) {
+            formatTravelTitle(reminder)
+        } else {
+            reminder.eventTitle
+        }
+
+        val contentText = if (isTravelReminder) {
+            formatTravelContent(reminder)
+        } else {
+            formatNotificationContent(reminder)
+        }
+
+        val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(reminder.eventTitle)
+            .setContentTitle(contentTitle)
             .setContentText(contentText)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -114,19 +138,117 @@ class ReminderNotificationManager @Inject constructor(
             }
         }
 
-        builder.addAction(
-            android.R.drawable.ic_popup_reminder,
-            context.getString(R.string.action_snooze),
-            createSnoozeIntent(reminder)
-        )
+        if (isTravelReminder) {
+            // FORK:travel-time actions: Map navigation, Transit lines, Dismiss
+            if (!reminder.eventLocation.isNullOrBlank()) {
+                builder.addAction(
+                    android.R.drawable.ic_dialog_map,
+                    context.getString(R.string.travel_action_view_on_map),
+                    createViewOnMapIntent(reminder)
+                )
+                if (reminder.travelNote?.contains("mode=TRANSIT") == true) {
+                    builder.addAction(
+                        android.R.drawable.ic_dialog_info,
+                        context.getString(R.string.travel_action_transit_lines),
+                        createTransitLinesIntent(reminder)
+                    )
+                }
+            }
 
-        builder.addAction(
-            android.R.drawable.ic_menu_close_clear_cancel,
-            context.getString(R.string.action_dismiss),
-            createDismissIntent(reminder)
-        )
+            builder.addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                context.getString(R.string.action_dismiss),
+                createDismissIntent(reminder)
+            )
+        } else {
+            builder.addAction(
+                android.R.drawable.ic_popup_reminder,
+                context.getString(R.string.action_snooze),
+                createSnoozeIntent(reminder)
+            )
+
+            builder.addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                context.getString(R.string.action_dismiss),
+                createDismissIntent(reminder)
+            )
+        }
 
         return builder.build()
+    }
+
+    /** Formats title for departure notifications. */
+    fun formatTravelTitle(reminder: ScheduledReminder): String {
+        return if (reminder.reminderType == ReminderType.TRAVEL_BUFFER) {
+            val travelMs = (reminder.estimatedTravelMin ?: 0) * 60_000L
+            val departTs = reminder.occurrenceTime - travelMs
+            val bufferMin = ((departTs - reminder.triggerTime) / 60_000L).coerceAtLeast(0)
+            if (bufferMin > 0) {
+                context.getString(R.string.travel_leave_in_min_title, bufferMin.toInt(), reminder.eventTitle)
+            } else {
+                context.getString(R.string.travel_leave_now_title, reminder.eventTitle)
+            }
+        } else {
+            context.getString(R.string.travel_leave_now_title, reminder.eventTitle)
+        }
+    }
+
+    /** Formats body for departure notifications with real-time transit & traffic delays. */
+    fun formatTravelContent(reminder: ScheduledReminder): String {
+        val noteMap = reminder.travelNote?.split(";")?.mapNotNull {
+            val parts = it.split("=", limit = 2)
+            if (parts.size == 2) parts[0].trim() to parts[1].trim() else null
+        }?.toMap().orEmpty()
+
+        val modeStr = when (noteMap["mode"]?.uppercase()) {
+            "FOOT" -> context.getString(R.string.travel_mode_foot)
+            "TRANSIT" -> context.getString(R.string.travel_mode_transit)
+            else -> context.getString(R.string.travel_mode_car)
+        }
+        val travelMin = reminder.estimatedTravelMin ?: 0
+        val trafficDelay = noteMap["trafficDelay"]?.toIntOrNull() ?: 0
+        val rushHour = noteMap["rushHour"]?.toBoolean() ?: false
+        val hasLive = noteMap["live"]?.toBoolean() ?: false
+
+        return when {
+            trafficDelay > 0 && hasLive -> {
+                context.getString(R.string.travel_notification_with_traffic, travelMin, modeStr, trafficDelay)
+            }
+            rushHour -> {
+                context.getString(R.string.travel_notification_rush_hour, travelMin, modeStr)
+            }
+            else -> {
+                context.getString(R.string.travel_notification_basic, travelMin, modeStr)
+            }
+        }
+    }
+
+    private fun createViewOnMapIntent(reminder: ScheduledReminder): PendingIntent {
+        val query = Uri.encode(reminder.eventLocation.orEmpty())
+        val geoUri = Uri.parse("geo:0,0?q=$query")
+        val intent = Intent(Intent.ACTION_VIEW, geoUri).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        return PendingIntent.getActivity(
+            context,
+            REQUEST_CODE_MAP + (reminder.id % 10_000_000).toInt(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    private fun createTransitLinesIntent(reminder: ScheduledReminder): PendingIntent {
+        val query = Uri.encode(reminder.eventLocation.orEmpty())
+        val transitUri = Uri.parse("google.navigation:q=$query&mode=transit")
+        val intent = Intent(Intent.ACTION_VIEW, transitUri).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        return PendingIntent.getActivity(
+            context,
+            REQUEST_CODE_TRANSIT + (reminder.id % 10_000_000).toInt(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 
     /**

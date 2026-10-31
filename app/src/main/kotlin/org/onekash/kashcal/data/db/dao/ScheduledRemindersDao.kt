@@ -154,6 +154,23 @@ interface ScheduledRemindersDao {
     @Query("DELETE FROM scheduled_reminders WHERE event_id = :eventId")
     suspend fun deleteForEvent(eventId: Long)
 
+    // FORK:travel-time
+    @Query("""
+        DELETE FROM scheduled_reminders
+        WHERE event_id = :eventId
+        AND reminder_type != 'TIME_BEFORE'
+    """)
+    suspend fun deleteTravelRemindersForEvent(eventId: Long)
+
+    // FORK:travel-time
+    @Query("""
+        SELECT * FROM scheduled_reminders
+        WHERE event_id = :eventId
+        AND reminder_type != 'TIME_BEFORE'
+        AND status IN ('PENDING', 'SNOOZED')
+    """)
+    suspend fun getPendingTravelRemindersForEvent(eventId: Long): List<ScheduledReminder>
+
     /**
      * Deletes one occurrence's reminders, when it is deleted, edited into an exception, or found
      * cancelled at fire time.

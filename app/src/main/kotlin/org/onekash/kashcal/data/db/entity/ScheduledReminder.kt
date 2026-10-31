@@ -85,5 +85,38 @@ data class ScheduledReminder(
 
     /** Creation time, epoch millis. */
     @ColumnInfo(name = "created_at")
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+
+    // ========== FORK:travel-time — departure alerts ==========
+
+    /**
+     * What produced the alarm: a regular offset reminder, or a departure alert. A departure
+     * row stores its [ReminderType] name in [reminderOffset], so the unique index keeps one
+     * row per kind per occurrence.
+     */
+    @ColumnInfo(name = "reminder_type", defaultValue = "'TIME_BEFORE'")
+    val reminderType: ReminderType = ReminderType.TIME_BEFORE,
+
+    /** Travel minutes the departure trigger was computed from; null for a regular reminder. */
+    @ColumnInfo(name = "estimated_travel_min")
+    val estimatedTravelMin: Int? = null,
+
+    /**
+     * Travel details for the departure notification text, as `TravelNote.encode` writes them;
+     * null for a regular reminder.
+     */
+    @ColumnInfo(name = "travel_note")
+    val travelNote: String? = null
 )
+
+/** FORK:travel-time — the kind of alarm a [ScheduledReminder] row holds. */
+enum class ReminderType {
+    /** A regular reminder at an offset from the occurrence. */
+    TIME_BEFORE,
+
+    /** "Time to leave now" of a departure alert. */
+    TRAVEL_DEPART,
+
+    /** The early "leave in X min" heads-up of a departure alert. */
+    TRAVEL_BUFFER,
+}

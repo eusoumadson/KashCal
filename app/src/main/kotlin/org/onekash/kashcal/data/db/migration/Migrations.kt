@@ -1608,6 +1608,64 @@ object Migrations {
         }
     }
 
+    /** FORK:travel-time — the `events` columns [MIGRATION_27_28] adds, with the type each must have. */
+    private val TRAVEL_EVENT_COLUMNS = linkedMapOf(
+        "travel_mode" to "TEXT",
+        "travel_depart_buffer_min" to "INTEGER",
+        "travel_origin_fixed" to "TEXT"
+    )
+
+    /**
+     * FORK:travel-time — Migrates 27 to 28: adds the departure-alert settings to `events`
+     * (`travel_mode`, `travel_depart_buffer_min`, `travel_origin_fixed`) and the alarm kind and
+     * travel details to `scheduled_reminders` (`reminder_type`, `estimated_travel_min`,
+     * `travel_note`).
+     *
+     * Same transaction, idempotency and validation as [MIGRATION_25_26]. Every existing event
+     * starts with no departure alert and every existing reminder as a regular TIME_BEFORE one.
+     */
+    val MIGRATION_27_28 = object : Migration(27, 28) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.beginTransaction()
+            try {
+                // 1. Pre-migration shape check
+                for ((column, type) in TRAVEL_EVENT_COLUMNS) {
+                    val found = columnTypeOf(db, "events", column)
+                    if (found != null && found != type) {
+                        throw IllegalStateException(
+                            "MIGRATION_27_28 pre-migration shape check failed: " +
+                                "events.$column expected $type but found $found. " +
+                                "Reinstall the app to clear the local DB."
+                        )
+                    }
+                }
+
+                // 2. Column adds; no backfill
+                for ((column, type) in TRAVEL_EVENT_COLUMNS) {
+                    addColumnIfNotExists(db, "events", column, type)
+                }
+                addColumnIfNotExists(db, "scheduled_reminders", "reminder_type", "TEXT NOT NULL DEFAULT 'TIME_BEFORE'")
+                addColumnIfNotExists(db, "scheduled_reminders", "estimated_travel_min", "INTEGER")
+                addColumnIfNotExists(db, "scheduled_reminders", "travel_note", "TEXT")
+
+                // 3. Validation, before setTransactionSuccessful() so a throw rolls back
+                val missingEvents = TRAVEL_EVENT_COLUMNS.keys.filterNot { columnExists(db, "events", it) }
+                val missingReminders = listOf("reminder_type", "estimated_travel_min", "travel_note")
+                    .filterNot { columnExists(db, "scheduled_reminders", it) }
+                if (missingEvents.isNotEmpty() || missingReminders.isNotEmpty()) {
+                    throw IllegalStateException(
+                        "MIGRATION_27_28 post-migration validation failed: missing " +
+                            "events.$missingEvents scheduled_reminders.$missingReminders"
+                    )
+                }
+
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
+            }
+        }
+    }
+
     private fun count(db: SupportSQLiteDatabase, sql: String): Long =
         db.query(sql).use { if (it.moveToFirst()) it.getLong(0) else 0L }
 
@@ -1637,6 +1695,7 @@ object Migrations {
         MIGRATION_23_24,
         MIGRATION_24_25,
         MIGRATION_25_26,
-        MIGRATION_26_27
+        MIGRATION_26_27,
+        MIGRATION_27_28 // FORK:travel-time
     )
 }

@@ -24,6 +24,8 @@ class ReminderNotificationChannels @Inject constructor(
 ) {
     companion object {
         const val CHANNEL_REMINDERS = "event_reminders"
+        // FORK:travel-time
+        const val CHANNEL_TRAVEL_REMINDERS = "travel_departure_reminders"
 
         // Above the sync notifications (1001-1005).
         const val NOTIFICATION_ID_BASE = 2000
@@ -53,6 +55,22 @@ class ReminderNotificationChannels @Inject constructor(
         }
 
         notificationManager.createNotificationChannel(channel)
+
+        // FORK:travel-time
+        val travelChannel = NotificationChannel(
+            CHANNEL_TRAVEL_REMINDERS,
+            context.getString(R.string.channel_travel_reminders),
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = context.getString(R.string.channel_travel_reminders_desc)
+            setShowBadge(true)
+            enableVibration(true)
+            enableLights(true)
+            lightColor = android.graphics.Color.GREEN
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+        }
+
+        notificationManager.createNotificationChannel(travelChannel)
     }
 
     /** Returns the notification ID for a reminder row, in 2000-11999; rows 10000 apart share it. */

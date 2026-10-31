@@ -62,6 +62,9 @@ object ExportablePreferences {
         PreferencesKeys.SHARE_AVAILABILITY_WORK_END_MIN.name to PrefKind.INT,
         PreferencesKeys.SHARE_AVAILABILITY_INCLUDE_ALL_DAY.name to PrefKind.BOOL,
         PreferencesKeys.USER_INITIALS.name to PrefKind.STRING,
+        // FORK:travel-time
+        PreferencesKeys.TRAVEL_VALHALLA_ENABLED.name to PrefKind.BOOL,
+        PreferencesKeys.TRAVEL_RUSH_HOUR_ENABLED.name to PrefKind.BOOL,
     )
 
     val KEYS: List<Preferences.Key<*>> = listOf(
@@ -122,11 +125,14 @@ object ExportablePreferences {
         PreferencesKeys.SHARE_AVAILABILITY_INCLUDE_ALL_DAY,
         // Profile: the user's avatar initials
         PreferencesKeys.USER_INITIALS,
+        // FORK:travel-time: departure alert provider choices that hold no secret
+        PreferencesKeys.TRAVEL_VALHALLA_ENABLED,
+        PreferencesKeys.TRAVEL_RUSH_HOUR_ENABLED,
     ).also {
         // Bump this and the matching ExportablePreferencesTest assertion together
         // whenever a key is added to or removed from KEYS above.
-        require(it.size == 43) {
-            "KEYS size drifted; expected 43 allowed keys but got ${it.size}. Update ExportablePreferencesTest expectations too."
+        require(it.size == 45) {
+            "KEYS size drifted; expected 45 allowed keys but got ${it.size}. Update ExportablePreferencesTest expectations too."
         }
     }
 
@@ -176,6 +182,12 @@ object ExportablePreferences {
         // list ids are Tasks.org row ids, not portable across installs
         PreferencesKeys.TASKS_ORG_ENABLED.name,
         PreferencesKeys.HIDDEN_TASKS_ORG_LIST_IDS.name,
+        // FORK:travel-time: the two routing API keys are secrets that must not leave the device;
+        // their enabled switches only mean something next to a key
+        PreferencesKeys.TRAVEL_TOMTOM_API_KEY.name,
+        PreferencesKeys.TRAVEL_TOMTOM_ENABLED.name,
+        PreferencesKeys.TRAVEL_STADIA_API_KEY.name,
+        PreferencesKeys.TRAVEL_STADIA_ENABLED.name,
         // Stores "room:<id>" or "device:<id>"; neither ID is portable across installs
         PreferencesKeys.DEFAULT_CALENDAR.name,
         // Legacy (superseded)

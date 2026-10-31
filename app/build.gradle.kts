@@ -129,6 +129,7 @@ android {
         debug {
             isMinifyEnabled = false
             isShrinkResources = false
+            signingConfigs.findByName("release")?.let { signingConfig = it }
         }
     }
 

@@ -3,6 +3,7 @@ package org.onekash.kashcal.data.db.converter
 import androidx.room.TypeConverter
 import kotlinx.serialization.json.Json
 import org.onekash.kashcal.data.db.entity.ReminderStatus
+import org.onekash.kashcal.data.db.entity.ReminderType // FORK:travel-time
 import org.onekash.kashcal.data.db.entity.SyncStatus
 import org.onekash.kashcal.domain.model.AccountProvider
 import org.onekash.kashcal.sync.model.ChangeType
@@ -42,6 +43,23 @@ class Converters {
             ReminderStatus.valueOf(value)
         } catch (_: IllegalArgumentException) {
             ReminderStatus.PENDING
+        }
+    }
+
+    // ========== ReminderType Enum (FORK:travel-time) ==========
+
+    @TypeConverter
+    fun fromReminderType(type: ReminderType): String {
+        return type.name
+    }
+
+    /** Falls back to TIME_BEFORE for an unknown value. */
+    @TypeConverter
+    fun toReminderType(value: String): ReminderType {
+        return try {
+            ReminderType.valueOf(value)
+        } catch (_: IllegalArgumentException) {
+            ReminderType.TIME_BEFORE
         }
     }
 

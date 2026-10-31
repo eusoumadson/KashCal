@@ -291,6 +291,26 @@ object PreferencesKeys {
     /** Tasks.org list ids whose tasks are not shown, stored as strings. */
     val HIDDEN_TASKS_ORG_LIST_IDS = stringSetPreferencesKey("hidden_tasks_org_list_ids")
 
+    // ========== Departure alerts (FORK:travel-time) ==========
+
+    /** TomTom Routing API key, pasted by the user. A secret: never exported in a backup. */
+    val TRAVEL_TOMTOM_API_KEY = stringPreferencesKey("travel_tomtom_api_key")
+
+    /** The TomTom provider is tried first; it still needs a key to run. */
+    val TRAVEL_TOMTOM_ENABLED = booleanPreferencesKey("travel_tomtom_enabled")
+
+    /** Stadia Maps API key, pasted by the user. A secret: never exported in a backup. */
+    val TRAVEL_STADIA_API_KEY = stringPreferencesKey("travel_stadia_api_key")
+
+    /** The Stadia Maps provider is tried second; it still needs a key to run. */
+    val TRAVEL_STADIA_ENABLED = booleanPreferencesKey("travel_stadia_enabled")
+
+    /** The public OpenStreetMap Valhalla demo server is tried third; needs no key. */
+    val TRAVEL_VALHALLA_ENABLED = booleanPreferencesKey("travel_valhalla_enabled")
+
+    /** The offline estimate adds a margin to a weekday rush-hour car trip. */
+    val TRAVEL_RUSH_HOUR_ENABLED = booleanPreferencesKey("travel_rush_hour_enabled")
+
     // ========== Parse Failure Retry (v16.7.0) ==========
 
     /**

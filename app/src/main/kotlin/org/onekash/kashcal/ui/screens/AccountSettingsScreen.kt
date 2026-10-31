@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.FileDownload
@@ -243,6 +244,7 @@ fun AccountSettingsScreen(
     // Tasks.org: the row shows only while the app is installed.
     tasksOrgInstalled: Boolean = false,
     tasksOrgEnabled: Boolean = false,
+    onNavigateToTravelAlerts: () -> Unit = {}, // FORK:travel-time
     onNavigateToOfflineCalendars: () -> Unit = {},
     // Offline calendars, the built-in included; the row shows its hint until there is more than
     // one.
@@ -518,6 +520,22 @@ fun AccountSettingsScreen(
                                     searchQuery = searchQuery
                                 )
                             }
+                        }
+
+                        // FORK:travel-time
+                        row(
+                            label = stringResource(R.string.travel_alerts_settings_title),
+                            subtitle = stringResource(R.string.travel_alerts_settings_subtitle),
+                            id = "travel-alerts"
+                        ) {
+                            SettingsRow(
+                                icon = Icons.Default.DirectionsCar,
+                                label = stringResource(R.string.travel_alerts_settings_title),
+                                subtitle = stringResource(R.string.travel_alerts_settings_subtitle),
+                                onClick = onNavigateToTravelAlerts,
+                                showDivider = false,
+                                searchQuery = searchQuery
+                            )
                         }
 
                         val offlineCalendarsSubtitle = if (offlineCalendarCount <= 1) stringResource(R.string.offline_calendars_row_hint)

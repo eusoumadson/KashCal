@@ -3324,6 +3324,12 @@ class HomeViewModel(
                                 endTs = endTs,
                                 isAllDay = formState.isAllDay,
                                 location = formState.location.ifBlank { null },
+                                // FORK:travel-time
+                                geoLat = formState.locationLat,
+                                geoLon = formState.locationLon,
+                                travelMode = formState.travelMode,
+                                travelDepartBufferMin = formState.travelDepartBufferMin,
+                                travelOriginFixed = formState.travelOriginFixed,
                                 description = formState.description.ifBlank { null },
                                 // A null rrule is "Does not repeat": passed through, the new
                                 // series row becomes non-recurring.
@@ -3363,6 +3369,12 @@ class HomeViewModel(
                                 endTs = endTs,
                                 isAllDay = formState.isAllDay,
                                 location = formState.location.ifBlank { null },
+                                // FORK:travel-time
+                                geoLat = formState.locationLat,
+                                geoLon = formState.locationLon,
+                                travelMode = formState.travelMode,
+                                travelDepartBufferMin = formState.travelDepartBufferMin,
+                                travelOriginFixed = formState.travelOriginFixed,
                                 description = formState.description.ifBlank { null },
                                 rrule = null, // An exception has no RRULE
                                 reminders = reminders,
@@ -3435,6 +3447,12 @@ class HomeViewModel(
                             isAllDay = formState.isAllDay,
                             timezone = if (formState.isAllDay) null else (formState.timezone ?: movedEvent.timezone),
                             location = formState.location.ifBlank { null },
+                            // FORK:travel-time
+                            geoLat = formState.locationLat,
+                            geoLon = formState.locationLon,
+                            travelMode = formState.travelMode,
+                            travelDepartBufferMin = formState.travelDepartBufferMin,
+                            travelOriginFixed = formState.travelOriginFixed,
                             description = formState.description.ifBlank { null },
                             rrule = formState.rrule,
                             reminders = reminders,
@@ -3452,6 +3470,12 @@ class HomeViewModel(
                             isAllDay = formState.isAllDay,
                             timezone = if (formState.isAllDay) null else (formState.timezone ?: existingEvent.timezone),
                             location = formState.location.ifBlank { null },
+                            // FORK:travel-time
+                            geoLat = formState.locationLat,
+                            geoLon = formState.locationLon,
+                            travelMode = formState.travelMode,
+                            travelDepartBufferMin = formState.travelDepartBufferMin,
+                            travelOriginFixed = formState.travelOriginFixed,
                             description = formState.description.ifBlank { null },
                             rrule = formState.rrule,
                             reminders = reminders,
@@ -3478,6 +3502,12 @@ class HomeViewModel(
                         timezone = if (formState.isAllDay) null else (formState.timezone ?: java.util.TimeZone.getDefault().id),
                         isAllDay = formState.isAllDay,
                         location = formState.location.ifBlank { null },
+                        // FORK:travel-time
+                        geoLat = formState.locationLat,
+                        geoLon = formState.locationLon,
+                        travelMode = formState.travelMode,
+                        travelDepartBufferMin = formState.travelDepartBufferMin,
+                        travelOriginFixed = formState.travelOriginFixed,
                         description = formState.description.ifBlank { null },
                         rrule = formState.rrule,
                         reminders = reminders,

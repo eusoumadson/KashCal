@@ -923,6 +923,28 @@ interface EventsDao {
         toTime: Long
     ): List<EventWithOccurrenceAndColor>
 
+    // FORK:travel-time
+    @Query("""
+        SELECT e.*, o.start_ts as occurrence_start_ts, o.end_ts as occurrence_end_ts,
+               c.color as calendar_color,
+               COALESCE(o.exception_event_id, o.event_id) as target_event_id
+        FROM occurrences o
+        JOIN events e ON e.id = COALESCE(o.exception_event_id, o.event_id)
+        JOIN calendars c ON e.calendar_id = c.id
+        WHERE e.travel_mode IS NOT NULL
+          AND o.start_ts >= :fromTime
+          AND o.start_ts <= :toTime
+          AND o.is_cancelled = 0
+          AND c.is_notification_muted = 0
+          AND e.sync_status != 'DELETED'
+          AND (e.status IS NULL OR e.status != 'CANCELLED')
+        ORDER BY occurrence_start_ts ASC
+    """)
+    suspend fun getEventsWithTravelAlertsInRange(
+        fromTime: Long,
+        toTime: Long
+    ): List<EventWithOccurrenceAndColor>
+
     // ========== Deduplication ==========
 
     /**

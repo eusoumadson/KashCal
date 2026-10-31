@@ -22,6 +22,7 @@ class SettingsDestinationTest {
         assertTrue(SettingsDestination.Subscriptions.depth > 0)
         assertTrue(SettingsDestination.Tags.depth > 0)
         assertTrue(SettingsDestination.DeviceCalendars.depth > 0)
+        assertTrue(SettingsDestination.TravelAlerts.depth > 0) // FORK:travel-time
         assertTrue(SettingsDestination.OfflineCalendars.depth > 0)
     }
 
@@ -32,6 +33,7 @@ class SettingsDestinationTest {
         assertTrue(SettingsDestination.Root.isForwardTo(SettingsDestination.Subscriptions))
         assertTrue(SettingsDestination.Root.isForwardTo(SettingsDestination.Tags))
         assertTrue(SettingsDestination.Root.isForwardTo(SettingsDestination.DeviceCalendars))
+        assertTrue(SettingsDestination.Root.isForwardTo(SettingsDestination.TravelAlerts)) // FORK:travel-time
         assertTrue(SettingsDestination.Root.isForwardTo(SettingsDestination.OfflineCalendars))
     }
 
@@ -42,6 +44,7 @@ class SettingsDestinationTest {
         assertFalse(SettingsDestination.Subscriptions.isForwardTo(SettingsDestination.Root))
         assertFalse(SettingsDestination.Tags.isForwardTo(SettingsDestination.Root))
         assertFalse(SettingsDestination.DeviceCalendars.isForwardTo(SettingsDestination.Root))
+        assertFalse(SettingsDestination.TravelAlerts.isForwardTo(SettingsDestination.Root)) // FORK:travel-time
         assertFalse(SettingsDestination.OfflineCalendars.isForwardTo(SettingsDestination.Root))
     }
 
@@ -111,6 +114,24 @@ class SettingsDestinationTest {
                 tags = false,
                 deviceCalendars = false,
                 offlineCalendars = true,
+            )
+        )
+    }
+
+    // FORK:travel-time
+    @Test
+    fun `the travel alerts flag opens the Travel alerts screen`() {
+        assertEquals(1, SettingsDestination.TravelAlerts.depth)
+        assertEquals(
+            SettingsDestination.TravelAlerts,
+            SettingsDestination.from(
+                accounts = false,
+                birthdaysAnniversaries = false,
+                subscriptions = false,
+                tags = false,
+                deviceCalendars = false,
+                offlineCalendars = false,
+                travelAlerts = true
             )
         )
     }

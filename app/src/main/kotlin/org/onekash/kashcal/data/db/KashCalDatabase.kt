@@ -76,7 +76,7 @@ import org.onekash.kashcal.data.db.entity.SyncLog
         ScheduledReminder::class,
         SyncLog::class
     ],
-    version = 27,
+    version = 28, // FORK:travel-time (27 upstream)
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 3, to = 4)
