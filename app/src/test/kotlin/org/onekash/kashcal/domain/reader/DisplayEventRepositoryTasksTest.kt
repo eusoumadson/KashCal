@@ -31,6 +31,7 @@ import org.onekash.kashcal.domain.model.DisplayEvent
 class DisplayEventRepositoryTasksTest {
 
     private var tasksEnabled = true
+    private var recurring: List<TasksOrgTask> = emptyList()
     private val hiddenLists = setOf(9L)
     private val tasksSignal = MutableStateFlow(0)
     private lateinit var tasksRepository: TasksOrgRepository
@@ -69,6 +70,7 @@ class DisplayEventRepositoryTasksTest {
         }
         tasksRepository = mockk {
             coEvery { getTasksDueInRange(any(), any(), any(), any()) } returns listOf(day1Task, day2Task)
+            coEvery { getRecurringTasksDueInRange(any(), any(), any()) } answers { recurring }
         }
         val attendeesDao: AttendeesDao = mockk { every { attendeesChangeSignal() } returns flowOf(0) }
         display = DisplayEventRepository(
@@ -111,5 +113,48 @@ class DisplayEventRepositoryTasksTest {
 
         assertEquals(2, results.size)
         coVerify { tasksRepository.getTasksDueInRange(any(), any(), hiddenLists, "Task") }
+    }
+
+    // ---- later occurrences of repeating tasks ----
+
+    private val zone = java.time.ZoneId.systemDefault()
+
+    private fun weeklyTask(): TasksOrgTask {
+        val due = java.time.LocalDateTime.of(2026, 10, 29, 10, 0).atZone(zone).toInstant().toEpochMilli()
+        return task(7, due, day1).copy(recurrence = "FREQ=WEEKLY")
+    }
+
+    @Test
+    fun `a repeating task also shows its later occurrences in the range, flagged and keyed apart`() = runTest {
+        recurring = listOf(weeklyTask())
+
+        // 29/oct is the current occurrence (already in the range query); 5 and 12 nov are later.
+        val byDay = display.getDisplayEventsGroupedByDayOnce(20261029, 20261112)
+
+        val later = byDay.values.flatten().filterIsInstance<DisplayEvent.Task>().filter { it.task.isFutureOccurrence }
+        assertEquals(listOf(20261105, 20261112), later.map { it.startDay }.sorted())
+        assertEquals(later.size, later.map { it.stableKey }.toSet().size)
+        assertTrue(later.all { it.task.id == 7L })
+    }
+
+    @Test
+    fun `the occurrences reach a range that starts after the current one`() = runTest {
+        recurring = listOf(weeklyTask())
+
+        val byDay = display.getDisplayEventsGroupedByDayOnce(20261101, 20261107)
+
+        assertEquals(setOf(20261105), byDay.keys.filter { day ->
+            byDay[day].orEmpty().any { (it as DisplayEvent.Task).task.isFutureOccurrence }
+        }.toSet())
+    }
+
+    @Test
+    fun `search lists the task once, without later occurrences`() = runTest {
+        recurring = listOf(weeklyTask())
+
+        val results = display.searchDisplayEvents("Task", 20261029, 20261231) { emptyList() }
+
+        assertTrue(results.none { (it.displayEvent as DisplayEvent.Task).task.isFutureOccurrence })
+        coVerify(exactly = 0) { tasksRepository.getRecurringTasksDueInRange(any(), any(), any()) }
     }
 }

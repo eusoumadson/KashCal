@@ -62,4 +62,14 @@ class DisplayEventTaskTest {
         assertNull(DisplayEvent.Task(task).description)
         assertEquals("task:42", shown.stableKey)
     }
+
+    @Test
+    fun `a later occurrence has its own key and a dotted box, and the current one keeps both`() {
+        val later = task.copy(startTs = 1793908801000L, isFutureOccurrence = true)
+
+        assertEquals("task:42", DisplayEvent.Task(task).stableKey)
+        assertEquals("task:42:1793908801000", DisplayEvent.Task(later).stableKey)
+        assertEquals("\u25CC Teste 2", DisplayEvent.Task(later).title)
+        assertTrue(DisplayEvent.Task(later).hasRrule)
+    }
 }

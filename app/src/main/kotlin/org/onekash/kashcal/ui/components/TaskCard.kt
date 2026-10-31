@@ -75,6 +75,9 @@ internal fun rememberCanWriteTasksOrg(): Boolean {
     return canWrite
 }
 
+/** Opacity of a later occurrence of a repeating task: shown, but not the one to act on. */
+internal const val FUTURE_OCCURRENCE_ALPHA = 0.45f // FORK:tasks-org
+
 /** How long a [TaskCard] checkbox waits for the re-query after a write before it unlocks. */
 private const val PENDING_TIMEOUT_MS = 3_000L
 
@@ -141,7 +144,7 @@ internal fun TaskCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .alpha(if (checked) 0.6f else 1f)
+            .alpha(if (task.isFutureOccurrence) FUTURE_OCCURRENCE_ALPHA else if (checked) 0.6f else 1f)
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = stripeColor.copy(alpha = displayEvent.cardFillAlpha())),
         shape = RoundedCornerShape(12.dp)
@@ -160,7 +163,7 @@ internal fun TaskCard(
             // reads it apart from the card.
             Checkbox(
                 checked = checked,
-                enabled = canWrite && !task.isReadOnly,
+                enabled = canWrite && !task.isReadOnly && !task.isFutureOccurrence,
                 modifier = Modifier.semantics { contentDescription = title },
                 onCheckedChange = { completed ->
                     // Ignored rather than disabled while pending, so the box doesn't grey out

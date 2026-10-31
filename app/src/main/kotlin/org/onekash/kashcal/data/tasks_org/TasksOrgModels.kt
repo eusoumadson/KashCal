@@ -164,7 +164,9 @@ data class TasksOrgTaskExtras(
  *   ([AndroidTasksOrgRepository]) reads it there.
  *
  * A repeating task is one task in Tasks.org, due on its current occurrence. Completing it makes
- * Tasks.org move it to the next one, so only that occurrence is shown.
+ * Tasks.org move it to the next one. The current occurrence is the task itself; the later ones the
+ * rule produces are copies with [isFutureOccurrence] set ([futureOccurrences]), shown dimmed and
+ * not completable, since Tasks.org only knows the current one.
  */
 @Immutable
 data class TasksOrgTask(
@@ -197,7 +199,12 @@ data class TasksOrgTask(
     val placeId: Long = 0L,
     /** When the task is hidden until, or null. */
     val hideUntil: TasksOrgDate? = null,
-    val repeatFrom: TasksOrgRepeatFrom = TasksOrgRepeatFrom.DUE_DATE
+    val repeatFrom: TasksOrgRepeatFrom = TasksOrgRepeatFrom.DUE_DATE,
+    /**
+     * True for a later occurrence of a repeating task, computed from its rule. It has the task's
+     * [id] but is not a row in Tasks.org: nothing can be written through it.
+     */
+    val isFutureOccurrence: Boolean = false
 ) {
     val isCompleted: Boolean get() = completedAt != null
     val isRecurring: Boolean get() = recurrence != null

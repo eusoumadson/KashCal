@@ -58,7 +58,30 @@ Uma tarefa atrasada **não** é movida para "hoje": ela fica no dia em que está
 qualquer tarefa, e é lida pela mesma consulta de período. Quem quiser vê-la navega até aquele dia
 (ou usa a agenda/busca). O fork não faz nenhuma consulta extra por atrasadas.
 
-### 2.2 Cartão e quick view
+### 2.2 Ocorrências futuras de tarefas recorrentes
+O Tasks.org guarda **uma linha** por tarefa recorrente, com o vencimento na ocorrência atual, e a
+move para a próxima quando você a conclui. Por isso, antes, uma tarefa diária só aparecia no dia
+atual e nada depois dele.
+
+Agora as ocorrências seguintes aparecem, calculadas a partir da regra, no estilo do Apple
+Calendar/Lembretes:
+- **Só a ocorrência atual** (a que está no Tasks.org) é marcável, e só ela abre o editor. As
+  seguintes ficam opacas, com a caixa desabilitada, e no quick view dizem "A later occurrence.
+  Complete the current one first." Concluir a atual faz a próxima virar a atual.
+- Vale para tarefa de hoje, do futuro ou atrasada: se a atual está atrasada, as seguintes
+  continuam a partir dela (é assim que o Tasks.org avança: um passo por vez, a partir do
+  vencimento, não de hoje).
+- Nas grades (semana, dias, mês) o título leva `◌` no lugar de `☐`. Os pontos do mês também
+  mostram as ocorrências futuras.
+- Uma regra com contagem mostra só o que resta (o Tasks.org diminui a contagem a cada conclusão).
+  Regras com data final param nela.
+- **Não mostram ocorrências**: tarefa "repetir a partir da conclusão" (a próxima data depende de
+  quando for concluída), tarefa já concluída, e a **busca** (que lista a tarefa uma vez).
+- No máximo uma ocorrência por dia e 400 por tarefa em cada leitura.
+- Custo: cada leitura de período faz uma segunda consulta, que busca as tarefas recorrentes
+  abertas com vencimento até 366 dias antes do período (o provider não filtra por regra).
+
+### 2.3 Cartão e quick view
 - **Prioridade:** ponto colorido (alta, média, baixa) antes do título, com descrição para
   leitores de tela.
 - **Tags:** `#tag` numa linha secundária.
@@ -187,7 +210,7 @@ Tasks.org" do quick view agora abre a **tarefa**, não só o app (com o app como
 
 ## 12. Testes
 
-133 testes unitários passando:
+163 testes do fork passando (as classes abaixo mais `DisplayEventTaskTest`, `DisplayEventRepositoryTasksTest` e `TasksOrgOccurrencesTest`, 12 testes de expansão de regra):
 
 | Classe | Testes |
 | --- | :-: |

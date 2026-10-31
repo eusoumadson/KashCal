@@ -44,6 +44,17 @@ interface TasksOrgRepository {
         search: String? = null
     ): List<TasksOrgTask>
 
+    /**
+     * Returns the open repeating tasks whose current occurrence is due in [startMs]..[endMs]
+     * (inclusive), in lists not in [hiddenListIds]. The calendar expands their rules to show the
+     * occurrences after the current one.
+     */
+    suspend fun getRecurringTasksDueInRange(
+        startMs: Long,
+        endMs: Long,
+        hiddenListIds: Set<Long>
+    ): List<TasksOrgTask>
+
     /** Reads one task by id, or null when it can't be read or has no due date. */
     suspend fun getTask(taskId: Long): TasksOrgTask?
 

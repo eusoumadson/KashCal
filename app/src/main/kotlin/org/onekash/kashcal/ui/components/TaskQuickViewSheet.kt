@@ -153,7 +153,10 @@ fun TaskQuickViewSheet(
                         }
                         if (task.isRecurring) {
                             Text(
-                                text = "\uD83D\uDD01 " + stringResource(R.string.task_repeats_note),
+                                text = "\uD83D\uDD01 " + stringResource(
+                                    if (task.isFutureOccurrence) R.string.task_future_occurrence_note
+                                    else R.string.task_repeats_note
+                                ),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

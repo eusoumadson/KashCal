@@ -77,6 +77,8 @@ class TasksOrgCoordinator @Inject constructor(
      * schedule, which [undo] writes back.
      */
     suspend fun setCompleted(task: TasksOrgTask, completed: Boolean): TaskCompletionResult {
+        // A later occurrence isn't a row in Tasks.org: completing it would complete the current one.
+        if (task.isFutureOccurrence) return TaskCompletionResult.Refused
         val undo: TaskCompletionUndo? = if (completed && task.isRecurring) {
             // Unreadable schedule: reopening alone wouldn't bring the occurrence back, so no undo.
             repository.getSchedule(task.id)?.let { TaskCompletionUndo.RestoreSchedule(task.id, it) }

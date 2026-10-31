@@ -25,6 +25,8 @@ import org.onekash.kashcal.data.tasks_org.TasksOrgManager // FORK:tasks-org
 import org.onekash.kashcal.data.tasks_org.TasksOrgRepository // FORK:tasks-org
 import org.onekash.kashcal.domain.model.DisplayEvent
 import org.onekash.kashcal.domain.model.SearchResult
+import org.onekash.kashcal.domain.tasks.FUTURE_OCCURRENCE_LOOKBACK_MS // FORK:tasks-org
+import org.onekash.kashcal.domain.tasks.futureOccurrences // FORK:tasks-org
 import org.onekash.kashcal.ui.util.DayPagerUtils
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
@@ -346,12 +348,25 @@ class DisplayEventRepository @Inject constructor(
         search: String? = null
     ): List<DisplayEvent> {
         if (!dataStore.getTasksOrgEnabled()) return emptyList()
-        return tasksOrgRepository.getTasksDueInRange(
-            startMs = dayCodeToStartOfDayMs(startDayCode),
-            endMs = dayCodeToEndOfDayMs(endDayCode),
-            hiddenListIds = dataStore.getHiddenTasksOrgListIds(),
+        val startMs = dayCodeToStartOfDayMs(startDayCode)
+        val endMs = dayCodeToEndOfDayMs(endDayCode)
+        val hiddenListIds = dataStore.getHiddenTasksOrgListIds()
+        val current = tasksOrgRepository.getTasksDueInRange(
+            startMs = startMs,
+            endMs = endMs,
+            hiddenListIds = hiddenListIds,
             search = search
-        ).map { DisplayEvent.Task(it) }
+        )
+        // Search lists tasks, not every date a rule reaches.
+        if (search != null) return current.map { DisplayEvent.Task(it) }
+        // The later occurrences of repeating tasks, dimmed and not completable. A task whose
+        // current occurrence is before the range still reaches it through its rule.
+        val later = tasksOrgRepository.getRecurringTasksDueInRange(
+            startMs = startMs - FUTURE_OCCURRENCE_LOOKBACK_MS,
+            endMs = endMs,
+            hiddenListIds = hiddenListIds
+        ).flatMap { futureOccurrences(it, startMs, endMs) }
+        return (current + later).map { DisplayEvent.Task(it) }
     }
 
     /** Returns the enabled, not hidden device calendar IDs; empty when the feature is off. */

@@ -1144,7 +1144,7 @@ class MainActivity : FragmentActivity() {
                 taskQuickViewEvent?.let { shown -> // FORK:tasks-org — entire block
                     TaskQuickViewSheet(
                         displayEvent = shown,
-                        canComplete = !shown.task.isReadOnly,
+                        canComplete = !shown.task.isReadOnly && !shown.task.isFutureOccurrence,
                         onSetCompleted = { completed ->
                             homeViewModel.setTasksOrgTaskCompleted(shown.task, completed)
                             // Close, so the snackbar and its Undo aren't hidden under the sheet,

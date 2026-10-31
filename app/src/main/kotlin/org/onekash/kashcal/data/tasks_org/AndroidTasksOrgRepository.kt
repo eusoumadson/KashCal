@@ -85,6 +85,16 @@ class AndroidTasksOrgRepository @Inject constructor(
             .sortedBy { it.startTs }
     }
 
+    override suspend fun getRecurringTasksDueInRange(
+        startMs: Long,
+        endMs: Long,
+        hiddenListIds: Set<Long>
+    ): List<TasksOrgTask> =
+        // The provider can't filter on the rule, so this reads the range and keeps the open
+        // repeating tasks.
+        getTasksDueInRange(startMs, endMs, hiddenListIds)
+            .filter { it.isRecurring && !it.isCompleted }
+
     override suspend fun getTask(taskId: Long): TasksOrgTask? = withContext(Dispatchers.IO) {
         if (!hasReadPermission()) return@withContext null
         val lists = getLists().associateBy { it.id }

@@ -120,6 +120,20 @@ class AndroidTasksOrgRepositoryTest {
     }
 
     @Test
+    fun `repeating tasks keep only the open ones in the range`() = runTest {
+        val due = at(2026, 10, 29, 9)
+        provider.tasks += FakeTasksOrgProvider.TaskRow(id = 1, title = "Open repeat", due = due, listId = 1, recurrence = "FREQ=DAILY")
+        provider.tasks += FakeTasksOrgProvider.TaskRow(id = 2, title = "One-off", due = due, listId = 1)
+        provider.tasks += FakeTasksOrgProvider.TaskRow(id = 3, title = "Done repeat", due = due, listId = 1, recurrence = "FREQ=DAILY", completedAt = due + 1)
+        provider.tasks += FakeTasksOrgProvider.TaskRow(id = 4, title = "Hidden repeat", due = due, listId = 2, recurrence = "FREQ=DAILY")
+        provider.tasks += FakeTasksOrgProvider.TaskRow(id = 5, title = "Out of range", due = due + 10 * 86_400_000L, listId = 1, recurrence = "FREQ=DAILY")
+
+        val tasks = repository.getRecurringTasksDueInRange(due - 1, due + 1, hiddenListIds = setOf(2L))
+
+        assertEquals(listOf(1L), tasks.map { it.id })
+    }
+
+    @Test
     fun `a task in a read-only list is read-only`() = runTest {
         val due = at(2026, 10, 29, 9)
         provider.tasks += FakeTasksOrgProvider.TaskRow(id = 1, title = "Shared", due = due, listId = 2)

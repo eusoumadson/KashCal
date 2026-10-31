@@ -140,3 +140,18 @@ O fork passou a ser o app `org.onekash.kashcal.tasks` ("KashCal Tasks"), ao lado
 
 Não verificado no aparelho: trocar o ícone do app pelas configurações (coberto por testes unitários) e criar
 uma conta no sistema com o novo tipo (exigiria adicionar uma conta CalDAV real).
+
+### Quarta rodada: ocorrências futuras e ícone (30/10/2026)
+
+| Verificação | Resultado |
+| --- | --- |
+| `[revisar] agenda do dia` (tarefa diária sua, só lida) em 1/nov | aparece, opaca e com a caixa desabilitada; a semana mostra uma por dia às 10:00 com `◌`; o mês tem ponto em todos os dias |
+| Tarefa de teste semanal com contagem 3, vencimento 1/nov | atual em 1/nov, opacas em 8 e 15/nov, nada em 22/nov |
+| Tocar numa ocorrência futura | o quick view diz que é uma ocorrência futura; "Mark as completed" não faz nada e não há botão Editar |
+| Concluir a ocorrência atual | sai de 1/nov, a de 8/nov vira a atual (quick view normal, com Editar), 15/nov segue opaca e 22/nov continua vazio |
+| Tarefa diária atrasada (26/out), concluir | o Tasks.org avança um dia (27/out) a partir do vencimento, não a partir de hoje; as seguintes (28 a 31/out) já apareciam como opacas |
+| Exclusão das duas tarefas de teste | ok |
+| Ícone no sistema (Informações do app) | selo verde de "feito" no canto inferior direito, dentro da máscara redonda; nome "KashCal Tasks" |
+| `org.onekash.kashcal.forktest` desinstalado | ok |
+
+Não verificado no aparelho: os ícones de data (só os testes unitários) e o ícone tematizado, que não leva selo.

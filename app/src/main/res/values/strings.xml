@@ -952,6 +952,8 @@
     <!-- Task quick view note on a repeating task. -->
     <string name="task_repeats_note">Completing it moves the task to its next date in Tasks.org.</string>
     <string name="task_open_in_tasks_org">Open in Tasks.org</string>
+    <!-- Task quick view note on a later occurrence of a repeating task. -->
+    <string name="task_future_occurrence_note">A later occurrence. Complete the current one first.</string>
     <string name="snackbar_task_update_failed">Couldn\'t update task</string>
     <!-- Snackbar after a Tasks.org task is checked off; offers Undo. -->
     <string name="snackbar_task_completed">Task completed</string>

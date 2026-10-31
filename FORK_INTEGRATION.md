@@ -203,7 +203,7 @@ inteiro para remover.
 # compila
 ./gradlew :app:compileDebugKotlin
 
-# testes da feature (devem passar: 133)
+# testes da feature (devem passar: 163)
 ./gradlew :app:testDebugUnitTest \
   --tests "org.onekash.kashcal.data.tasks_org.*" \
   --tests "org.onekash.kashcal.domain.tasks.*" \
@@ -252,7 +252,7 @@ Ao adicionar qualquer coisa nova à feature, mantenha estas invariantes:
 - [ ] Nenhum campo novo no `Event` do Room nem no formulário de evento.
 - [ ] Todo acesso à API v0 passa pelo `TasksOrgV0Mapper` (nenhuma coluna/URI crua fora dele).
 - [ ] Escrita sempre em `Dispatchers.IO`, sempre serializada pelo `tasksOrgWriteMutex`.
-- [ ] `./gradlew :app:compileDebugKotlin` + os 133 testes passando.
+- [ ] `./gradlew :app:compileDebugKotlin` + os 163 testes passando.
 - [ ] Depois de um rebase, o upstream não mudou os XMLs copiados em `app/src/fork/res/xml/` (comando na §8).
 
 ---
@@ -330,6 +330,7 @@ montados como `packageName + ".MainActivityDayN"`. Por isso a identidade tem est
 | `KashCalAuthenticator`, `KashCalContactsAuthenticator` | `ACCOUNT_TYPE = BuildConfig.APPLICATION_ID` (e `+ ".contacts"`) | Têm de ser iguais ao tipo declarado nos XMLs. No build sem sufixo dá o mesmo valor de antes. |
 | `AppIconPreset.kt` (`LauncherAliases.className`), `DateIconRefresher.kt` | Nome de classe do alias vem do namespace, não do `packageName` | Os aliases são declarados relativos ao namespace. |
 | `app/src/fork/res/xml/` (5 arquivos novos) | Cópias de `kashcal_authenticator`, `kashcal_contacts_authenticator`, `kashcal_syncadapter`, `kashcal_contacts_syncadapter` (tipo e rótulo via `@string/fork_*`) e `shortcuts` (`targetPackage` literal) | Sobrescrevem os de `main` nos builds `debug` e `release`. O `targetPackage` do atalho não aceita referência a string. |
+| `app/src/fork/res/drawable/ic_launcher_day_*_foreground.xml` (31) e `mipmap-*/ic_launcher*_foreground.png` (10) | O ícone original com um selo de "tarefa feita" no canto inferior direito, gerados por `app/src/fork/tools/gen_icons.py` | Distingue o app do KashCal original na tela inicial. Sobrescrevem os de `main` com o mesmo nome, então os `mipmap-anydpi-v26` e os testes de ícone do upstream ficam intactos. Os ícones tematizados (monocromáticos) não levam selo: são uma cor só e o upstream fixa esses vetores em teste. |
 | Testes (4 arquivos) | `packageName + suffix` → `LauncherAliases.className(suffix)`; rótulo esperado vira `fork_app_name` | O Robolectric usa o `applicationId` como `packageName`. |
 
 **Depois de um rebase**, confira se o upstream mexeu nos arquivos copiados desde o commit em que as
@@ -341,6 +342,8 @@ git diff 0164dad0 upstream/main -- app/src/main/res/xml/{kashcal_authenticator,k
 
 Sem saída, nada a fazer. Se houver diferença, aplique-a também nas cópias de `app/src/fork/res/xml/`
 (mantendo as trocas de tipo/rótulo e o `targetPackage`) e atualize o commit de referência acima.
+
+**Se o upstream mudar um ícone** (`drawable/ic_launcher_day_*_foreground.xml` ou os PNGs de primeiro plano), rode `python3 app/src/fork/tools/gen_icons.py` na raiz: ele refaz as cópias com o selo a partir dos arquivos de `main`.
 
 **Para renomear ou trocar o sufixo:** nome em `fork_app_name`/`fork_account_label`/
 `fork_contacts_account_label` (gradle) e `targetPackage` nos 3 atalhos de `shortcuts.xml`. O resto

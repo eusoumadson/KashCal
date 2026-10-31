@@ -144,7 +144,9 @@ sealed interface DisplayEvent {
     // branches.
     @Immutable
     data class Task(val task: TasksOrgTask) : DisplayEvent {
-        override val title get() = taskDisplayTitle(task.title, task.isCompleted)
+        override val title get() =
+            if (task.isFutureOccurrence) TASK_FUTURE_PREFIX + task.title
+            else taskDisplayTitle(task.title, task.isCompleted)
         override val description get() = task.notes.ifEmpty { null }
         override val location: String? get() = null
         override val categories: List<String> get() = emptyList()
@@ -161,7 +163,9 @@ sealed interface DisplayEvent {
         override val isFree: Boolean get() = true
         override val isDeclinedByMe: Boolean get() = false
         override val isCancelled: Boolean get() = false
-        override val stableKey get() = "task:${task.id}"
+        // A later occurrence shares the task's id, so its start keeps the key unique.
+        override val stableKey get() =
+            if (task.isFutureOccurrence) "task:${task.id}:${task.startTs}" else "task:${task.id}"
     }
 }
 
@@ -173,6 +177,9 @@ internal const val TASK_OPEN_PREFIX = "\u2610 " // FORK:tasks-org
 
 /** Title prefix of a completed task: U+2611 BALLOT BOX WITH CHECK. */
 internal const val TASK_DONE_PREFIX = "\u2611 " // FORK:tasks-org
+
+/** Title prefix of a later occurrence of a repeating task: U+25CC DOTTED CIRCLE, a box not yet there. */
+internal const val TASK_FUTURE_PREFIX = "\u25CC " // FORK:tasks-org
 
 /**
  * Returns [title] with a checkbox prefix showing whether the task is [completed]. Display only:

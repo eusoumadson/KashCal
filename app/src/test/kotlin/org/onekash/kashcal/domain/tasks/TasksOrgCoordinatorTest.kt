@@ -242,4 +242,17 @@ class TasksOrgCoordinatorSaveTest {
 
         verify(exactly = 5) { manager.notifyChanged() }
     }
+
+    @Test
+    fun `a later occurrence can't be completed, since it is not a row in Tasks org`() = runTest {
+        val later = TasksOrgTask(
+            id = 5, title = "t", notes = "", dueTs = 1L, isAllDay = false, startTs = 1L, endTs = 1L,
+            startDay = 20261105, endDay = 20261105, completedAt = null, recurrence = "FREQ=WEEKLY",
+            listId = 1, listTitle = "Inbox", listColor = 0, isReadOnly = false, isFutureOccurrence = true
+        )
+
+        assertEquals(TaskCompletionResult.Refused, coordinator.setCompleted(later, true))
+        coVerify(exactly = 0) { repository.setCompleted(any(), any()) }
+        coVerify(exactly = 0) { repository.getSchedule(any()) }
+    }
 }

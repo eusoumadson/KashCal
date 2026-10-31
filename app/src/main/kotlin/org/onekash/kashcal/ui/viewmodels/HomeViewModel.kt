@@ -4455,6 +4455,7 @@ class HomeViewModel(
         onResult: (Boolean) -> Unit = {}
     ) {
         val coordinator = tasksOrgCoordinator ?: return
+        if (task.isFutureOccurrence) return onResult(false)
         viewModelScope.launch {
             val result = try {
                 tasksOrgWriteMutex.withLock {
@@ -4543,6 +4544,7 @@ class HomeViewModel(
         onReady: (org.onekash.kashcal.ui.components.TaskEditorState?) -> Unit
     ) {
         val coordinator = tasksOrgCoordinator ?: return onReady(null)
+        if (task.isFutureOccurrence) return onReady(null)
         viewModelScope.launch {
             val lists = withContext(ioDispatcher) { coordinator.getWritableLists() }
             val tags = withContext(ioDispatcher) { coordinator.getTags() }
