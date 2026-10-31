@@ -41,13 +41,16 @@
     - Adicionar chaves para:
       - Título da feature: "Departure Alerts" / "Alertas de saída"
       - Subtítulo nas configurações: "Time to leave alerts based on real-time location" / "Notificações na hora de sair baseadas na sua localização"
-      - Toggle de ativação no formulário: "Departure alert" / "Alerta de saída"
+      - Toggle no formulário: "Departure alert" / "Alerta de saída"
       - Modais: Carro ("Car"), A pé ("On foot"), Transporte Público ("Public transit")
       - Origem: "Current location" / "Localização atual", "Fixed address" / "Endereço fixo"
-      - Opções de Buffer: "No extra buffer" / "Sem aviso extra", "5 min before" / "5 min antes", "10 min before" / "10 min antes", "15 min before" / "15 min antes", "30 min before" / "30 min antes"
-      - Textos da notificação: "Leave now → %1$s · est. %2$d min by %3$s" / "Saia agora → %1$s · est. %2$d min de %3$s", "Leave in %1$d min → %2$s · est. %3$d min by %4$s" / "Saia em %1$d min → %2$s · est. %3$d min de %4$s"
-      - Ações da notificação: "View on map" / "Ver no mapa", "Dismiss" / "Dispensar"
-      - Configurações do Stadia Maps, links de cadastro, explicação passo a passo, status dos provedores, e textos explicativos completos da funcionalidade.
+      - Opções de Buffer: "No extra buffer", "5 min before", "10 min before", "15 min before", "30 min before"
+      - Textos enriquecidos da notificação:
+        - "Leave now → %1$s · est. %2$d min by %3$s (incl. %4$d min traffic delay)" / "Saia agora → %1$s · est. %2$d min de %3$s (inclui %4$d min de trânsito)"
+        - "Leave now → %1$s · est. %2$d min by %3$s (rush hour adjusted)" / "Saia agora → %1$s · est. %2$d min de %3$s (ajustado para horário de pico)"
+        - "Leave in %1$d min → %2$s · est. %3$d min by %4$s" / "Saia em %1$d min → %2$s · est. %3$d min de %4$s"
+      - Ações da notificação: "View on map" / "Ver no mapa", "Transit lines" / "Linhas de transporte", "Dismiss" / "Dispensar"
+      - Textos do TomTom (2.500 req/dia, trânsito real, link de cadastro), Stadia Maps, Valhalla OSM, Estimativa Local com Compensador de Pico, e status de permissões.
   - **Verificação**: Compilar recursos e validar formatação dos placeholders (`%1$s`, `%2$d`).
 
 ---
@@ -119,7 +122,7 @@
 - [ ] **Tarefa 2.5 — Criar teste unitário da migração Room**
   - **Arquivo**: `app/src/test/kotlin/org/onekash/kashcal/data/db/migration/Migration27To28Test.kt`
   - **Ação**:
-    - Validar que um banco na versão 27 com eventos e reminders existentes migra com sucesso para a versão 28 preservando todos os dados e aplicando os valores default corretos.
+    - Validar que um banco na versão 27 com eventos e reminders existentes migra com sucesso para a versão 28 preservando dados e defaults.
   - **Verificação**: Executar `./gradlew testDebugUnitTest --tests "*.Migration27To28Test"`.
 
 ---
@@ -131,79 +134,97 @@
   - **Ação**:
     - Inserir seção `// FORK:travel-time`:
       ```kotlin
+      val TRAVEL_ALERTS_TOMTOM_API_KEY = stringPreferencesKey("travel_alerts_tomtom_api_key")
+      val TRAVEL_ALERTS_TOMTOM_ENABLED = booleanPreferencesKey("travel_alerts_tomtom_enabled")
       val TRAVEL_ALERTS_STADIA_API_KEY = stringPreferencesKey("travel_alerts_stadia_api_key")
       val TRAVEL_ALERTS_STADIA_ENABLED = booleanPreferencesKey("travel_alerts_stadia_enabled")
       val TRAVEL_ALERTS_VALHALLA_ENABLED = booleanPreferencesKey("travel_alerts_valhalla_enabled")
+      val TRAVEL_ALERTS_RUSH_HOUR_ENABLED = booleanPreferencesKey("travel_alerts_rush_hour_enabled")
       ```
 
 - [ ] **Tarefa 3.2 — Atualizar allow-list em `ExportablePreferences`**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/domain/backup/ExportablePreferences.kt`
   - **Ação**:
-    - Adicionar as 3 chaves ao conjunto `KEYS`.
-    - Incrementar o contador de expectativa de chaves e atualizar a asserção no teste unitário `ExportablePreferencesTest.kt`.
+    - Adicionar as 6 novas chaves ao conjunto `KEYS`.
+    - Atualizar a contagem esperada e a asserção no teste unitário `ExportablePreferencesTest.kt`.
   - **Verificação**: Executar `./gradlew testDebugUnitTest --tests "*.ExportablePreferencesTest"`.
 
 - [ ] **Tarefa 3.3 — Criar métodos de acesso em `KashCalDataStore`**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/data/preferences/KashCalDataStore.kt`
   - **Ação**:
-    - Adicionar flows e métodos suspend para leitura/gravação de:
-      - `travelStadiaApiKey: Flow<String?>` e `setTravelStadiaApiKey(key: String?)`
-      - `travelStadiaEnabled: Flow<Boolean>` (padrão true) e `setTravelStadiaEnabled(enabled: Boolean)`
-      - `travelValhallaEnabled: Flow<Boolean>` (padrão true) e `setTravelValhallaEnabled(enabled: Boolean)`
+    - Implementar flows e métodos suspend para leitura/gravação das chaves TomTom, Stadia, Valhalla e Rush Hour.
 
 ---
 
-## Fase 4 — Mecanismo de Roteamento (3 Provedores + Fallback)
+## Fase 4 — Mecanismo de Roteamento Inteligente (4 Níveis, Cache e Trânsito)
 
 - [ ] **Tarefa 4.1 — Criar `TravelMode.kt`**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/data/travel/TravelMode.kt`
   - **Ação**:
-    - Implementar enum `TravelMode` (`CAR`, `FOOT`, `TRANSIT`) com propriedades `valhallaCosting`, `speedKmh`, `tortuosityFactor` e helper `fromString()`.
+    - Implementar enum `TravelMode` (`CAR`, `FOOT`, `TRANSIT`) com propriedades `tomtomMode`, `valhallaCosting`, `speedKmh`, `tortuosityFactor`.
 
-- [ ] **Tarefa 4.2 — Criar interface `RoutingProvider` e modelo `RoutingResult`**
+- [ ] **Tarefa 4.2 — Criar interface `RoutingProvider` e modelos de resultado**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/data/travel/RoutingProvider.kt`
   - **Ação**:
-    - Definir `interface RoutingProvider { val name: String; suspend fun estimateMinutes(...): Int? }`.
-    - Definir `data class RoutingResult(val minutes: Int, val providerName: String, val isEstimate: Boolean)`.
+    - Definir `interface RoutingProvider { val name: String; suspend fun estimate(...): ProviderResult? }`.
+    - Definir `data class ProviderResult(val minutes: Int, val trafficDelayMinutes: Int = 0, val hasLiveTraffic: Boolean = false)`.
+    - Definir `data class RoutingResult(val minutes: Int, val trafficDelayMinutes: Int, val providerName: String, val hasLiveTraffic: Boolean, val isRushHourAdjusted: Boolean, val isEstimate: Boolean)`.
 
-- [ ] **Tarefa 4.3 — Implementar `StadiaMapsProvider.kt` (Provedor 1)**
+- [ ] **Tarefa 4.3 — Implementar Cache LRU e Circuit Breaker**
+  - **Arquivos**:
+    - `app/src/main/kotlin/org/onekash/kashcal/data/travel/RouteCache.kt`
+    - `app/src/main/kotlin/org/onekash/kashcal/data/travel/CircuitBreaker.kt`
+  - **Ação**:
+    - `RouteCache`: Armazena rotas com base em coordenadas quantizadas (~100m) e TTL de 15 minutos.
+    - `CircuitBreaker`: Registra falhas e aplica cooldown de 15 minutos em provedores que retornarem HTTP 429 ou erros consecutivos.
+
+- [ ] **Tarefa 4.4 — Implementar Compensador de Horário de Pico (`RushHourEstimator.kt`)**
+  - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/data/travel/RushHourEstimator.kt`
+  - **Ação**:
+    - Detecta se o timestamp de saída cai em janela de trânsito intenso (segunda a sexta, 07:30–09:30 e 17:30–19:30).
+    - Aplica acréscimo inteligente de +30% no tempo estimado de carro para estimativas estáticas/offline.
+
+- [ ] **Tarefa 4.5 — Implementar `TomTomRoutingProvider.kt` (Nível 1 - Trânsito Real)**
+  - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/data/travel/TomTomRoutingProvider.kt`
+  - **Ação**:
+    - Chamada POST para `https://api.tomtom.com/routing/1/calculateRoute/...` com `traffic=true`.
+    - Parse de `travelTimeInSeconds` e `trafficDelayInSeconds`.
+    - Se chave não estiver configurada, retorna `null` imediatamente.
+
+- [ ] **Tarefa 4.6 — Implementar `StadiaMapsProvider.kt` (Nível 2 - Valhalla Nuvem)**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/data/travel/StadiaMapsProvider.kt`
   - **Ação**:
-    - Injetar `OkHttpClient`, `@IoDispatcher CoroutineDispatcher` e `KashCalDataStore`.
-    - Montar requisição JSON para `https://api.stadiamaps.com/route/v1` com `api_key`.
-    - Fazer parse de `trip.summary.time` em segundos, converter para minutos arredondados para cima.
-    - Se a chave for nula/vazia, retornar `null` imediatamente sem efetuar chamada HTTP.
+    - Chamada POST para `https://api.stadiamaps.com/route/v1`.
+    - Parse de `trip.summary.time`.
 
-- [ ] **Tarefa 4.4 — Implementar `ValhallaDemoProvider.kt` (Provedor 2)**
+- [ ] **Tarefa 4.7 — Implementar `ValhallaDemoProvider.kt` (Nível 3 - Servidor Público)**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/data/travel/ValhallaDemoProvider.kt`
   - **Ação**:
-    - Montar requisição JSON para `https://valhalla1.openstreetmap.de/route`.
-    - Incluir cabeçalho `X-Client-Id: kashcal-tasks-fork`.
-    - Definir timeout de 8 segundos no OkHttp. Tratar erros de rede retornando `null`.
+    - Chamada POST para `https://valhalla1.openstreetmap.de/route` com `X-Client-Id`.
+    - Integrado ao `CircuitBreaker` para evitar sobrecarga do servidor comunitário.
 
-- [ ] **Tarefa 4.5 — Implementar `LocalHaversineProvider.kt` (Provedor 3 - Fallback Offline)**
+- [ ] **Tarefa 4.8 — Implementar `LocalHaversineProvider.kt` (Nível 4 - Offline)**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/data/travel/LocalHaversineProvider.kt`
   - **Ação**:
-    - Implementar fórmula geodésica de Haversine para cálculo de distância entre duas coordenadas.
-    - Multiplicar pela taxa de tortuosidade (`mode.tortuosityFactor`) e dividir pela velocidade média (`mode.speedKmh`).
-    - Garantir retorno de no mínimo 1 minuto se distância > 0. Nunca lança exceção e nunca retorna `null`.
+    - Distância geodésica $\times$ `tortuosityFactor` / velocidade média.
+    - Acopla o `RushHourEstimator` para ajustar o tempo durante o pico se ativado.
+    - Nunca falha; sempre retorna valor válido.
 
-- [ ] **Tarefa 4.6 — Implementar `RoutingService.kt`**
+- [ ] **Tarefa 4.9 — Implementar `RoutingService.kt`**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/data/travel/RoutingService.kt`
   - **Ação**:
-    - Injetar os 3 provedores e o `KashCalDataStore`.
-    - Orquestrar a cadeia de execução:
-      1. Tentar `StadiaMapsProvider` (se habilitado e chave configurada).
-      2. Tentar `ValhallaDemoProvider` (se habilitado).
-      3. Fallback final para `LocalHaversineProvider`.
-    - Retornar sempre `RoutingResult`.
+    - Orquestra: Checagem de Cache -> TomTom -> Stadia Maps -> Valhalla Demo -> Local Haversine -> Atualização de Cache.
 
-- [ ] **Tarefa 4.7 — Criar testes unitários para a camada de roteamento**
-  - **Arquivos**:
-    - `app/src/test/kotlin/org/onekash/kashcal/data/travel/LocalHaversineProviderTest.kt`
-    - `app/src/test/kotlin/org/onekash/kashcal/data/travel/StadiaMapsProviderTest.kt`
-    - `app/src/test/kotlin/org/onekash/kashcal/data/travel/ValhallaDemoProviderTest.kt`
-    - `app/src/test/kotlin/org/onekash/kashcal/data/travel/RoutingServiceTest.kt`
+- [ ] **Tarefa 4.10 — Testes unitários para toda a camada de roteamento**
+  - **Arquivos em `app/src/test/kotlin/org/onekash/kashcal/data/travel/`**:
+    - `RouteCacheTest.kt`
+    - `CircuitBreakerTest.kt`
+    - `RushHourEstimatorTest.kt`
+    - `TomTomRoutingProviderTest.kt`
+    - `StadiaMapsProviderTest.kt`
+    - `ValhallaDemoProviderTest.kt`
+    - `LocalHaversineProviderTest.kt`
+    - `RoutingServiceTest.kt`
   - **Verificação**: Executar `./gradlew testDebugUnitTest --tests "org.onekash.kashcal.data.travel.*"`.
 
 ---
@@ -213,15 +234,14 @@
 - [ ] **Tarefa 5.1 — Implementar `TravelLocationProvider.kt`**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/reminder/travel/TravelLocationProvider.kt`
   - **Ação**:
-    - Injetar `@ApplicationContext context: Context` e `@IoDispatcher dispatcher: CoroutineDispatcher`.
     - Inicializar `FusedLocationProviderClient`.
-    - Implementar checagem de permissões antes de chamar as APIs do Google Play Services.
-    - Implementar `suspend fun getCurrentLocation(): Pair<Double, Double>?` com `Priority.PRIORITY_HIGH_ACCURACY` e `withTimeoutOrNull(8_000)`.
-    - Implementar `suspend fun getLastKnownLocation(): Pair<Double, Double>?` como fallback rápido.
+    - Checagem prévia de permissões de localização em tempo de execução.
+    - `getCurrentLocation()` com `Priority.PRIORITY_HIGH_ACCURACY` e timeout de 8 segundos.
+    - `getLastKnownLocation()` para recuperação instantânea do último ponto conhecido.
 
 - [ ] **Tarefa 5.2 — Testes unitários do provedor de localização**
   - **Arquivo**: `app/src/test/kotlin/org/onekash/kashcal/reminder/travel/TravelLocationProviderTest.kt`
-  - **Verificação**: Validar comportamento com permissão concedida e negada.
+  - **Verificação**: Validar retornos com permissões ativas e revogadas.
 
 ---
 
@@ -230,57 +250,31 @@
 - [ ] **Tarefa 6.1 — Implementar `TravelAlarmWorker.kt`**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/reminder/travel/TravelAlarmWorker.kt`
   - **Ação**:
-    - `@HiltWorker` herdando de `CoroutineWorker`.
-    - Obter `eventId` e `occurrenceTs` dos parâmetros de entrada.
-    - Carregar o `Event` correspondente.
-    - Resolver destino: `event.geoLat` / `event.geoLon` ou geocodificar `event.location` via `LocationSuggestionService`.
-    - Resolver origem: geocodificar `event.travelOriginFixed` ou obter coordenadas de `travelLocationProvider.getCurrentLocation()`.
+    - `@HiltWorker` com execução `setExpedited`.
+    - Resolver destino (`geoLat`/`geoLon` persistidos ou Geocoder).
+    - Resolver origem (`travelOriginFixed` ou `TravelLocationProvider`).
     - Consultar `routingService.estimate(...)`.
-    - Calcular `triggerDepart = occurrenceTs - (routingResult.minutes * 60_000L)`.
-    - Calcular `triggerBuffer = occurrenceTs - ((routingResult.minutes + bufferMin) * 60_000L)` se `bufferMin > 0`.
-    - Persistir em `scheduledRemindersDao` com `reminderType = TRAVEL_DEPART` e `TRAVEL_BUFFER`.
-    - Armar alarmes exatos chamando `reminderScheduler.scheduleAlarm(reminder.id, reminder.triggerTime)`.
-    - Fallback de contingência caso localização falhe totalmente.
+    - Agendar `ScheduledReminder` para hora de sair e buffer adicional.
+    - Registrar alarmes exatos via `ReminderScheduler.scheduleAlarm`.
 
 - [ ] **Tarefa 6.2 — Implementar `TravelReminderScheduler.kt`**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/reminder/travel/TravelReminderScheduler.kt`
   - **Ação**:
-    - Injetar `WorkManager`, `EventReader` e `OccurrencesDao`.
-    - Implementar `scheduleForEvent(event: Event, occurrences: List<Occurrence>)`:
-      - Para cada ocorrência futura com `event.travelMode != null`:
-        - Calcular `delay = occurrence.startTs - 1_HOUR_MS - now`. Se `delay < 0`, `delay = 0`.
-        - Enfileirar via `workManager.enqueueUniqueWork("travel_alarm_${event.id}_${occurrence.startTs}", ExistingWorkPolicy.REPLACE, workRequest)`.
-    - Implementar `scheduleUpcomingTravelAlarms()`:
-      - Consultar ocorrências nos próximos 7 dias para eventos com alertas de saída ativados.
-    - Implementar `cancelForEvent(eventId: Long)`.
+    - Enfileirar `TravelAlarmWorker` para ~1h antes de cada ocorrência futura (`ExistingWorkPolicy.REPLACE`).
+    - `scheduleUpcomingTravelAlarms()`: varredura dos próximos 7 dias.
+    - `cancelForEvent(eventId: Long)`: cancelamento em cascata.
 
 - [ ] **Tarefa 6.3 — Conectar o scheduler ao `EventCoordinator.kt`**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/domain/coordinator/EventCoordinator.kt`
   - **Ação**:
-    - Injetar `travelReminderScheduler: TravelReminderScheduler`.
-    - Em `createEvent()`, `updateEvent()`, `editSingleOccurrence()` e `editThisAndFuture()`:
-      - Adicionar chamada:
-        ```kotlin
-        // FORK:travel-time
-        travelReminderScheduler.scheduleForEvent(result, occurrences)
-        ```
-    - Em exclusão de eventos: chamar `travelReminderScheduler.cancelForEvent(eventId)`.
+    - Injetar `travelReminderScheduler`.
+    - Chamar `travelReminderScheduler.scheduleForEvent(result, occurrences)` em `createEvent`, `updateEvent`, etc.
+    - Chamar `cancelForEvent(eventId)` ao excluir eventos.
 
 - [ ] **Tarefa 6.4 — Conectar a varredura ao `ReminderRefreshWorker.kt`**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/reminder/worker/ReminderRefreshWorker.kt`
   - **Ação**:
-    - Injetar `travelReminderScheduler: TravelReminderScheduler`.
-    - Em `doWork()`, logo após a rotina de device calendar reminders:
-      ```kotlin
-      // FORK:travel-time
-      try {
-          travelReminderScheduler.scheduleUpcomingTravelAlarms()
-      } catch (e: CancellationException) {
-          throw e
-      } catch (e: Exception) {
-          Log.w(TAG, "Travel alarm scheduling failed, continuing", e)
-      }
-      ```
+    - Injetar `travelReminderScheduler` e acionar `scheduleUpcomingTravelAlarms()` na rotina diária.
 
 - [ ] **Tarefa 6.5 — Testes unitários do Worker e Scheduler**
   - **Arquivos**:
@@ -290,78 +284,59 @@
 
 ---
 
-## Fase 7 — Notificações de Saída Customizadas
+## Fase 7 — Notificações Enriquecidas de Saída
 
 - [ ] **Tarefa 7.1 — Criar canal de notificações em `ReminderNotificationChannels.kt`**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/reminder/notification/ReminderNotificationChannels.kt`
   - **Ação**:
-    - Adicionar constante `CHANNEL_TRAVEL_REMINDERS = "travel_departure_reminders" // FORK:travel-time`.
-    - Em `createChannels()`: registrar canal com `IMPORTANCE_HIGH`, luzes e vibração.
+    - Constante `CHANNEL_TRAVEL_REMINDERS = "travel_departure_reminders" // FORK:travel-time`.
+    - Configurar canal com `IMPORTANCE_HIGH`, som e vibração.
 
 - [ ] **Tarefa 7.2 — Customizar notificação em `ReminderNotificationManager.kt`**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/reminder/notification/ReminderNotificationManager.kt`
   - **Ação**:
-    - Em `buildNotification()`: adicionar interceptação para `reminder.reminderType`:
-      ```kotlin
-      // FORK:travel-time
-      if (reminder.reminderType == ReminderType.TRAVEL_DEPART ||
-          reminder.reminderType == ReminderType.TRAVEL_BUFFER) {
-          return buildTravelNotification(reminder)
-      }
-      ```
-    - Implementar método privado `buildTravelNotification(reminder: ScheduledReminder)`:
-      - Utiliza o canal `CHANNEL_TRAVEL_REMINDERS`.
-      - Texto de acordo com o modal e tempo estimado.
-      - Ação rápida "Ver no mapa": cria `PendingIntent` disparando Intent de navegação com as coordenadas de destino.
-      - Ação "Dispensar".
+    - Formatar corpo com dados de trânsito em tempo real quando disponíveis: *"Saia agora → [Local] · est. 35 min de carro (inclui 12 min de trânsito)"*.
+    - Ação rápida "Ver no mapa" (navegação direta).
+    - Para transporte público: ação rápida "Linhas de transporte" (`google.navigation:q=dest&mode=transit`).
+    - Ação "Dispensar".
 
-- [ ] **Tarefa 7.3 — Teste unitário de notificações**
+- [ ] **Tarefa 7.3 — Teste unitário de notificações de viagem**
   - **Arquivo**: `app/src/test/kotlin/org/onekash/kashcal/reminder/notification/ReminderNotificationManagerTravelTest.kt`
-  - **Verificação**: Validar textos, canal e ações das notificações de saída.
+  - **Verificação**: Validar textos, menção ao tráfego e intents associadas.
 
 ---
 
-## Fase 8 — Tela Dedicada de Configurações ("Alertas de Saída")
+## Fase 8 — Painel Completo de Configurações ("Alertas de Saída")
 
 - [ ] **Tarefa 8.1 — Criar `TravelAlertsViewModel.kt`**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/ui/screens/settings/TravelAlertsViewModel.kt`
   - **Ação**:
-    - Injetar `KashCalDataStore`.
-    - Expor `StateFlow` contendo:
-      - Chave API Stadia Maps salva.
-      - Status habilitado/desabilitado do Stadia Maps.
-      - Status habilitado/desabilitado do Valhalla Demo.
-      - Estado das permissões de localização do dispositivo.
-    - Implementar métodos:
-      - `onSetStadiaApiKey(key: String)`
-      - `onToggleStadia(enabled: Boolean)`
-      - `onToggleValhalla(enabled: Boolean)`
-      - `onRefreshPermissions()`
+    - Injetar `KashCalDataStore` e `CircuitBreaker`.
+    - Expor estado reativo para TomTom, Stadia, Valhalla, Rush Hour e permissões de GPS.
+    - Implementar salvamento de chaves e toggles de provedores.
 
 - [ ] **Tarefa 8.2 — Criar `TravelAlertsScreen.kt`**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/ui/screens/settings/TravelAlertsScreen.kt`
   - **Ação**:
-    - Montar layout com `Scaffold` e `SettingsTopAppBar`.
-    - Card Educativo: Explicação aprofundada de como o alerta funciona dinamicamente no momento do disparo.
-    - Seção de Provedores em cascata:
-      - **Stadia Maps**: Instruções detalhadas para obter a chave gratuita no site `https://stadiamaps.com/signup`, campo de texto com botão de salvar e toggle.
-      - **Valhalla OSM**: Descrição e toggle.
-      - **Estimativa Local**: Descrição e badge fixo de "Sempre Ativo (Offline)".
-    - Seção de Permissões de Localização: Indicadores visuais e botão para solicitar permissão em tempo de execução.
+    - Onboarding educativo explicando o cálculo dinâmico no momento do alarme.
+    - Cartão TomTom: link de cadastro gratuito sem cartão (`developer.tomtom.com`), input da chave e toggle.
+    - Cartão Stadia Maps / Servidor Próprio: input de chave/URL e toggle.
+    - Cartão Valhalla Demo: toggle e badge de status do Circuit Breaker.
+    - Cartão Estimativa Local: toggle do compensador de horário de pico e badge "Sempre Ativo".
+    - Cartão de Permissões: status e botão de solicitação direta de permissão.
 
 - [ ] **Tarefa 8.3 — Integrar rota em `SettingsDestination.kt` e `SettingsRoute.kt`**
   - **Arquivos**:
     - `app/src/main/kotlin/org/onekash/kashcal/ui/screens/settings/SettingsDestination.kt`
     - `app/src/main/kotlin/org/onekash/kashcal/ui/screens/SettingsRoute.kt`
   - **Ação**:
-    - Em `SettingsDestination`: adicionar `TravelAlerts(depth = 1) // FORK:travel-time`.
-    - Em `SettingsRoute.kt`: adicionar `TravelAlerts` no `AnimatedContent` de transição de telas.
-    - Atualizar `SettingsDestinationTest.kt`.
+    - Adicionar `TravelAlerts(depth = 1) // FORK:travel-time`.
+    - Inserir transição animada e atualizar `SettingsDestinationTest.kt`.
 
-- [ ] **Tarefa 8.4 — Adicionar item em `AccountSettingsScreen.kt`**
+- [ ] **Tarefa 8.4 — Adicionar atalho em `AccountSettingsScreen.kt`**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/ui/screens/AccountSettingsScreen.kt`
   - **Ação**:
-    - Adicionar `SettingsRow` para "Alertas de saída" apontando para a nova tela.
+    - Inserir linha "Alertas de saída" apontando para a nova tela.
 
 ---
 
@@ -370,54 +345,27 @@
 - [ ] **Tarefa 9.1 — Atualizar `EventFormState`**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/ui/components/EventFormSheet.kt`
   - **Ação**:
-    - Adicionar campos:
-      ```kotlin
-      // FORK:travel-time
-      val locationLat: Double? = null,
-      val locationLon: Double? = null,
-      val travelMode: TravelMode? = null,
-      val travelBufferMin: Int = 0,
-      val travelOriginFixed: String? = null,
-      ```
+    - Adicionar `locationLat`, `locationLon`, `travelMode`, `travelBufferMin`, `travelOriginFixed`.
 
-- [ ] **Tarefa 9.2 — Capturar latitude e longitude no autocomplete de endereço**
+- [ ] **Tarefa 9.2 — Capturar latitude e longitude no autocomplete**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/ui/components/EventFormSheet.kt`
   - **Ação**:
-    - Ao selecionar uma `AddressSuggestion`, gravar:
-      ```kotlin
-      // FORK:travel-time
-      state = state.copy(
-          location = suggestion.displayName,
-          locationLat = suggestion.latitude,
-          locationLon = suggestion.longitude
-      )
-      ```
-    - Ao digitar manualmente novo texto de endereço, redefinir `locationLat = null` e `locationLon = null`.
+    - Gravar coordenadas no clique da sugestão e resetar para null na edição manual.
 
 - [ ] **Tarefa 9.3 — Adicionar componente visual da seção "Alerta de saída"**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/ui/components/EventFormSheet.kt`
   - **Ação**:
-    - Inserir logo abaixo da linha de localização.
-    - Condição: `state.location.isNotBlank() && !state.isAllDay`.
-    - Componentes: Switch liga/desliga, seletor de modais (Carro, A pé, Transporte público), seletor de origem ("Localização atual" vs "Endereço fixo") e menu dropdown de buffer extra (0, 5, 10, 15, 30 min).
+    - Renderizar switch, modais (Carro, A pé, Transporte), seletor de origem e buffer.
 
 - [ ] **Tarefa 9.4 — Persistir campos no `HomeViewModel.saveEvent()`**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/ui/viewmodels/HomeViewModel.kt`
   - **Ação**:
-    - Ao construir/copiar o `Event`, repassar:
-      ```kotlin
-      // FORK:travel-time
-      geoLat = formState.locationLat ?: master.geoLat,
-      geoLon = formState.locationLon ?: master.geoLon,
-      travelMode = formState.travelMode?.name,
-      travelDepartBufferMin = formState.travelBufferMin.takeIf { it > 0 },
-      travelOriginFixed = formState.travelOriginFixed,
-      ```
+    - Repassar `geoLat`, `geoLon`, `travelMode`, `travelDepartBufferMin`, `travelOriginFixed` para a entidade `Event`.
 
 - [ ] **Tarefa 9.5 — Solicitação gradual de permissões na UI**
   - **Arquivo**: `app/src/main/kotlin/org/onekash/kashcal/ui/components/EventFormSheet.kt`
   - **Ação**:
-    - Exibir diálogo explicativo amigável caso o usuário ative o alerta de saída com origem "Localização atual" e ainda não tenha concedido permissão de localização.
+    - Exibir diálogo explicativo ao ativar alerta de saída com "Localização atual".
 
 ---
 
@@ -425,12 +373,12 @@
 
 - [ ] **Tarefa 10.1 — Validação completa da suíte de testes unitários**
   - **Comando**: `./gradlew testDebugUnitTest`
-  - **Ação**: Garantir que 100% dos testes unitários passem sem regressões.
+  - **Ação**: Garantir 100% de aprovação sem regressões.
 
 - [ ] **Tarefa 10.2 — Validação da compilação de build APK**
   - **Comando**: `./gradlew assembleDebug`
-  - **Ação**: Garantir que não existam erros de compilação, problemas com o Hilt ou conflitos de recursos.
+  - **Ação**: Garantir ausência de erros de compilação ou conflitos de recursos.
 
 - [ ] **Tarefa 10.3 — Documentar o relatório de integração do fork**
   - **Arquivo**: `FORK_TRAVEL_TIME_INTEGRATION.md`
-  - **Ação**: Criar mapa completo de integração documentando todos os arquivos novos e os pontos de costura (`// FORK:travel-time`) para facilitar futuros rebases com o upstream do KashCal.
+  - **Ação**: Criar mapa completo de integração documentando todos os pontos `// FORK:travel-time`.

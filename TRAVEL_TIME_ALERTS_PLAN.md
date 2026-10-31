@@ -1,4 +1,4 @@
-# TRAVEL_TIME_ALERTS_PLAN.md — Plano dos Alertas de Saída por Tempo de Viagem
+# TRAVEL_TIME_ALERTS_PLAN.md — Plano dos Alertas de Saída por Tempo de Viagem (Estratégia Refinada)
 
 > **Status da Branch**: `feature/travel-time-alerts` pronta para atuação do agente executor.  
 > **Base**: `fork/main` (`9b6416ca` - KashCal Tasks).  
@@ -7,71 +7,80 @@
 
 ---
 
-## 1. Resumo Executivo
+## 1. Resumo Executivo e Diagnóstico de Refinamento
 
-Esta funcionalidade adiciona ao aplicativo KashCal Tasks a capacidade de disparar notificações inteligentes avisando o usuário sobre a **hora exata em que deve sair** para chegar pontualmente a eventos que possuam endereço cadastrado.
+A funcionalidade adiciona ao aplicativo KashCal Tasks a capacidade de disparar notificações inteligentes avisando o usuário sobre a **hora exata em que deve sair** para chegar pontualmente a eventos que possuam endereço cadastrado.
 
-### O Diferencial Chave
-O cálculo do trajeto e do tempo estimado **não é estático**: ele é disparado dinamicamente **~1 hora antes do evento** (via `TravelAlarmWorker`), capturando a localização geográfica em tempo real do aparelho naquele dia. Eventos recorrentes (ex: ir para o trabalho) calculam o tempo de partida de forma independente a cada ocorrência, adaptando-se a qualquer lugar onde o usuário tenha acordado ou esteja naquele instante.
+### O Problema Central das Estratégias Convencionais
+Soluções baseadas apenas em OpenStreetMap estático (OSRM/Valhalla) sofrem de uma limitação crítica: **ignoram congestionamentos e trânsito em tempo real**. Em centros urbanos, um trajeto de 15 minutos sem tráfego pode facilmente saltar para 40 minutos em horários de pico. Um alerta baseado em tempo estático faria o usuário chegar com 25 minutos de atraso!
 
----
-
-## 2. Estratégia de Roteamento em 3 Camadas (Fallback Resiliente)
-
-Para eliminar dependências de serviços pagos com cartão ou risco de indisponibilidade, a arquitetura implementa uma cadeia estrita de 3 provedores (*Provider Chain*):
+### A Solução Refinada
+Desenvolvemos uma arquitetura robusta de **4 níveis em cascata**, combinando **trânsito em tempo real gratuito (sem cartão de crédito)**, servidores comunitários, e **compensação inteligente de horário de pico**:
 
 ```
                        RoutingService.estimate()
                                    │
-              ┌────────────────────▼────────────────────┐
-              │ 1. Stadia Maps Cloud (Valhalla Hosted)  │
-              │    • Requer chave de API gratuita       │
-              │    • Alta precisão e SLA dedicado       │
-              └────────────────────┬────────────────────┘
-                       falhou ou sem chave
+                     ┌─────────────▼─────────────┐
+                     │     RouteCache (LRU)      │ (TTL 15 min, coords ~100m)
+                     └─────────────┬─────────────┘
+                                   │ Miss
+        ┌──────────────────────────┴──────────────────────────┐
+        │ 1. TomTom Routing API (Trânsito em Tempo Real)      │
+        │    • 2.500 req/dia gratuitas (~75.000/mês)          │
+        │    • SEM CARTÃO DE CRÉDITO no cadastro              │
+        │    • Dados de congestionamento ao vivo              │
+        └──────────────────────────┬──────────────────────────┘
+                         falhou, sem chave ou cooldown
                                    │
-              ┌────────────────────▼────────────────────┐
-              │ 2. Valhalla OpenStreetMap Demo          │
-              │    • Servidor público comunitário       │
-              │    • Gratuito e sem necessidade de chave│
-              └────────────────────┬────────────────────┘
-                       falhou ou sem internet
+        ┌──────────────────────────▼──────────────────────────┐
+        │ 2. Stadia Maps / Servidor Próprio (Valhalla Cloud)  │
+        │    • Nuvem dedicada (200k créditos/mês sem cartão)  │
+        │    • Ou URL de instância própria (self-hosted)      │
+        └──────────────────────────┬──────────────────────────┘
+                         falhou ou sem chave
                                    │
-              ┌────────────────────▼────────────────────┐
-              │ 3. Estimativa Local (Haversine Formula) │
-              │    • 100% offline, zero requisição      │
-              │    • Linha reta x tortuosidade viária   │
-              └─────────────────────────────────────────┘
+        ┌──────────────────────────▼──────────────────────────┐
+        │ 3. Valhalla OpenStreetMap Demo (valhalla1.osm.de)   │
+        │    • Servidor público aberto (zero chave)           │
+        │    • Protegido por Circuit Breaker (cooldown 15m)   │
+        └──────────────────────────┬──────────────────────────┘
+                         falhou ou sem internet (offline)
+                                   │
+        ┌──────────────────────────▼──────────────────────────┐
+        │ 4. Estimativa Local Inteligente (Haversine Formula) │
+        │    • 100% offline, zero requisição HTTP             │
+        │    • Compensador de Horário de Pico (+30% no rush)  │
+        └─────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3. Tela de Configurações Dedicada
+## 2. Inovações e Refinamentos Introduzidos
 
-Assim como a integração com o Tasks.org possui sua própria área de gerenciamento, foi desenhada a tela **"Alertas de Saída"** em `Configurações`:
-
-- **Área Educativa**: Texto amigável detalhando como funciona o cálculo no momento do alarme e os benefícios práticos para o dia a dia.
-- **Configuração do Stadia Maps**:
-  - Instruções passo a passo para criar conta gratuita sem cartão em `https://stadiamaps.com/signup`.
-  - Campo de texto para salvar a chave de API no DataStore com validação.
-  - Switch para ativar ou desativar o provedor.
-- **Configuração do Valhalla Demo**: Descrição e switch de ativação.
-- **Estimativa Local**: Status permanente de "Sempre Ativo (Garantia Offline)".
-- **Gestão de Permissões**: Status de `ACCESS_FINE_LOCATION` e `ACCESS_BACKGROUND_LOCATION` com botões diretos de solicitação.
+1. **Trânsito Real com TomTom (Sem Fricção)**:
+   - TomTom Developer oferece **2.500 rotas/dia grátis sem cartão**.
+   - A notificação passa a informar o congestionamento: *"Saia agora → [Local] · est. 35 min de carro (inclui 12 min de trânsito)"*.
+2. **Compensador Inteligente de Horário de Pico (Rush Hour Compensator)**:
+   - Para quando o usuário estiver offline ou usando provedores estáticos: o app detecta se a viagem ocorre em janelas de pico (07:30–09:30 e 17:30–19:30 em dias úteis) e adiciona automaticamente um buffer prudencial de trânsito (+30% no tempo estimado de carro).
+3. **Cache de Curto Prazo e Circuit Breaker**:
+   - `RouteCache`: Armazena rotas recentes em memória por 15 minutos, poupando bateria e cotas de requisição.
+   - `CircuitBreaker`: Monitora o servidor público comunitário; se receber HTTP 429 ou erros seguidos, entra em cooldown de 15 minutos, liberando o fluxo imediatamente para o fallback local sem congelar o worker por 8 segundos.
+4. **Solução Pragmática para Transporte Público**:
+   - O app calcula a estimativa de tempo base e oferece na notificação a ação de 1 toque **"Ver linhas de transporte"**, abrindo a rota de transporte público direto no Google Maps / Citymapper / Moovit (`google.navigation:q=dest&mode=transit`).
 
 ---
 
-## 4. Onde Encontrar as Especificações Detalhadas
+## 3. Onde Encontrar as Especificações Detalhadas
 
 Toda a arquitetura e o planejamento de execução foram minuciosamente decompostos nos arquivos da pasta `.kiro/specs/travel-time-alerts/`:
 
-1. **[requirements.md](.kiro/specs/travel-time-alerts/requirements.md)**: Requisitos Funcionais (RF-01 a RF-10) e Não Funcionais (RNF-01 a RNF-05).
-2. **[design.md](.kiro/specs/travel-time-alerts/design.md)**: Diagramas de sequência, schemas Room v28 (`MIGRATION_27_28`), contratos de API, estrutura do worker, canais de notificação e mapeamento de costuras `// FORK:travel-time`.
-3. **[tasks.md](.kiro/specs/travel-time-alerts/tasks.md)**: Roteiro de 10 fases com tarefas atômicas e caixas de seleção `[ ]` para guiar a implementação pelo próximo agente.
+1. **[requirements.md](.kiro/specs/travel-time-alerts/requirements.md)**: Requisitos Funcionais (RF-01 a RF-10) e Não Funcionais (RNF-01 a RNF-06).
+2. **[design.md](.kiro/specs/travel-time-alerts/design.md)**: Diagramas técnicos, Room v28 (`MIGRATION_27_28`), contratos JSON da TomTom e Valhalla, Circuit Breaker, RouteCache, Worker e costuras `// FORK:travel-time`.
+3. **[tasks.md](.kiro/specs/travel-time-alerts/tasks.md)**: Roteiro de 10 fases com tarefas atômicas e caixas de seleção `[ ]` para guiar a implementação.
 
 ---
 
-## 5. Instruções para o Próximo Agente
+## 4. Instruções para o Próximo Agente
 
 1. Confirme que você está na branch:
    ```sh

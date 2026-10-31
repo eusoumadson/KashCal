@@ -19,12 +19,14 @@ Isso significa que, para eventos recorrentes (por exemplo, "Trabalho às 09:00")
 - A seção permanece recolhida/desativada por padrão; o usuário a ativa por meio de um toggle/switch explícito.
 - Ao desativar o toggle, todos os parâmetros de viagem associados ao formulário são redefinidos/limpos.
 
-### RF-02 — Seleção do Modal de Transporte
+### RF-02 — Seleção do Modal de Transporte e Integração com Apps de Trânsito
 - O usuário pode selecionar entre três modais de deslocamento:
   - 🚗 **Carro** (padrão)
   - 🚶 **A pé**
   - 🚌 **Transporte Público**
-- A interface exibe aviso informativo indicando que o modo "Transporte Público" utiliza uma heurística estimada (velocidade média ajustada + buffer de integração com rota a pé), visto que servidores abertos de roteamento não dispõem de feed GTFS em tempo real em todas as cidades.
+- Para **Transporte Público**:
+  - O aplicativo calcula uma estimativa base de tempo (caminhada combinada com velocidade média de transporte urbano).
+  - A notificação e a interface exibem ação direta **"Ver linhas de transporte"** que abre a rota de transporte público diretamente no app de navegação instalado (Google Maps / Citymapper / Moovit) via deep-link padrão (`google.navigation:q=dest&mode=transit`), permitindo ao usuário consultar horários exatos de ônibus e trens em tempo real com um único toque.
 
 ### RF-03 — Origem da Viagem (Flexível com Padrão Dinâmico)
 - O campo "Sair de" (Origem) possui como valor padrão **"Localização atual"** (`travel_origin_fixed = null` no banco).
@@ -33,7 +35,7 @@ Isso significa que, para eventos recorrentes (por exemplo, "Trabalho às 09:00")
 - Ao definir um endereço fixo: o aplicativo geocodifica essa origem e a utiliza para todas as ocorrências daquele evento.
 
 ### RF-04 — Buffer Adicional de Saída
-- O usuário pode configurar um alerta antecipado ("Avisar também X min antes de precisar sair") com as seguintes opções:
+- O usuário pode configurar um tempo de buffer ("Avisar também X min antes de precisar sair") com as seguintes opções:
   - `0` (Sem aviso extra — apenas "Hora de sair")
   - `5 minutos`
   - `10 minutos`
@@ -48,41 +50,52 @@ Isso significa que, para eventos recorrentes (por exemplo, "Trabalho às 09:00")
 - Para eventos recorrentes (RRULE), o cálculo de rota e tempo de deslocamento é realizado **de forma isolada e independente para cada ocorrência**.
 - O alarme de uma ocorrência nunca reaproveita dados de tempo de viagem calculados para outra, garantindo precisão mesmo diante de deslocamentos diários distintos do usuário.
 
-### RF-06 — Notificações de Saída e Ações Rápidas
+### RF-06 — Notificações de Saída e Enriquecimento com Dados de Tráfego
 - **Notificação "Hora de sair"**:
   - Momento de disparo: `triggerTime = occurrenceStartTs - (travelMinutes * 60_000)`
-  - Texto principal: *"Saia agora → [Local do evento] · est. 23 min de carro"*
+  - Texto principal (com trânsito em tempo real): *"Saia agora → [Local] · est. 32 min de carro (inclui 10 min de trânsito)"*
+  - Texto principal (sem trânsito em tempo real / horário de pico compensado): *"Saia agora → [Local] · est. 28 min de carro (ajustado para horário de pico)"*
+  - Texto principal (estimativa offline): *"Saia agora → [Local] · est. ~25 min (estimativa local)"*
 - **Notificação "Buffer antecipado"** (quando configurado):
   - Momento de disparo: `triggerTime = occurrenceStartTs - ((travelMinutes + bufferMin) * 60_000)`
-  - Texto principal: *"Saia em 15 min → [Local do evento] · est. 23 min de carro"*
+  - Texto principal: *"Saia em 15 min → [Local] · est. 32 min de carro"*
 - **Canal de Notificação**: Canal dedicado `CHANNEL_TRAVEL_REMINDERS` (`"travel_departure_reminders"`), configurado com prioridade ALTA (`IMPORTANCE_HIGH`), som, vibração e banner heads-up.
 - **Ações Rápidas na Notificação**:
   - **"Ver no mapa"**: Dispara Intent padrão de navegação com rota preenchida (`geo:lat,lon` ou URL de rota externa) para o app de mapas do dispositivo.
   - **"Dispensar"**: Encerra o alarme/notificação.
 
-### RF-07 — Estratégia de Roteamento em 3 Camadas com Fallback Resiliente
-O cálculo de rota e tempo de viagem opera através de uma cadeia de 3 provedores (*Provider Chain*), garantindo que o usuário nunca fique sem notificação:
-1. **Provedor 1: Stadia Maps (Valhalla Cloud)**:
-   - Requer chave de API gratuita cadastrada pelo usuário nas Configurações.
-   - Alta estabilidade, SLA em nuvem dedicada, sem risco de bloqueio de IP.
-2. **Provedor 2: Valhalla OpenStreetMap Demo (`valhalla1.openstreetmap.de`)**:
-   - Totalmente gratuito e aberto, sem necessidade de chave de API.
-   - Ativo por padrão como fallback online quando o Stadia Maps não estiver configurado ou apresentar falha.
-3. **Provedor 3: Estimativa Local (Fórmula de Haversine + Fatores Empíricos)**:
-   - Execução 100% offline, sem requisição HTTP e sem latência.
-   - Calcula distância geodésica em linha reta multiplicada pelo fator de tortuosidade viária do modal (1.35x para carro, 1.20x a pé, 1.50x transporte público) dividida pela velocidade média estimada.
-   - Sempre disponível como garantia final de funcionamento mesmo em modo avião ou sem sinal de rede celular.
-- A notificação reflete visualmente a fonte da estimativa: *"est. 23 min de carro"* (via API online) vs *"est. ~25 min (estimativa local)"* (via fallback offline).
+### RF-07 — Estratégia de Roteamento em Camadas com Fallback Resiliente e Trânsito Real
+O cálculo de rota e tempo de viagem opera através de uma cadeia inteligente de 4 níveis de provedores (*Provider Chain*):
+
+1. **Nível 1 — Trânsito em Tempo Real (TomTom Routing API)**:
+   - **Precisão**: ★★★★★ (Máxima).
+   - **Requisito**: Chave de API gratuita cadastrada pelo usuário nas Configurações.
+   - **Vantagem crítica**: Oferece **2.500 requisições/dia gratuitas (~75.000/mês)**, **SEM exigir cartão de crédito** no cadastro.
+   - **Capacidade**: Fornece tempo de viagem com congestionamento em tempo real (`travelTimeInSeconds`) e atraso no trânsito (`trafficDelayInSeconds`).
+2. **Nível 2 — Nuvem Dedicada OpenStreetMap (Stadia Maps / Servidor Próprio)**:
+   - **Precisão**: ★★★★☆ (Alta).
+   - **Requisito**: Chave gratuita Stadia Maps (200k créditos/mês, sem cartão) ou URL de servidor Valhalla/OSRM auto-hospedado (*self-hosted*).
+   - **Capacidade**: Infraestrutura dedicada sem trânsito dinâmico, mas com alto SLA e estabilidade.
+3. **Nível 3 — Servidor Comunitário Aberto (Valhalla OpenStreetMap Demo)**:
+   - **Precisão**: ★★★☆☆ (Média).
+   - **Requisito**: Nenhum (zero cadastro, zero chave). Servidor público `valhalla1.openstreetmap.de`.
+   - **Capacidade**: Ativo por padrão como fallback online quando não há chaves configuradas.
+4. **Nível 4 — Estimativa Local Inteligente (Fórmula de Haversine + Compensador de Pico)**:
+   - **Precisão**: ★★☆☆☆ (Estimativa).
+   - **Requisito**: Nenhum (100% offline, zero requisição HTTP).
+   - **Capacidade**: Distância geodésica $\times$ fator de tortuosidade viária / velocidade média.
+   - **Compensador de Horário de Pico**: Durante dias úteis em janelas de rush (07:30–09:30 e 17:30–19:30), adiciona automaticamente +30% de buffer de deslocamento para o modal Carro, prevenindo atrasos por tráfego quando offline.
 
 ### RF-08 — Tela Dedicada de Configurações ("Alertas de Saída")
 - Inserida na tela de Configurações do app no mesmo nível de "Tasks.org" (`SettingsDestination.TravelAlerts`).
 - Apresenta:
   1. **Seção Educativa / O que é a funcionalidade**: Explicação pormenorizada de como funcionam os alertas dinâmicos baseados no local de partida em tempo real.
   2. **Seção de Provedores de Rota**:
-     - Explicação da cadeia de fallback (Stadia Maps → Valhalla OSM → Estimativa Local).
-     - Cartão do **Stadia Maps**: Guia passo a passo com link direto (`https://stadiamaps.com/signup`) para obtenção da chave gratuita (sem exigência de cartão de crédito), campo para inserção/edição da chave API, botão para salvar/testar e toggle para habilitar/desabilitar.
-     - Cartão do **Valhalla OpenStreetMap Demo**: Descrição do servidor público comunitário e toggle para ativar/desativar.
-     - Cartão da **Estimativa Local**: Descrição do funcionamento offline e indicador de "Sempre Ativo".
+     - Explicação clara da cadeia de fallback (TomTom → Stadia → Valhalla OSM → Estimativa Local).
+     - Cartão do **TomTom Routing (Recomendado para Trânsito Real)**: Guia passo a passo com link direto (`https://developer.tomtom.com`) para criação de conta gratuita sem cartão, campo para inserção da chave API com validação, e toggle de ativação.
+     - Cartão do **Stadia Maps / Servidor Dedicado**: Guia para obter chave Stadia Maps (`https://stadiamaps.com/signup`) ou campo opcional para URL de instância própria.
+     - Cartão do **Valhalla OpenStreetMap Demo**: Toggle para habilitar/desabilitar o servidor público comunitário.
+     - Cartão da **Estimativa Local Inteligente**: Toggle do "Compensador de Horário de Pico" e indicador de "Sempre Ativo (Garantia Offline)".
   3. **Seção de Permissões de Localização**: Status em tempo real das permissões `ACCESS_FINE_LOCATION` e `ACCESS_BACKGROUND_LOCATION` com botões de solicitação direta / atalho para configurações do sistema.
 
 ### RF-09 — Persistência de Coordenadas de Local no Formulário
@@ -116,12 +129,16 @@ O cálculo de rota e tempo de viagem opera através de uma cadeia de 3 provedore
   `"travel_alarm_${eventId}_${occurrenceTs}"` com política `ExistingWorkPolicy.REPLACE`.
 - Múltiplas invocações do `TravelReminderScheduler` ou do `ReminderRefreshWorker` não duplicam tarefas pendentes.
 
-### RNF-04 — Orçamento Rígido de Timeout
-- O `TravelAlarmWorker` possui limite máximo estrito de execução de 25 segundos:
+### RNF-04 — Cache de Curto Prazo e Circuit Breaker
+- **Cache LRU em Memória**: Rotas calculadas para coordenadas similares (arredondadas para ~100m) e mesmo modal são cacheadas com TTL de 15 minutos, poupando bateria e cota de requisições.
+- **Circuit Breaker com Cooldown**: Provedores online que retornarem HTTP 429 (Rate Limit) ou falhas consecutivas entram em cooldown de 15 minutos, evitando re-tentativas desnecessárias e permitindo que o fallback assuma instantaneamente.
+
+### RNF-05 — Orçamento Rígido de Timeout
+- O `TravelAlarmWorker` opera com limite máximo estrito de execução de 25 segundos:
   - Obtenção de localização GPS: máximo de 8 segundos.
   - Requisição HTTP de roteamento: timeout de conexão/leitura de 8 segundos no OkHttp.
   - Estimativa local (Haversine): cálculo síncrono instantâneo (< 1 milissegundo).
 
-### RNF-05 — Retrocompatibilidade de Banco de Dados e Preferências
+### RNF-06 — Retrocompatibilidade de Banco de Dados e Preferências
 - Migração Room 27 → 28 implementada em `Migrations.kt` com colunas com valor padrão (`DEFAULT NULL` e `DEFAULT 'TIME_BEFORE'`).
 - Todas as chaves novas do DataStore devem ser catalogadas em `PreferencesKeys` e adicionadas à lista de permissões em `ExportablePreferences`, com validação nos testes de backup.
