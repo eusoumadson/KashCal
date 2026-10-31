@@ -54,6 +54,8 @@ fun TasksOrgScreen(
     hasWritePermission: Boolean,
     lists: List<TasksOrgList>,
     hiddenListIds: Set<Long>,
+    showInWidgets: Boolean = true, // FORK:tasks-widget
+    onToggleShowInWidgets: (Boolean) -> Unit = {}, // FORK:tasks-widget
     onNavigateBack: () -> Unit,
     onToggle: (Boolean) -> Unit,
     onRequestPermission: () -> Unit,
@@ -175,6 +177,33 @@ fun TasksOrgScreen(
                 exit = shrinkVertically()
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    // FORK:tasks-widget
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                            Text(
+                                stringResource(R.string.tasks_org_show_in_widgets),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                stringResource(R.string.tasks_org_show_in_widgets_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(checked = showInWidgets, onCheckedChange = onToggleShowInWidgets)
+                    }
+
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+
                     Text(
                         stringResource(R.string.tasks_org_lists_header),
                         style = MaterialTheme.typography.labelMedium,

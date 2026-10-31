@@ -210,6 +210,7 @@ class PendingActionTest {
             is PendingAction.QuickAddFromText -> "quick_add_from_text"
             is PendingAction.OpenChangeNotification -> "change_notification"
             is PendingAction.OpenQuickAdd -> "open_quick_add"
+            is PendingAction.ShowTaskQuickView -> "task_quick_view"
         }
 
         assertEquals("quick_view", result)
@@ -232,6 +233,7 @@ class PendingActionTest {
             is PendingAction.QuickAddFromText -> "quick_add_from_text"
             is PendingAction.OpenChangeNotification -> "change_notification"
             is PendingAction.OpenQuickAdd -> "open_quick_add"
+            is PendingAction.ShowTaskQuickView -> "task_quick_view"
         }
 
         assertEquals("create", result)
@@ -254,6 +256,7 @@ class PendingActionTest {
             is PendingAction.QuickAddFromText -> "quick_add_from_text"
             is PendingAction.OpenChangeNotification -> "change_notification"
             is PendingAction.OpenQuickAdd -> "open_quick_add"
+            is PendingAction.ShowTaskQuickView -> "task_quick_view"
         }
 
         assertEquals("search", result)
@@ -276,6 +279,7 @@ class PendingActionTest {
             is PendingAction.QuickAddFromText -> "quick_add_from_text"
             is PendingAction.OpenChangeNotification -> "change_notification"
             is PendingAction.OpenQuickAdd -> "open_quick_add"
+            is PendingAction.ShowTaskQuickView -> "task_quick_view"
         }
 
         assertEquals("open_quick_add", result)
@@ -298,6 +302,7 @@ class PendingActionTest {
             is PendingAction.QuickAddFromText -> "quick_add_from_text"
             is PendingAction.OpenChangeNotification -> "change_notification"
             is PendingAction.OpenQuickAdd -> "open_quick_add"
+            is PendingAction.ShowTaskQuickView -> "task_quick_view"
         }
 
         assertEquals("today", result)
@@ -320,6 +325,7 @@ class PendingActionTest {
             is PendingAction.QuickAddFromText -> "quick_add_from_text"
             is PendingAction.OpenChangeNotification -> "change_notification"
             is PendingAction.OpenQuickAdd -> "open_quick_add"
+            is PendingAction.ShowTaskQuickView -> "task_quick_view"
         }
 
         assertEquals("go_to_date", result)
@@ -349,6 +355,7 @@ class PendingActionTest {
             is PendingAction.QuickAddFromText -> "quick_add_from_text"
             is PendingAction.OpenChangeNotification -> "change_notification"
             is PendingAction.OpenQuickAdd -> "open_quick_add"
+            is PendingAction.ShowTaskQuickView -> "task_quick_view"
         }
 
         assertEquals("import", result)
@@ -378,6 +385,7 @@ class PendingActionTest {
             is PendingAction.QuickAddFromText -> "quick_add_from_text"
             is PendingAction.OpenChangeNotification -> "change_notification"
             is PendingAction.OpenQuickAdd -> "open_quick_add"
+            is PendingAction.ShowTaskQuickView -> "task_quick_view"
         }
 
         assertEquals("calendar_intent", result)
@@ -444,6 +452,7 @@ class PendingActionTest {
             is PendingAction.QuickAddFromText -> "quick_add_from_text"
             is PendingAction.OpenChangeNotification -> "change_notification"
             is PendingAction.OpenQuickAdd -> "open_quick_add"
+            is PendingAction.ShowTaskQuickView -> "task_quick_view"
         }
 
         assertEquals("quick_add_from_text", result)
@@ -466,6 +475,7 @@ class PendingActionTest {
             is PendingAction.QuickAddFromText -> "quick_add_from_text"
             is PendingAction.OpenChangeNotification -> "change_notification"
             is PendingAction.OpenQuickAdd -> "open_quick_add"
+            is PendingAction.ShowTaskQuickView -> "task_quick_view"
         }
 
         assertEquals("device_by_id", result)
@@ -488,9 +498,33 @@ class PendingActionTest {
             is PendingAction.QuickAddFromText -> "quick_add_from_text"
             is PendingAction.OpenChangeNotification -> "change_notification"
             is PendingAction.OpenQuickAdd -> "open_quick_add"
+            is PendingAction.ShowTaskQuickView -> "task_quick_view"
         }
 
         assertEquals("change_notification", result)
+    }
+
+    @Test
+    fun `when expression matches ShowTaskQuickView`() {
+        val action: PendingAction = PendingAction.ShowTaskQuickView(taskId = 123L)
+
+        val result = when (action) {
+            is PendingAction.ShowEventQuickView -> "quick_view"
+            is PendingAction.CreateEvent -> "create"
+            is PendingAction.OpenSearch -> "search"
+            is PendingAction.GoToToday -> "today"
+            is PendingAction.GoToDate -> "go_to_date"
+            is PendingAction.ImportIcsFile -> "import"
+            is PendingAction.CreateEventFromCalendarIntent -> "calendar_intent"
+            is PendingAction.ShowDeviceEventQuickView -> "device_quick_view"
+            is PendingAction.OpenDeviceEventById -> "device_by_id"
+            is PendingAction.QuickAddFromText -> "quick_add_from_text"
+            is PendingAction.OpenChangeNotification -> "change_notification"
+            is PendingAction.OpenQuickAdd -> "open_quick_add"
+            is PendingAction.ShowTaskQuickView -> "task_quick_view"
+        }
+
+        assertEquals("task_quick_view", result)
     }
 
     @Test

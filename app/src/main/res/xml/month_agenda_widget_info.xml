@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Widget metadata for Month + Agenda Split (Experimental Widget).
+    FORK:experimental-widgets
+
+    Size: 4x3 cells (approximately 260dp x 200dp)
+    Update: Every 30 minutes (1800000ms)
+    Resizable: horizontal and vertical
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="260dp"
+    android:minHeight="160dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="3"
+    android:minResizeWidth="200dp"
+    android:minResizeHeight="120dp"
+    android:maxResizeWidth="1100dp"
+    android:maxResizeHeight="700dp"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:initialLayout="@layout/widget_loading"
+    android:previewLayout="@layout/widget_loading"
+    android:description="@string/month_agenda_widget_description"
+    android:updatePeriodMillis="1800000"
+    android:widgetFeatures="reconfigurable" />

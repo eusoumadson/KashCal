@@ -68,6 +68,7 @@ import org.onekash.kashcal.ui.screens.settings.CalDavConnectionState
 import org.onekash.kashcal.ui.screens.settings.DeviceCalendarsScreen
 import org.onekash.kashcal.ui.screens.settings.TasksOrgScreen
 import org.onekash.kashcal.ui.screens.settings.TravelAlertsScreen // FORK:travel-time
+import org.onekash.kashcal.ui.screens.settings.ExperimentalWidgetsScreen // FORK:experimental-widgets
 import org.onekash.kashcal.ui.screens.settings.OfflineCalendarsScreen
 import org.onekash.kashcal.ui.screens.settings.toAccountUiModel
 import org.onekash.kashcal.ui.screens.settings.ICloudConnectionState
@@ -195,6 +196,8 @@ fun SettingsRoute(
         val hasTasksOrgWritePermission by viewModel.hasTasksOrgWritePermission.collectAsStateWithLifecycle()
         val tasksOrgLists by viewModel.tasksOrgLists.collectAsStateWithLifecycle()
         val hiddenTasksOrgListIds by viewModel.hiddenTasksOrgListIds.collectAsStateWithLifecycle()
+        val tasksInWidgetsEnabled by viewModel.tasksInWidgetsEnabled.collectAsStateWithLifecycle() // FORK:tasks-widget
+        val experimentalWidgetsEnabled by viewModel.experimentalWidgetsEnabled.collectAsStateWithLifecycle() // FORK:experimental-widgets
         val hasReadCalendarPermission by viewModel.hasReadCalendarPermission.collectAsStateWithLifecycle()
         val hasWriteCalendarPermission by viewModel.hasWriteCalendarPermission.collectAsStateWithLifecycle()
         val deviceCalendars by viewModel.deviceCalendars.collectAsStateWithLifecycle()
@@ -425,6 +428,7 @@ fun SettingsRoute(
         var showOfflineCalendarsScreen by rememberSaveable { mutableStateOf(false) }
         var showTasksOrgScreen by rememberSaveable { mutableStateOf(false) }
         var showTravelAlertsScreen by rememberSaveable { mutableStateOf(false) } // FORK:travel-time
+        var showExperimentalWidgetsScreen by rememberSaveable { mutableStateOf(false) } // FORK:experimental-widgets
 
         // ICS import state
         var icsImportFile by remember { mutableStateOf<IcsImportFile?>(null) }
@@ -557,6 +561,7 @@ fun SettingsRoute(
                 showOfflineCalendarsScreen
                 || showTasksOrgScreen // FORK:tasks-org
                 || showTravelAlertsScreen // FORK:travel-time
+                || showExperimentalWidgetsScreen // FORK:experimental-widgets
         ) {
             if (showTagsScreen) {
                 closeTags()
@@ -569,6 +574,7 @@ fun SettingsRoute(
             showOfflineCalendarsScreen = false
             showTasksOrgScreen = false
             showTravelAlertsScreen = false // FORK:travel-time
+            showExperimentalWidgetsScreen = false // FORK:experimental-widgets
         }
 
         // State-based navigation between the root and detail screens, animated as a directional
@@ -582,6 +588,7 @@ fun SettingsRoute(
             offlineCalendars = showOfflineCalendarsScreen,
             tasksOrg = showTasksOrgScreen,
             travelAlerts = showTravelAlertsScreen, // FORK:travel-time
+            experimentalWidgets = showExperimentalWidgetsScreen, // FORK:experimental-widgets
         )
 
         Box(modifier = Modifier.fillMaxSize()) {
@@ -755,6 +762,8 @@ fun SettingsRoute(
                             hasWritePermission = hasTasksOrgWritePermission,
                             lists = tasksOrgLists,
                             hiddenListIds = hiddenTasksOrgListIds,
+                            showInWidgets = tasksInWidgetsEnabled, // FORK:tasks-widget
+                            onToggleShowInWidgets = viewModel::setTasksInWidgetsEnabled, // FORK:tasks-widget
                             onNavigateBack = { showTasksOrgScreen = false },
                             onToggle = { enabled ->
                                 if (enabled && !hasTasksOrgPermission) {
@@ -772,6 +781,14 @@ fun SettingsRoute(
                     SettingsDestination.TravelAlerts -> {
                         TravelAlertsScreen(
                             onNavigateBack = { showTravelAlertsScreen = false }
+                        )
+                    }
+                    // FORK:experimental-widgets
+                    SettingsDestination.ExperimentalWidgets -> {
+                        ExperimentalWidgetsScreen(
+                            isEnabled = experimentalWidgetsEnabled,
+                            onToggleEnabled = viewModel::setExperimentalWidgetsEnabled,
+                            onNavigateBack = { showExperimentalWidgetsScreen = false }
                         )
                     }
                     SettingsDestination.OfflineCalendars -> {
@@ -951,6 +968,7 @@ fun SettingsRoute(
                             tasksOrgInstalled = tasksOrgInstalled,
                             tasksOrgEnabled = tasksOrgEnabled,
                             onNavigateToTravelAlerts = { viewModel.onSearchClose(); showTravelAlertsScreen = true }, // FORK:travel-time
+                            onNavigateToExperimentalWidgets = { viewModel.onSearchClose(); showExperimentalWidgetsScreen = true }, // FORK:experimental-widgets
                             onNavigateToOfflineCalendars = { viewModel.onSearchClose(); showOfflineCalendarsScreen = true },
                             offlineCalendarCount = offlineCalendars.size,
                             // Inline search

@@ -717,6 +717,26 @@ class KashCalDataStore(
         setPreference(PreferencesKeys.HIDDEN_TASKS_ORG_LIST_IDS, ids.map { it.toString() }.toSet())
     }
 
+    // FORK:tasks-widget
+    val tasksInWidgetsEnabled: Flow<Boolean>
+        get() = getPreference(PreferencesKeys.TASKS_IN_WIDGETS_ENABLED, true)
+
+    suspend fun getTasksInWidgetsEnabled(): Boolean = tasksInWidgetsEnabled.first()
+
+    suspend fun setTasksInWidgetsEnabled(enabled: Boolean) {
+        setPreference(PreferencesKeys.TASKS_IN_WIDGETS_ENABLED, enabled)
+    }
+
+    // FORK:experimental-widgets
+    val experimentalWidgetsEnabled: Flow<Boolean>
+        get() = getPreference(PreferencesKeys.EXPERIMENTAL_WIDGETS_ENABLED, true)
+
+    suspend fun getExperimentalWidgetsEnabled(): Boolean = experimentalWidgetsEnabled.first()
+
+    suspend fun setExperimentalWidgetsEnabled(enabled: Boolean) {
+        setPreference(PreferencesKeys.EXPERIMENTAL_WIDGETS_ENABLED, enabled)
+    }
+
     // ========== Departure alerts (FORK:travel-time) ==========
 
     val travelTomTomApiKey: Flow<String>

@@ -12,6 +12,7 @@ import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.background
@@ -455,27 +456,85 @@ private fun UpcomingEventRow(
         null
     }
 
-    Row(
-        modifier = GlanceModifier
-            .fillMaxWidth()
-            .padding(
-                horizontal = WIDGET_HORIZONTAL_MARGIN_DP.dp,
-                vertical = eventRowVerticalPaddingDp(detailedRows).dp
-            )
-            .let { m -> if (cancelledLabel != null) m.semantics { contentDescription = cancelledLabel } else m }
-            .clickable(
-                actionStartActivity<MainActivity>(
-                    parameters = actionParametersOf(
-                        ActionParameters.Key<String>(EXTRA_ACTION) to ACTION_SHOW_EVENT,
-                        ActionParameters.Key<Long>(EXTRA_EVENT_ID) to event.eventId,
-                        ActionParameters.Key<Long>(EXTRA_OCCURRENCE_TS) to event.occurrenceStartTs,
-                        ActionParameters.Key<Boolean>(EXTRA_IS_DEVICE_EVENT) to event.isDeviceEvent
-                    )
+    if (event.isTask) {
+        Row(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = WIDGET_HORIZONTAL_MARGIN_DP.dp,
+                    vertical = eventRowVerticalPaddingDp(detailedRows).dp
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = GlanceModifier
+                    .size(28.dp)
+                    .clickable(
+                        if (!event.isFutureOccurrence && !event.isReadOnly) {
+                            actionRunCallback<ToggleTaskAction>(
+                                actionParametersOf(
+                                    ToggleTaskAction.EXTRA_TASK_ID_KEY to event.eventId,
+                                    ToggleTaskAction.EXTRA_COMPLETED_KEY to event.isCompleted
+                                )
+                            )
+                        } else actionStartActivity<MainActivity>(
+                            parameters = actionParametersOf(
+                                ActionParameters.Key<String>(EXTRA_ACTION) to ACTION_SHOW_TASK,
+                                ActionParameters.Key<Long>(EXTRA_TASK_ID) to event.eventId
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    provider = ImageProvider(
+                        if (event.isCompleted) R.drawable.ic_widget_task_check
+                        else R.drawable.ic_widget_task_uncheck
+                    ),
+                    contentDescription = if (event.isCompleted) "Tarefa concluída" else "Tarefa pendente",
+                    modifier = GlanceModifier.size(20.dp)
                 )
-            ),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        EventRowInner(event, dayCode, showEventEmojis, timePattern, detailedRows)
+            }
+            Spacer(modifier = GlanceModifier.width(6.dp))
+            Row(
+                modifier = GlanceModifier
+                    .defaultWeight()
+                    .clickable(
+                        actionStartActivity<MainActivity>(
+                            parameters = actionParametersOf(
+                                ActionParameters.Key<String>(EXTRA_ACTION) to ACTION_SHOW_TASK,
+                                ActionParameters.Key<Long>(EXTRA_TASK_ID) to event.eventId
+                            )
+                        )
+                    ),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                EventRowInner(event, dayCode, showEventEmojis, timePattern, detailedRows)
+            }
+        }
+    } else {
+        Row(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = WIDGET_HORIZONTAL_MARGIN_DP.dp,
+                    vertical = eventRowVerticalPaddingDp(detailedRows).dp
+                )
+                .let { m -> if (cancelledLabel != null) m.semantics { contentDescription = cancelledLabel } else m }
+                .clickable(
+                    actionStartActivity<MainActivity>(
+                        parameters = actionParametersOf(
+                            ActionParameters.Key<String>(EXTRA_ACTION) to ACTION_SHOW_EVENT,
+                            ActionParameters.Key<Long>(EXTRA_EVENT_ID) to event.eventId,
+                            ActionParameters.Key<Long>(EXTRA_OCCURRENCE_TS) to event.occurrenceStartTs,
+                            ActionParameters.Key<Boolean>(EXTRA_IS_DEVICE_EVENT) to event.isDeviceEvent
+                        )
+                    )
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            EventRowInner(event, dayCode, showEventEmojis, timePattern, detailedRows)
+        }
     }
 }
 

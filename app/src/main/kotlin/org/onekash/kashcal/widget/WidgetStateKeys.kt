@@ -100,6 +100,9 @@ internal suspend fun refreshAllWidgets(
         add(WeekWidget::class.java to WeekWidget())
         add(MonthWidget::class.java to MonthWidget())
         add(UpcomingWidget::class.java to UpcomingWidget())
+        // FORK:experimental-widgets
+        add(SplitAgendaWidget::class.java to SplitAgendaWidget())
+        add(MonthAgendaWidget::class.java to MonthAgendaWidget())
         // DateWidget keys its accent producer on the same stamp, so the bump recolors it.
         if (includeDateWidget) add(DateWidget::class.java to DateWidget())
     }

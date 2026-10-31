@@ -36,14 +36,16 @@ internal fun RowScope.EventRowInner(
     val context = LocalContext.current
     val displayTitle = EmojiMatcher.formatWithEmoji(event.title, showEventEmojis)
     val allDayText = context.getString(R.string.label_all_day)
-    val dimmed = event.isPast || event.isCancelled
+    val dimmed = event.isPast || event.isCancelled || (event.isTask && event.isCompleted)
     val textColor = if (dimmed) WidgetTheme.pastEventText else WidgetTheme.primaryText
     val decoration = if (dimmed) TextDecoration.LineThrough else TextDecoration.None
 
     if (detailedRows) {
-        // Taller pill spans both text lines.
-        CalendarColorBar(event.calendarColor, heightDp = COLOR_BAR_HEIGHT_DETAILED_DP)
-        Spacer(modifier = GlanceModifier.width(BAR_TO_TIME_GAP_DP.dp))
+        // Taller pill spans both text lines (for calendar events; tasks use their checkbox).
+        if (!event.isTask) {
+            CalendarColorBar(event.calendarColor, heightDp = COLOR_BAR_HEIGHT_DETAILED_DP)
+            Spacer(modifier = GlanceModifier.width(BAR_TO_TIME_GAP_DP.dp))
+        }
         Column(modifier = GlanceModifier.defaultWeight()) {
             // Title first, at full width (no fixed time column).
             Text(
@@ -68,8 +70,10 @@ internal fun RowScope.EventRowInner(
             )
         }
     } else {
-        CalendarColorBar(event.calendarColor)
-        Spacer(modifier = GlanceModifier.width(BAR_TO_TIME_GAP_DP.dp))
+        if (!event.isTask) {
+            CalendarColorBar(event.calendarColor)
+            Spacer(modifier = GlanceModifier.width(BAR_TO_TIME_GAP_DP.dp))
+        }
         // The time column's width follows the resolved 12h/24h format. The time shares the
         // title's color so the row reads as one unit, not a two-tone split.
         Text(

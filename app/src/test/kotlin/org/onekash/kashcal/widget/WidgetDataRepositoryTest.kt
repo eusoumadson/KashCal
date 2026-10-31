@@ -12,6 +12,7 @@ import org.onekash.kashcal.data.db.entity.Calendar
 import org.onekash.kashcal.data.db.entity.Event
 import org.onekash.kashcal.data.db.entity.Occurrence
 import org.onekash.kashcal.data.db.entity.SyncStatus
+import org.onekash.kashcal.data.preferences.KashCalDataStore
 import org.onekash.kashcal.domain.model.DisplayEvent
 import org.onekash.kashcal.domain.reader.DisplayEventRepository
 import org.onekash.kashcal.util.DateTimeUtils
@@ -33,6 +34,7 @@ import java.time.ZoneId
 class WidgetDataRepositoryTest {
 
     private lateinit var displayEventRepository: DisplayEventRepository
+    private lateinit var mockDataStore: KashCalDataStore
     private lateinit var repository: WidgetDataRepository
 
     private val testCalendar = Calendar(
@@ -48,7 +50,10 @@ class WidgetDataRepositoryTest {
     fun setup() {
         displayEventRepository = mockk(relaxed = true)
         val mockContext: android.content.Context = mockk(relaxed = true)
-        repository = WidgetDataRepository(mockContext, displayEventRepository)
+        mockDataStore = mockk(relaxed = true)
+        coEvery { mockDataStore.getTasksOrgEnabled() } returns false
+        coEvery { mockDataStore.getTasksInWidgetsEnabled() } returns false
+        repository = WidgetDataRepository(mockContext, displayEventRepository, mockDataStore)
     }
 
     // ========== Empty State Tests ==========

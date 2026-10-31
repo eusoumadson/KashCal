@@ -33,7 +33,9 @@ Documentos relacionados:
 | 16 | Deep-link: "Abrir no Tasks.org" abre a própria tarefa | ✅ |
 | 17 | Camada de abstração da API v0 (`TasksOrgV0Mapper`) | ✅ |
 | 18 | Fork "plug'n'play" para rebase (sentinelas + documentação) | ✅ |
-| 19 | Validação contra o Tasks.org real em dispositivo | ⬜ não feita |
+| 19 | Validação contra o Tasks.org real em dispositivo | ✅ |
+| 20 | Tarefas interativas nos Widgets (checkbox para concluir direto da tela inicial) | ✅ |
+| 21 | Widgets Experimentais em duas colunas (Agenda Dividida e Mês + Agenda) | ✅ |
 
 **Fora do escopo por decisão:** editar subtarefas no KashCal (o app redireciona ao Tasks.org) e
 exibir tarefas sem data de vencimento.
@@ -246,3 +248,23 @@ Tasks.org" do quick view agora abre a **tarefa**, não só o app (com o app como
   (`values-pt-rBR/` e `values-pt/`, o fallback para `pt-PT`). A fonte das traduções é
   `app/src/fork/tools/gen_strings_pt.py`; outros idiomas caem no inglês.
 - **Assinatura e instalação** (sem publicação): ver `FORK_INTEGRATION.md` §9.
+
+---
+
+## 14. Widgets: Tarefas Interativas e Novos Modelos Experimentais
+
+### 14.1 Tarefas nos Widgets (`FORK:tasks-widget`)
+- **Exibição unificada**: com as tarefas ativadas e o interruptor "Exibir tarefas nos widgets" habilitado (em *Configurações > Tarefas do Tasks.org*), as tarefas com vencimento aparecem em todos os widgets de evento (`AgendaWidget`, `WeekWidget`, `UpcomingWidget` e widgets experimentais).
+- **Caixa de seleção interativa**: cada tarefa exibe um checkbox interativo. Ao tocar na caixa, `ToggleTaskAction` (via `ActionCallback` do Glance com injeção Hilt) altera o status de conclusão diretamente no `TasksOrgCoordinator` e dispara a atualização imediata de todos os widgets na tela inicial sem abrir o app.
+- **Abertura rápida**: tocar no corpo da linha da tarefa abre o KashCal diretamente no `TaskQuickViewSheet`, permitindo ver notas, subtarefas e editar com facilidade.
+- **Estilo visual**: tarefas concluídas são tachadas e esmaecidas; tarefas de ocorrência futura ou somente leitura desabilitam o checkbox interativo.
+
+### 14.2 Widgets Experimentais em Duas Colunas (`FORK:experimental-widgets`)
+- **Agenda Dividida (`SplitAgendaWidget`)**:
+  - Em grades amplas (duas colunas): Coluna 1 exibe a data de hoje em grande destaque e os primeiros compromissos; Coluna 2 exibe o restante dos compromissos e tarefas com rolagem vertical independente.
+  - Em grades compactas: exibe layout responsivo de coluna única.
+- **Mês + Agenda (`MonthAgendaWidget`)**:
+  - Em duas colunas: Coluna 1 contém a grade do mês completo com o dia atual destacado e indicadores pontilhados de dias com eventos; Coluna 2 contém a lista de agenda de hoje com compromissos e tarefas em rolagem vertical.
+- **Controle Dinâmico de Componentes**:
+  - Área dedicada em *Configurações > Widgets Experimentais* explicando os modelos e com interruptor geral.
+  - Ao desativar, o `PackageManager` desabilita os receivers dos novos widgets para que não poluam o catálogo de widgets do launcher caso o usuário não queira usá-los. Ao reativar, voltam imediatamente.

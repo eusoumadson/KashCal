@@ -928,6 +928,16 @@
     <string name="settings_tasks_org_hint">Tasks with a due date from Tasks.org</string>
     <!-- Subtitle of the Tasks.org row while its tasks are shown. -->
     <string name="settings_tasks_org_enabled">On</string>
+    <!-- FORK:tasks-widget -->
+    <string name="tasks_org_show_in_widgets">Show tasks in widgets</string>
+    <string name="tasks_org_show_in_widgets_desc">Display reminders and tasks with an interactive checkbox on home screen widgets</string>
+    <!-- FORK:experimental-widgets -->
+    <string name="experimental_widgets_settings_title">Experimental Widgets</string>
+    <string name="experimental_widgets_settings_subtitle">Split agenda &amp; Month+Agenda dual-column models</string>
+    <string name="split_agenda_widget_name">Split Agenda</string>
+    <string name="split_agenda_widget_description">Wide two-column agenda with big date header and tasks; compact single column on smaller sizes</string>
+    <string name="month_agenda_widget_name">Month + Agenda</string>
+    <string name="month_agenda_widget_description">Two columns with full month calendar grid on the left and today\'s events and tasks on the right</string>
     <!-- Explains the Tasks.org source at the top of its settings screen. -->
     <string name="tasks_org_description">Shows the tasks with a due date from the Tasks.org app on your calendar. Check a task off to mark it done. Tasks stay in Tasks.org, which syncs them.</string>
     <!-- Shown while the source is on but KashCal can't read Tasks.org; tapping it asks for access. -->

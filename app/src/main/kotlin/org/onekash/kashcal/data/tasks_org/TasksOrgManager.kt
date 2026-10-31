@@ -16,7 +16,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.onekash.kashcal.data.calendar_provider.CalendarProviderObserver
 import org.onekash.kashcal.data.preferences.KashCalDataStore
+import org.onekash.kashcal.widget.WidgetUpdateManager
 import javax.inject.Inject
+import javax.inject.Provider
 import javax.inject.Singleton
 
 /**
@@ -31,7 +33,8 @@ import javax.inject.Singleton
 class TasksOrgManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: TasksOrgRepository,
-    private val dataStore: KashCalDataStore
+    private val dataStore: KashCalDataStore,
+    private val widgetUpdateManagerProvider: Provider<WidgetUpdateManager>
 ) {
     companion object {
         private const val TAG = "TasksOrgManager"
@@ -78,6 +81,16 @@ class TasksOrgManager @Inject constructor(
      */
     fun notifyChanged() {
         _changeSignal.update { it + 1 }
+        // FORK:tasks-widget
+        scope.launch {
+            if (dataStore.getTasksInWidgetsEnabled()) {
+                try {
+                    widgetUpdateManagerProvider.get().updateAllWidgets("tasks_org_notify_changed")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to update widgets on tasks change", e)
+                }
+            }
+        }
     }
 
     private fun registerObserver() {
@@ -92,8 +105,17 @@ class TasksOrgManager @Inject constructor(
             scope = scope,
             debounceMs = OBSERVER_DEBOUNCE_MS
         ) {
-            // Widgets don't show tasks (WidgetDataRepository), so only the views re-query.
             _changeSignal.update { it + 1 }
+            // FORK:tasks-widget
+            scope.launch {
+                if (dataStore.getTasksInWidgetsEnabled()) {
+                    try {
+                        widgetUpdateManagerProvider.get().updateAllWidgets("tasks_org_observer")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to update widgets on tasks observer", e)
+                    }
+                }
+            }
         }
         try {
             context.contentResolver.registerContentObserver(

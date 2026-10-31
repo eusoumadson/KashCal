@@ -291,6 +291,14 @@ object PreferencesKeys {
     /** Tasks.org list ids whose tasks are not shown, stored as strings. */
     val HIDDEN_TASKS_ORG_LIST_IDS = stringSetPreferencesKey("hidden_tasks_org_list_ids")
 
+    /** Whether Tasks.org tasks are displayed in home screen widgets (FORK:tasks-widget). */
+    val TASKS_IN_WIDGETS_ENABLED = booleanPreferencesKey("tasks_in_widgets_enabled")
+
+    // ========== Experimental Widgets (FORK:experimental-widgets) ==========
+
+    /** Whether experimental widgets (Split Agenda, Month+Agenda) are enabled in launcher picker. */
+    val EXPERIMENTAL_WIDGETS_ENABLED = booleanPreferencesKey("experimental_widgets_enabled")
+
     // ========== Departure alerts (FORK:travel-time) ==========
 
     /** TomTom Routing API key, pasted by the user. A secret: never exported in a backup. */

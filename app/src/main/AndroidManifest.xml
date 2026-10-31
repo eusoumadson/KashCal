@@ -972,6 +972,32 @@
                 android:resource="@xml/upcoming_widget_info" />
         </receiver>
 
+        <!-- Split Agenda experimental widget receiver (FORK:experimental-widgets) -->
+        <receiver
+            android:name=".widget.SplitAgendaWidgetReceiver"
+            android:exported="true"
+            android:label="@string/split_agenda_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/split_agenda_widget_info" />
+        </receiver>
+
+        <!-- Month + Agenda split experimental widget receiver (FORK:experimental-widgets) -->
+        <receiver
+            android:name=".widget.MonthAgendaWidgetReceiver"
+            android:exported="true"
+            android:label="@string/month_agenda_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/month_agenda_widget_info" />
+        </receiver>
+
         <!-- Account authenticator for CalendarProvider registration.
              Registers org.onekash.kashcal account type with Android.
              exported="false" — only the system account framework binds to this. -->

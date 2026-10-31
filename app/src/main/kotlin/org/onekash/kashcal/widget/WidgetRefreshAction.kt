@@ -28,13 +28,18 @@ private const val TAG = "WidgetRefreshAction"
 enum class WidgetKind {
     AGENDA,
     WEEK,
-    UPCOMING;
+    UPCOMING,
+    // FORK:experimental-widgets
+    SPLIT_AGENDA,
+    MONTH_AGENDA;
 
     /** Returns the [GlanceAppWidget] to repaint for this kind. */
     fun widget(): GlanceAppWidget = when (this) {
         AGENDA -> AgendaWidget()
         WEEK -> WeekWidget()
         UPCOMING -> UpcomingWidget()
+        SPLIT_AGENDA -> SplitAgendaWidget()
+        MONTH_AGENDA -> MonthAgendaWidget()
     }
 }
 

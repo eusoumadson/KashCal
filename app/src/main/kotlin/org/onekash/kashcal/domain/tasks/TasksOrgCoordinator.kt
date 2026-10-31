@@ -36,6 +36,14 @@ class TasksOrgCoordinator @Inject constructor(
 ) {
     val enabled: Flow<Boolean> get() = dataStore.tasksOrgEnabled
 
+    // FORK:tasks-widget
+    val tasksInWidgetsEnabled: Flow<Boolean> get() = dataStore.tasksInWidgetsEnabled
+
+    suspend fun setTasksInWidgetsEnabled(enabled: Boolean) {
+        dataStore.setTasksInWidgetsEnabled(enabled)
+        manager.notifyChanged()
+    }
+
     val hiddenListIds: Flow<Set<Long>> get() = dataStore.hiddenTasksOrgListIds
 
     /** Emits when Tasks.org tasks change ([TasksOrgManager.changeSignal]). */

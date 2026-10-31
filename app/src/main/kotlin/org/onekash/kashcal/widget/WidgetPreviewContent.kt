@@ -54,6 +54,9 @@ internal object WidgetPreviewSizes {
     val MONTH = SizeMode.Responsive(setOf(previewSize(4, 4, 250.dp, 304.dp)))
     val DATE = SizeMode.Responsive(setOf(previewSize(1, 1, 57.dp, 57.dp)))
     val UPCOMING = SizeMode.Responsive(setOf(previewSize(4, 4, 180.dp, 130.dp)))
+    // FORK:experimental-widgets
+    val SPLIT_AGENDA = SizeMode.Responsive(setOf(previewSize(4, 3, 250.dp, 140.dp)))
+    val MONTH_AGENDA = SizeMode.Responsive(setOf(previewSize(4, 3, 260.dp, 160.dp)))
 }
 
 @Composable

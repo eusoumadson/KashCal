@@ -1488,6 +1488,16 @@
     <string name="settings_tasks_org">Tarefas do Tasks.org</string>
     <string name="settings_tasks_org_hint">Tarefas com data de vencimento do Tasks.org</string>
     <string name="settings_tasks_org_enabled">Ativado</string>
+    <!-- FORK:tasks-widget -->
+    <string name="tasks_org_show_in_widgets">Exibir tarefas nos widgets</string>
+    <string name="tasks_org_show_in_widgets_desc">Exibe lembretes e tarefas com caixa interativa nos widgets da tela inicial</string>
+    <!-- FORK:experimental-widgets -->
+    <string name="experimental_widgets_settings_title">Widgets Experimentais</string>
+    <string name="experimental_widgets_settings_subtitle">Modelos de Agenda Dividida e Mês + Agenda</string>
+    <string name="split_agenda_widget_name">Agenda Dividida</string>
+    <string name="split_agenda_widget_description">Agenda ampla em duas colunas com data em destaque e tarefas; uma coluna compacta em tamanhos menores</string>
+    <string name="month_agenda_widget_name">Mês + Agenda</string>
+    <string name="month_agenda_widget_description">Duas colunas com a grade do mês à esquerda e compromissos e tarefas de hoje à direita</string>
     <string name="tasks_org_description">Mostra no calendário as tarefas com data de vencimento do app Tasks.org. Marque uma tarefa para concluí-la. As tarefas continuam no Tasks.org, que as sincroniza.</string>
     <string name="tasks_org_permission_required">É preciso acesso ao Tasks.org. Toque para conceder.</string>
     <string name="tasks_org_read_only_access">Não é possível concluir tarefas</string>

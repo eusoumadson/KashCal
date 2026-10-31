@@ -173,6 +173,8 @@ class AccountSettingsViewModel @Inject constructor(
     @ApplicationScope private val applicationScope: CoroutineScope,
     /** The Tasks.org source; null in tests that don't exercise it. */
     private val tasksOrgCoordinator: org.onekash.kashcal.domain.tasks.TasksOrgCoordinator? = null,
+    // FORK:experimental-widgets
+    private val experimentalWidgetsManager: org.onekash.kashcal.widget.ExperimentalWidgetsManager? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AccountSettingsUiState(isLoading = true))
@@ -410,6 +412,31 @@ class AccountSettingsViewModel @Inject constructor(
     private val _hiddenTasksOrgListIds = MutableStateFlow<Set<Long>>(emptySet())
     val hiddenTasksOrgListIds: StateFlow<Set<Long>> = _hiddenTasksOrgListIds.asStateFlow()
 
+    // FORK:tasks-widget
+    private val _tasksInWidgetsEnabled = MutableStateFlow(true)
+    val tasksInWidgetsEnabled: StateFlow<Boolean> = _tasksInWidgetsEnabled.asStateFlow()
+
+    fun setTasksInWidgetsEnabled(enabled: Boolean) {
+        val coordinator = tasksOrgCoordinator ?: return
+        viewModelScope.launch {
+            coordinator.setTasksInWidgetsEnabled(enabled)
+            _tasksInWidgetsEnabled.value = enabled
+        }
+    }
+
+    // FORK:experimental-widgets
+    private val _experimentalWidgetsEnabled = MutableStateFlow(true)
+    val experimentalWidgetsEnabled: StateFlow<Boolean> = _experimentalWidgetsEnabled.asStateFlow()
+
+    fun setExperimentalWidgetsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            dataStore.setExperimentalWidgetsEnabled(enabled)
+            _experimentalWidgetsEnabled.value = enabled
+            experimentalWidgetsManager?.setWidgetsEnabled(enabled)
+            widgetUpdateManager.updateAllWidgets("experimental_widgets_toggle")
+        }
+    }
+
     // Device Calendars
     private val _deviceCalendarsEnabled = MutableStateFlow(false)
     val deviceCalendarsEnabled: StateFlow<Boolean> = _deviceCalendarsEnabled.asStateFlow()
@@ -545,6 +572,7 @@ class AccountSettingsViewModel @Inject constructor(
         observeUserPreferences()
         observeDeviceCalendars()
         observeTasksOrg()
+        observeExperimentalWidgets() // FORK:experimental-widgets
         observeDisplaySettings()
         checkContactsPermission()
         checkCalendarPermission()
@@ -818,6 +846,16 @@ class AccountSettingsViewModel @Inject constructor(
         }
         viewModelScope.launch {
             coordinator.hiddenListIds.collect { _hiddenTasksOrgListIds.value = it }
+        }
+        viewModelScope.launch {
+            coordinator.tasksInWidgetsEnabled.collect { _tasksInWidgetsEnabled.value = it }
+        }
+    }
+
+    // FORK:experimental-widgets
+    private fun observeExperimentalWidgets() {
+        viewModelScope.launch {
+            dataStore.experimentalWidgetsEnabled.collect { _experimentalWidgetsEnabled.value = it }
         }
     }
 

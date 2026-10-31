@@ -150,6 +150,9 @@ class MainActivity : FragmentActivity() {
     @Inject
     lateinit var shareCardRenderer: org.onekash.kashcal.domain.share.ShareCardRenderer
 
+    @Inject
+    lateinit var tasksOrgCoordinator: org.onekash.kashcal.domain.tasks.TasksOrgCoordinator // FORK:tasks-widget
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate")
@@ -450,6 +453,15 @@ class MainActivity : FragmentActivity() {
                                 is PendingAction.GoToDate -> {
                                     val date = org.onekash.kashcal.ui.util.DayPagerUtils.dayCodeToLocalDate(action.dayCode)
                                     homeViewModel.navigateToDate(date)
+                                }
+                                // FORK:tasks-widget
+                                is PendingAction.ShowTaskQuickView -> {
+                                    val task = tasksOrgCoordinator.getTask(action.taskId)
+                                    if (task != null) {
+                                        taskQuickViewEvent = org.onekash.kashcal.domain.model.DisplayEvent.Task(task)
+                                    } else {
+                                        Log.w(TAG, "Widget: Task ${action.taskId} not found")
+                                    }
                                 }
                                 is PendingAction.ImportIcsFile -> {
                                     Log.d(TAG, "Processing ICS file import: ${action.uri}")
@@ -2126,6 +2138,15 @@ class MainActivity : FragmentActivity() {
                                 )
                             )
                         }
+                    }
+                    return
+                }
+                // FORK:tasks-widget
+                org.onekash.kashcal.widget.ACTION_SHOW_TASK -> {
+                    val taskId = intent.getLongExtra(org.onekash.kashcal.widget.EXTRA_TASK_ID, -1L)
+                    if (taskId != -1L) {
+                        Log.d(TAG, "Widget: showing task $taskId")
+                        homeViewModel.setPendingAction(PendingAction.ShowTaskQuickView(taskId))
                     }
                     return
                 }

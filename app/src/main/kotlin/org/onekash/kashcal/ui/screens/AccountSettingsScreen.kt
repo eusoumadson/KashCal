@@ -245,6 +245,7 @@ fun AccountSettingsScreen(
     tasksOrgInstalled: Boolean = false,
     tasksOrgEnabled: Boolean = false,
     onNavigateToTravelAlerts: () -> Unit = {}, // FORK:travel-time
+    onNavigateToExperimentalWidgets: () -> Unit = {}, // FORK:experimental-widgets
     onNavigateToOfflineCalendars: () -> Unit = {},
     // Offline calendars, the built-in included; the row shows its hint until there is more than
     // one.
@@ -533,6 +534,22 @@ fun AccountSettingsScreen(
                                 label = stringResource(R.string.travel_alerts_settings_title),
                                 subtitle = stringResource(R.string.travel_alerts_settings_subtitle),
                                 onClick = onNavigateToTravelAlerts,
+                                showDivider = false,
+                                searchQuery = searchQuery
+                            )
+                        }
+
+                        // FORK:experimental-widgets
+                        row(
+                            label = stringResource(R.string.experimental_widgets_settings_title),
+                            subtitle = stringResource(R.string.experimental_widgets_settings_subtitle),
+                            id = "experimental-widgets"
+                        ) {
+                            SettingsRow(
+                                icon = Icons.Default.Widgets,
+                                label = stringResource(R.string.experimental_widgets_settings_title),
+                                subtitle = stringResource(R.string.experimental_widgets_settings_subtitle),
+                                onClick = onNavigateToExperimentalWidgets,
                                 showDivider = false,
                                 searchQuery = searchQuery
                             )

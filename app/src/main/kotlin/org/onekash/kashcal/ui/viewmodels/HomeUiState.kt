@@ -376,6 +376,10 @@ sealed class PendingAction {
     /** Navigates to today, from a widget or the Today app shortcut. */
     data object GoToToday : PendingAction()
 
+    // FORK:tasks-widget
+    /** Opens a Tasks.org task quick view sheet from a widget tap. */
+    data class ShowTaskQuickView(val taskId: Long) : PendingAction()
+
     /**
      * Opens a device event's quick view at a known occurrence, from a device reminder
      * notification, a widget tap or a CalendarContract VIEW /events/{id} with a begin time. When
