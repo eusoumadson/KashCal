@@ -39,12 +39,21 @@ Gate mínimo antes de dar uma tarefa por concluída: `./gradlew testDebugUnitTes
 - Prefira banners inline a diálogos bloqueantes. Confirmação só para ações destrutivas.
 
 ## Specs e planejamento
-- Specs antigas: `.kiro/specs/travel-time-alerts/` e `.docs/features/` (com `PHASES.md`).
-- Mudanças novas: `openspec/changes/<nome>/` (ver OpenSpec abaixo).
+- Specs ativas e validadas: `openspec/specs/` (`travel-time-alerts`, `tasks-org-integration`, `auto-backup`).
+- Mudanças novas: sempre inicie via `/opsx:propose` ou `openspec/changes/<nome>/`.
+- Validação formal de especificações: `openspec validate --specs` ou `openspec validate <change-id>`.
+- Specs históricas de referência: `.kiro/specs/travel-time-alerts/` e `.docs/features/` (com `PHASES.md`).
+- Roteiros de testes manuais em aparelho físico real:
+  - Alertas de Saída (Travel Time): [`TRAVEL_TIME_DEVICE_TEST.md`](file:///Users/madsonsantana/kashcal_tasks/TRAVEL_TIME_DEVICE_TEST.md)
+  - Tasks.org: [`TASKS_ORG_DEVICE_TEST.md`](file:///Users/madsonsantana/kashcal_tasks/TASKS_ORG_DEVICE_TEST.md)
 
 ## OpenSpec
-A CLI `openspec` exige Node ≥ 20. O default da máquina é Node 14, então ative antes de usar:
+A CLI `openspec` exige Node ≥ 20. O default global da máquina é Node 14, então use o `.nvmrc` local ou ative antes de usar:
 `export PATH="$HOME/.nvm/versions/node/v20.20.0/bin:$PATH"` (ou `nvm use 20`).
+Comandos úteis:
+- `openspec list --specs`: lista especificações ativas.
+- `openspec show <spec-id>`: visualiza uma especificação.
+- `openspec validate --specs`: valida a conformidade das specs.
 
 ## Não toque
 - `local.properties`, chaves de assinatura e keystores. Não leia, não imprima, não commite.

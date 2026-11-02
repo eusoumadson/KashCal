@@ -1,5 +1,13 @@
 # Fases de Implementação — Features & Refatorações do Fork
 
+> [!NOTE]
+> **Status de Execução:** ✅ **Fases 1, 2 e 3 Concluídas** na branch `main`.
+> Todas as 6 features detalhadas abaixo foram implementadas e integradas.
+> A suíte completa de testes unitários (`./gradlew testDebugUnitTest`) está verde (100% de aprovação).
+
+---
+
+
 Este documento define a ordem sequencial de implementação, critérios de aceite e estratégia de testes para cada uma das frentes planejadas.
 
 ---

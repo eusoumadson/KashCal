@@ -1,5 +1,13 @@
 # Roadmap de Novas Features e Refatorações — KashCal Fork
 
+> [!NOTE]
+> **Status**: ✅ **Todas as Fases Concluídas** (Épicos 1 a 5 implementados na branch `main`).
+> Todos os testes unitários (`./gradlew testDebugUnitTest`) foram corrigidos e passam com sucesso.
+> Build validado e instalado no dispositivo físico (`RQ8N502VJ1M`).
+
+---
+
+
 Este documento detalha o planejamento arquitetural, escopo e estratégia de implementação para as próximas fases de evolução do fork do **KashCal**.
 
 ---
@@ -45,16 +53,16 @@ flowchart TD
 
 #### 1.1 Exportação de Configurações do Fork
 - **Diagnóstico Atual**:
-  - A rotina de backup em [`SettingsBackupExporter.kt`](file:///Users/madsonsantana/KashCal/app/src/main/kotlin/org/onekash/kashcal/domain/backup/SettingsBackupExporter.kt) filtra estritamente as preferências por meio de [`ExportablePreferences.KEYS`](file:///Users/madsonsantana/KashCal/app/src/main/kotlin/org/onekash/kashcal/domain/backup/ExportablePreferences.kt#L70-L137).
+  - A rotina de backup em [`SettingsBackupExporter.kt`](file:///Users/madsonsantana/kashcal_tasks/app/src/main/kotlin/org/onekash/kashcal/domain/backup/SettingsBackupExporter.kt) filtra estritamente as preferências por meio de [`ExportablePreferences.KEYS`](file:///Users/madsonsantana/kashcal_tasks/app/src/main/kotlin/org/onekash/kashcal/domain/backup/ExportablePreferences.kt#L70-L137).
   - Várias configurações do fork estão excluídas (`TASKS_ORG_ENABLED`, chaves de API do TomTom e Stadia, `HIDDEN_TASKS_ORG_LIST_IDS`) ou não registradas (`TASKS_IN_WIDGETS_ENABLED`, `EXPERIMENTAL_WIDGETS_ENABLED`).
 - **Escopo e Implementação**:
-  - Criar suporte no [`BackupEnvelope.kt`](file:///Users/madsonsantana/KashCal/app/src/main/kotlin/org/onekash/kashcal/domain/backup/BackupEnvelope.kt) para metadados ou campos estendidos do fork (`fork_preferences` ou inclusão retrocompatível).
+  - Criar suporte no [`BackupEnvelope.kt`](file:///Users/madsonsantana/kashcal_tasks/app/src/main/kotlin/org/onekash/kashcal/domain/backup/BackupEnvelope.kt) para metadados ou campos estendidos do fork (`fork_preferences` ou inclusão retrocompatível).
   - Permitir a exportação dos seguintes parâmetros do fork:
     - **Tasks.org**: `tasks_org_enabled`, `tasks_in_widgets_enabled`, listas ocultadas.
     - **Alertas de Saída**: `travel_valhalla_enabled`, `travel_rush_hour_enabled`, `travel_tomtom_enabled`, `travel_stadia_enabled` e opção de exportar ou não as API keys (com alerta de privacidade).
     - **Widgets Experimentais**: `experimental_widgets_enabled`.
   - Diálogo de exportação atualizado: opção de "Exportação Completa (com recursos do Fork)" vs "Exportação Padrão Upstream".
-  - Atualização dos testes unitários em [`ExportablePreferencesTest.kt`](file:///Users/madsonsantana/KashCal/app/src/test/kotlin/org/onekash/kashcal/domain/backup/ExportablePreferencesTest.kt) para manter integridade com as regras de reflexão do upstream.
+  - Atualização dos testes unitários em [`ExportablePreferencesTest.kt`](file:///Users/madsonsantana/kashcal_tasks/app/src/test/kotlin/org/onekash/kashcal/domain/backup/ExportablePreferencesTest.kt) para manter integridade com as regras de reflexão do upstream.
 
 #### 1.2 Exportação Automática das Configurações (Auto-Backup)
 - **Escopo e Implementação**:
@@ -78,7 +86,7 @@ flowchart TD
 ### Épico 2: Re-arranjo das Áreas de Features do Fork
 
 #### Diagnóstico Atual
-Hoje as 3 features exclusivas do fork estão aninhadas dentro da seção **"Calendários e contas"** (`settings_section_calendars`) em [`AccountSettingsScreen.kt`](file:///Users/madsonsantana/KashCal/app/src/main/kotlin/org/onekash/kashcal/ui/screens/AccountSettingsScreen.kt#L510-L556):
+Hoje as 3 features exclusivas do fork estão aninhadas dentro da seção **"Calendários e contas"** (`settings_section_calendars`) em [`AccountSettingsScreen.kt`](file:///Users/madsonsantana/kashcal_tasks/app/src/main/kotlin/org/onekash/kashcal/ui/screens/AccountSettingsScreen.kt#L510-L556):
 1. **Tarefas do Tasks.org** (`tasks-org`)
 2. **Alertas de Saída** (`travel-alerts`)
 3. **Widgets Experimentais** (`experimental-widgets`)
@@ -102,8 +110,8 @@ Isso causa sobrecarga conceitual: "Calendários e contas" existe para protocolos
 ### Épico 3: Refatoração Visual do Formulário de Tarefas (TaskEditorSheet)
 
 #### Diagnóstico Atual
-- [`TaskEditorSheet.kt`](file:///Users/madsonsantana/KashCal/app/src/main/kotlin/org/onekash/kashcal/ui/components/TaskEditorSheet.kt) foi construído como um `ModalBottomSheet` simples com `BottomSheetDefaults.DragHandle()`, botões no rodapé e espaçamentos utilitários básicos.
-- O formulário padrão do app ([`EventFormSheet.kt`](file:///Users/madsonsantana/KashCal/app/src/main/kotlin/org/onekash/kashcal/ui/components/EventFormSheet.kt)) usa uma janela de tela cheia/Dialog polida, barra de ações superior com título centralizado, botão pill arredondado (`RoundedCornerShape(20.dp)`), tratamento de cores de contraste e blocos bem definidos.
+- [`TaskEditorSheet.kt`](file:///Users/madsonsantana/kashcal_tasks/app/src/main/kotlin/org/onekash/kashcal/ui/components/TaskEditorSheet.kt) foi construído como um `ModalBottomSheet` simples com `BottomSheetDefaults.DragHandle()`, botões no rodapé e espaçamentos utilitários básicos.
+- O formulário padrão do app ([`EventFormSheet.kt`](file:///Users/madsonsantana/kashcal_tasks/app/src/main/kotlin/org/onekash/kashcal/ui/components/EventFormSheet.kt)) usa uma janela de tela cheia/Dialog polida, barra de ações superior com título centralizado, botão pill arredondado (`RoundedCornerShape(20.dp)`), tratamento de cores de contraste e blocos bem definidos.
 
 #### Plano de Refatoração Visual
 1. **Estrutura de Top Bar Padronizada**:
@@ -125,7 +133,7 @@ Isso causa sobrecarga conceitual: "Calendários e contas" existe para protocolos
 ### Épico 4: Simplificação da Integração do Tasks.org
 
 #### Diagnóstico Atual
-- Em [`TasksOrgManagementSection.kt`](file:///Users/madsonsantana/KashCal/app/src/main/kotlin/org/onekash/kashcal/ui/screens/settings/TasksOrgManagementSection.kt), existem sessões completas para:
+- Em [`TasksOrgManagementSection.kt`](file:///Users/madsonsantana/kashcal_tasks/app/src/main/kotlin/org/onekash/kashcal/ui/screens/settings/TasksOrgManagementSection.kt), existem sessões completas para:
   - Gerenciar Tags (renomear, alterar cor, excluir).
   - Gerenciar Lugares (listar, excluir).
   - Gerenciar Listas (criar via botão externo, renomear, colorir, excluir).
@@ -140,13 +148,13 @@ Isso causa sobrecarga conceitual: "Calendários e contas" existe para protocolos
    - **Remover exclusão de listas**: Eliminar ação/botão de apagar lista (`Deletion.OfList`).
    - **Remover criação de listas**: Remover botão de criar lista no app externo (`tasks_org_create_list_in_app`).
 3. **Limpeza Técnica**:
-   - Ajustar [`TasksOrgManageViewModel.kt`](file:///Users/madsonsantana/KashCal/app/src/main/kotlin/org/onekash/kashcal/ui/viewmodels/TasksOrgManageViewModel.kt), descontinuando métodos de mutação de tags e lugares que não serão mais chamados pela UI.
+   - Ajustar [`TasksOrgManageViewModel.kt`](file:///Users/madsonsantana/kashcal_tasks/app/src/main/kotlin/org/onekash/kashcal/ui/viewmodels/TasksOrgManageViewModel.kt), descontinuando métodos de mutação de tags e lugares que não serão mais chamados pela UI.
 
 ---
 
 ### Épico 5: Facelift e Pente Fino nos Alertas de Saída (Travel Alerts)
 
-#### Diagnóstico Atual em [`TravelAlertsScreen.kt`](file:///Users/madsonsantana/KashCal/app/src/main/kotlin/org/onekash/kashcal/ui/screens/settings/TravelAlertsScreen.kt)
+#### Diagnóstico Atual em [`TravelAlertsScreen.kt`](file:///Users/madsonsantana/kashcal_tasks/app/src/main/kotlin/org/onekash/kashcal/ui/screens/settings/TravelAlertsScreen.kt)
 1. **Header Incorreto**:
    - Linha 254 usa `stringResource(R.string.settings_tasks_org_enabled)` como título da seção de provedores (exibindo string indevida no português).
 2. **Strings Hardcoded**:
@@ -191,13 +199,28 @@ flowchart LR
 ```
 
 ### Sprint 1: Polish & Limpeza (Baixo Risco, Alto Retorno Visual)
-- [ ] Executar Épico 4: Limpar tags, lugares e restringir listas em [`TasksOrgManagementSection.kt`](file:///Users/madsonsantana/KashCal/app/src/main/kotlin/org/onekash/kashcal/ui/screens/settings/TasksOrgManagementSection.kt).
-- [ ] Executar Épico 5: Corrigir strings, badges e espaçamentos em [`TravelAlertsScreen.kt`](file:///Users/madsonsantana/KashCal/app/src/main/kotlin/org/onekash/kashcal/ui/screens/settings/TravelAlertsScreen.kt).
+- [x] Executar Épico 4: Limpar tags, lugares e restringir listas em [`TasksOrgManagementSection.kt`](file:///Users/madsonsantana/kashcal_tasks/app/src/main/kotlin/org/onekash/kashcal/ui/screens/settings/TasksOrgManagementSection.kt).
+- [x] Executar Épico 5: Corrigir strings, badges e espaçamentos em [`TravelAlertsScreen.kt`](file:///Users/madsonsantana/kashcal_tasks/app/src/main/kotlin/org/onekash/kashcal/ui/screens/settings/TravelAlertsScreen.kt).
 
 ### Sprint 2: Design System & Arquitetura de Telas
-- [ ] Executar Épico 3: Reestruturar [`TaskEditorSheet.kt`](file:///Users/madsonsantana/KashCal/app/src/main/kotlin/org/onekash/kashcal/ui/components/TaskEditorSheet.kt) com base no layout de [`EventFormSheet.kt`](file:///Users/madsonsantana/KashCal/app/src/main/kotlin/org/onekash/kashcal/ui/components/EventFormSheet.kt).
-- [ ] Executar Épico 2: Definir e migrar a navegação das 3 features do fork para seu novo agrupamento em [`AccountSettingsScreen.kt`](file:///Users/madsonsantana/KashCal/app/src/main/kotlin/org/onekash/kashcal/ui/screens/AccountSettingsScreen.kt).
+- [x] Executar Épico 3: Reestruturar [`TaskEditorSheet.kt`](file:///Users/madsonsantana/kashcal_tasks/app/src/main/kotlin/org/onekash/kashcal/ui/components/TaskEditorSheet.kt) com base no layout de [`EventFormSheet.kt`](file:///Users/madsonsantana/kashcal_tasks/app/src/main/kotlin/org/onekash/kashcal/ui/components/EventFormSheet.kt).
+- [x] Executar Épico 2: Definir e migrar a navegação das 3 features do fork para seu novo agrupamento em [`AccountSettingsScreen.kt`](file:///Users/madsonsantana/kashcal_tasks/app/src/main/kotlin/org/onekash/kashcal/ui/screens/AccountSettingsScreen.kt).
 
 ### Sprint 3: Backup & Resiliência
-- [ ] Executar Épico 1A: Expandir schema e serialização do [`BackupEnvelope.kt`](file:///Users/madsonsantana/KashCal/app/src/main/kotlin/org/onekash/kashcal/domain/backup/BackupEnvelope.kt) com configs do fork.
-- [ ] Executar Épico 1B: Implementar serviço de auto-backup agendado com `WorkManager` e seletor SAF.
+- [x] Executar Épico 1A: Expandir schema e serialização do [`BackupEnvelope.kt`](file:///Users/madsonsantana/kashcal_tasks/app/src/main/kotlin/org/onekash/kashcal/domain/backup/BackupEnvelope.kt) com configs do fork.
+- [x] Executar Épico 1B: Implementar serviço de auto-backup agendado com `WorkManager` e seletor SAF.
+
+
+---
+
+## 🚀 Próximos Horizontes & Laboratório de IA Agentica
+
+Com a conclusão dos 5 épicos de código, as próximas etapas focam no laboratório de **Spec-Driven Development** e **Loop Engineering**:
+
+1. **Homologação em Hardware Real**:
+   - Executar o roteiro de testes de alertas de saída em dispositivo: [`TRAVEL_TIME_DEVICE_TEST.md`](file:///Users/madsonsantana/kashcal_tasks/TRAVEL_TIME_DEVICE_TEST.md).
+   - Executar o roteiro de testes do Tasks.org em dispositivo: [`TASKS_ORG_DEVICE_TEST.md`](file:///Users/madsonsantana/kashcal_tasks/TASKS_ORG_DEVICE_TEST.md).
+2. **Ciclos de Mudança com OpenSpec (`/opsx:propose` e `/opsx:apply`)**:
+   - Estruturar novas melhorias e correções como mudanças isoladas em `openspec/changes/<change-name>/`.
+3. **Loop Engineering com Ralph**:
+   - Configurar o adaptador ou fluxo de execução do `ralph` com `agy-cli` e validação mecânica (`--test-cmd "./gradlew :app:testDebugUnitTest"`).
