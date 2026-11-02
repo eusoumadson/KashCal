@@ -737,6 +737,43 @@ class KashCalDataStore(
         setPreference(PreferencesKeys.EXPERIMENTAL_WIDGETS_ENABLED, enabled)
     }
 
+    // ========== Auto Backup (FORK:auto-backup) ==========
+
+    val autoBackupEnabled: Flow<Boolean>
+        get() = getPreference(PreferencesKeys.AUTO_BACKUP_ENABLED, false)
+
+    suspend fun setAutoBackupEnabled(enabled: Boolean) {
+        setPreference(PreferencesKeys.AUTO_BACKUP_ENABLED, enabled)
+    }
+
+    val autoBackupTreeUri: Flow<String?>
+        get() = getPreference(PreferencesKeys.AUTO_BACKUP_TREE_URI, "")
+
+    suspend fun setAutoBackupTreeUri(uri: String) {
+        setPreference(PreferencesKeys.AUTO_BACKUP_TREE_URI, uri)
+    }
+
+    val autoBackupIntervalDays: Flow<Int>
+        get() = getPreference(PreferencesKeys.AUTO_BACKUP_INTERVAL_DAYS, 1)
+
+    suspend fun setAutoBackupIntervalDays(days: Int) {
+        setPreference(PreferencesKeys.AUTO_BACKUP_INTERVAL_DAYS, days)
+    }
+
+    val autoBackupRetentionCount: Flow<Int>
+        get() = getPreference(PreferencesKeys.AUTO_BACKUP_RETENTION_COUNT, 5)
+
+    suspend fun setAutoBackupRetentionCount(count: Int) {
+        setPreference(PreferencesKeys.AUTO_BACKUP_RETENTION_COUNT, count)
+    }
+
+    val autoBackupLastRunMs: Flow<Long>
+        get() = getPreference(PreferencesKeys.AUTO_BACKUP_LAST_RUN_MS, 0L)
+
+    suspend fun setAutoBackupLastRunMs(ms: Long) {
+        setPreference(PreferencesKeys.AUTO_BACKUP_LAST_RUN_MS, ms)
+    }
+
     // ========== Departure alerts (FORK:travel-time) ==========
 
     val travelTomTomApiKey: Flow<String>

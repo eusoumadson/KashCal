@@ -182,12 +182,20 @@ object ExportablePreferences {
         // list ids are Tasks.org row ids, not portable across installs
         PreferencesKeys.TASKS_ORG_ENABLED.name,
         PreferencesKeys.HIDDEN_TASKS_ORG_LIST_IDS.name,
+        PreferencesKeys.TASKS_IN_WIDGETS_ENABLED.name,
+        PreferencesKeys.EXPERIMENTAL_WIDGETS_ENABLED.name,
         // FORK:travel-time: the two routing API keys are secrets that must not leave the device;
         // their enabled switches only mean something next to a key
         PreferencesKeys.TRAVEL_TOMTOM_API_KEY.name,
         PreferencesKeys.TRAVEL_TOMTOM_ENABLED.name,
         PreferencesKeys.TRAVEL_STADIA_API_KEY.name,
         PreferencesKeys.TRAVEL_STADIA_ENABLED.name,
+        // FORK:auto-backup
+        PreferencesKeys.AUTO_BACKUP_ENABLED.name,
+        PreferencesKeys.AUTO_BACKUP_TREE_URI.name,
+        PreferencesKeys.AUTO_BACKUP_INTERVAL_DAYS.name,
+        PreferencesKeys.AUTO_BACKUP_RETENTION_COUNT.name,
+        PreferencesKeys.AUTO_BACKUP_LAST_RUN_MS.name,
         // Stores "room:<id>" or "device:<id>"; neither ID is portable across installs
         PreferencesKeys.DEFAULT_CALENDAR.name,
         // Legacy (superseded)

@@ -69,6 +69,7 @@ import org.onekash.kashcal.ui.screens.settings.DeviceCalendarsScreen
 import org.onekash.kashcal.ui.screens.settings.TasksOrgScreen
 import org.onekash.kashcal.ui.screens.settings.TravelAlertsScreen // FORK:travel-time
 import org.onekash.kashcal.ui.screens.settings.ExperimentalWidgetsScreen // FORK:experimental-widgets
+import org.onekash.kashcal.ui.screens.settings.AutoBackupSheet // FORK:auto-backup
 import org.onekash.kashcal.ui.screens.settings.OfflineCalendarsScreen
 import org.onekash.kashcal.ui.screens.settings.toAccountUiModel
 import org.onekash.kashcal.ui.screens.settings.ICloudConnectionState
@@ -198,6 +199,12 @@ fun SettingsRoute(
         val hiddenTasksOrgListIds by viewModel.hiddenTasksOrgListIds.collectAsStateWithLifecycle()
         val tasksInWidgetsEnabled by viewModel.tasksInWidgetsEnabled.collectAsStateWithLifecycle() // FORK:tasks-widget
         val experimentalWidgetsEnabled by viewModel.experimentalWidgetsEnabled.collectAsStateWithLifecycle() // FORK:experimental-widgets
+        // FORK:auto-backup
+        val autoBackupEnabled by viewModel.autoBackupEnabled.collectAsStateWithLifecycle()
+        val autoBackupTreeUri by viewModel.autoBackupTreeUri.collectAsStateWithLifecycle()
+        val autoBackupIntervalDays by viewModel.autoBackupIntervalDays.collectAsStateWithLifecycle()
+        val autoBackupRetentionCount by viewModel.autoBackupRetentionCount.collectAsStateWithLifecycle()
+        val autoBackupLastRunMs by viewModel.autoBackupLastRunMs.collectAsStateWithLifecycle()
         val hasReadCalendarPermission by viewModel.hasReadCalendarPermission.collectAsStateWithLifecycle()
         val hasWriteCalendarPermission by viewModel.hasWriteCalendarPermission.collectAsStateWithLifecycle()
         val deviceCalendars by viewModel.deviceCalendars.collectAsStateWithLifecycle()
@@ -429,6 +436,7 @@ fun SettingsRoute(
         var showTasksOrgScreen by rememberSaveable { mutableStateOf(false) }
         var showTravelAlertsScreen by rememberSaveable { mutableStateOf(false) } // FORK:travel-time
         var showExperimentalWidgetsScreen by rememberSaveable { mutableStateOf(false) } // FORK:experimental-widgets
+        var showAutoBackupSheet by rememberSaveable { mutableStateOf(false) } // FORK:auto-backup
 
         // ICS import state
         var icsImportFile by remember { mutableStateOf<IcsImportFile?>(null) }
@@ -891,6 +899,10 @@ fun SettingsRoute(
                             onRestoreSettings = {
                                 backupImportLauncher.launch(arrayOf(BACKUP_MIME_TYPE))
                             },
+                            // FORK:auto-backup
+                            autoBackupEnabled = autoBackupEnabled,
+                            autoBackupLastRunMs = autoBackupLastRunMs,
+                            onOpenAutoBackup = { showAutoBackupSheet = true },
                             // ICS Export
                             onOpenExportCalendars = { showExportCalendarsSheet = true },
                             // Navigate to Subscriptions detail screen
@@ -1126,6 +1138,22 @@ fun SettingsRoute(
                     onAddAnother = viewModel::hideAccountConnectedSheet,
                     onDone = viewModel::onAccountConnectedDone,
                     onDismiss = viewModel::hideAccountConnectedSheet
+                )
+            }
+
+            // Auto-backup configuration sheet (FORK:auto-backup)
+            if (showAutoBackupSheet) {
+                AutoBackupSheet(
+                    enabled = autoBackupEnabled,
+                    treeUriString = autoBackupTreeUri,
+                    intervalDays = autoBackupIntervalDays,
+                    retentionCount = autoBackupRetentionCount,
+                    lastRunMs = autoBackupLastRunMs,
+                    onToggleEnabled = viewModel::onToggleAutoBackup,
+                    onFolderSelected = { uri -> viewModel.onSetAutoBackupTreeUri(uri.toString()) },
+                    onIntervalSelected = viewModel::onSetAutoBackupIntervalDays,
+                    onRetentionSelected = viewModel::onSetAutoBackupRetentionCount,
+                    onDismiss = { showAutoBackupSheet = false }
                 )
             }
         }

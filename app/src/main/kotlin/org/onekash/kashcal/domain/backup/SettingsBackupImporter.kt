@@ -64,7 +64,7 @@ class SettingsBackupImporter @Inject constructor(
             icsRefreshScheduleReconciler.reconcile()
         }
 
-        val preferencesApplied = applyPreferences(envelope.preferences)
+        val preferencesApplied = applyPreferences(envelope.preferences) + applyForkPreferences(envelope.forkPreferences)
         val deviceCalendarsNoteNeeded =
             envelope.preferences[PreferencesKeys.DEVICE_CALENDARS_ENABLED.name]
                 .let { it is BackupPreferenceValue.BoolPref && it.value }
@@ -192,6 +192,22 @@ class SettingsBackupImporter @Inject constructor(
             }
         }
         return sanitized.size
+    }
+
+    private suspend fun applyForkPreferences(forkPreferences: Map<String, BackupPreferenceValue>): Int {
+        if (forkPreferences.isEmpty()) return 0
+        val decoded = forkPreferences.mapNotNull { (name, value) ->
+            ForkBackupPreferences.fromBackupValue(name, value)
+        }
+        if (decoded.isEmpty()) return 0
+
+        dataStore.edit { prefs ->
+            for ((key, value) in decoded) {
+                @Suppress("UNCHECKED_CAST")
+                prefs[key as androidx.datastore.preferences.core.Preferences.Key<Any>] = value
+            }
+        }
+        return decoded.size
     }
 
     private class Counts {

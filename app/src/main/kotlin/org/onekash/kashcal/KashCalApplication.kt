@@ -118,6 +118,10 @@ class KashCalApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var utcSeriesZoneRepair: UtcSeriesZoneRepair
 
+    // FORK:auto-backup
+    @Inject
+    lateinit var autoBackupScheduler: org.onekash.kashcal.domain.backup.AutoBackupScheduler
+
     @Inject
     @ApplicationScope
     lateinit var applicationScope: CoroutineScope
@@ -222,6 +226,11 @@ class KashCalApplication : Application(), Configuration.Provider {
             // No try/catch: the repair catches and logs.
             applicationScope.launch {
                 utcSeriesZoneRepair.run()
+            }
+
+            // FORK:auto-backup
+            applicationScope.launch {
+                autoBackupScheduler.reconcile()
             }
         }
 

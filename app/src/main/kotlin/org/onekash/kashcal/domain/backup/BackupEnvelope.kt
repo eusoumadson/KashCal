@@ -13,6 +13,8 @@ data class BackupEnvelope(
     // Defaulted so envelopes without the field still parse. Only tags with a user-chosen
     // color are carried (`CategoryDao.getColoredOnce`).
     val categories: List<BackupCategory> = emptyList(),
+    // FORK: Extended fork preferences (Tasks.org, Widgets, Departure Alerts)
+    @SerialName("fork_preferences") val forkPreferences: Map<String, BackupPreferenceValue> = emptyMap(),
 )
 
 @Serializable

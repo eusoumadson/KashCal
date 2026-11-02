@@ -33,8 +33,9 @@ class SettingsBackupExporter(
     ) : this(dataStore, icsSubscriptionsDao, categoryDao, { BuildConfig.VERSION_NAME }, { Instant.now() })
 
 
-    suspend fun exportSettings(): String {
+    suspend fun exportSettings(includeForkPreferences: Boolean = true): String {
         val preferences = collectPreferences()
+        val forkPreferences = if (includeForkPreferences) collectForkPreferences() else emptyMap()
         val subscriptionDtos = icsSubscriptionsDao.getAllOnce().map { it.toBackupSubscription() }
         val categoryDtos = categoryDao.getColoredOnce().map { it.toBackupCategory() }
 
@@ -45,6 +46,7 @@ class SettingsBackupExporter(
             preferences = preferences,
             subscriptions = subscriptionDtos,
             categories = categoryDtos,
+            forkPreferences = forkPreferences,
         )
         return BackupJson.encodeToString(BackupEnvelope.serializer(), envelope)
     }
@@ -53,6 +55,17 @@ class SettingsBackupExporter(
         val prefs = dataStore.dataStore.data.first()
         val result = LinkedHashMap<String, BackupPreferenceValue>()
         for (key in ExportablePreferences.KEYS) {
+            val raw = prefs[key] ?: continue
+            val value = ExportablePreferences.toBackupValue(key, raw) ?: continue
+            result[key.name] = value
+        }
+        return result
+    }
+
+    private suspend fun collectForkPreferences(): Map<String, BackupPreferenceValue> {
+        val prefs = dataStore.dataStore.data.first()
+        val result = LinkedHashMap<String, BackupPreferenceValue>()
+        for (key in ForkBackupPreferences.KEYS) {
             val raw = prefs[key] ?: continue
             val value = ExportablePreferences.toBackupValue(key, raw) ?: continue
             result[key.name] = value

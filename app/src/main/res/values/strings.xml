@@ -2319,4 +2319,20 @@
     <string name="travel_providers_header">Routing &amp; traffic providers</string>
     <string name="travel_provider_local_status_active">Always active</string>
     <string name="travel_provider_stadia_key_hint">Paste Stadia Maps API key here</string>
+    <string name="settings_section_advanced_features">Advanced features</string>
+    <string name="auto_backup_label">Automatic settings backup</string>
+    <string name="auto_backup_subtitle">Automatically export settings to a folder on schedule</string>
+    <string name="auto_backup_enabled_hint">Active</string>
+    <string name="auto_backup_disabled_hint">Disabled</string>
+    <string name="auto_backup_last_run">Last backup: %1$s</string>
+    <string name="auto_backup_sheet_title">Automatic Backup</string>
+    <string name="auto_backup_sheet_desc">Periodically export a backup JSON containing all settings and fork configurations to a chosen folder.</string>
+    <string name="auto_backup_folder_label">Backup folder</string>
+    <string name="auto_backup_select_folder">Choose folder</string>
+    <string name="auto_backup_change_folder">Change folder</string>
+    <string name="auto_backup_frequency_label">Backup frequency</string>
+    <string name="auto_backup_frequency_daily">Daily</string>
+    <string name="auto_backup_frequency_weekly">Weekly</string>
+    <string name="auto_backup_retention_label">Retention (keep latest)</string>
+    <string name="auto_backup_retention_val">%1$d backups</string>
 </resources>

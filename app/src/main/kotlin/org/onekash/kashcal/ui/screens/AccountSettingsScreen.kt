@@ -235,6 +235,10 @@ fun AccountSettingsScreen(
     // Settings backup/restore
     onBackupSettings: () -> Unit = {},
     onRestoreSettings: () -> Unit = {},
+    // Auto-backup (FORK:auto-backup)
+    autoBackupEnabled: Boolean = false,
+    autoBackupLastRunMs: Long = 0L,
+    onOpenAutoBackup: () -> Unit = {},
     // Navigation to detail screens
     onNavigateToAccounts: () -> Unit = {},
     onNavigateToSubscriptions: () -> Unit = {},
@@ -507,54 +511,6 @@ fun AccountSettingsScreen(
                             )
                         }
 
-                        if (tasksOrgInstalled) {
-                            val tasksOrgSubtitle = stringResource(
-                                if (tasksOrgEnabled) R.string.settings_tasks_org_enabled else R.string.settings_tasks_org_hint
-                            )
-                            row(label = stringResource(R.string.settings_tasks_org), subtitle = tasksOrgSubtitle, id = "tasks-org") {
-                                SettingsRow(
-                                    icon = Icons.Default.TaskAlt,
-                                    label = stringResource(R.string.settings_tasks_org),
-                                    subtitle = tasksOrgSubtitle,
-                                    onClick = onNavigateToTasksOrg,
-                                    showDivider = false,
-                                    searchQuery = searchQuery
-                                )
-                            }
-                        }
-
-                        // FORK:travel-time
-                        row(
-                            label = stringResource(R.string.travel_alerts_settings_title),
-                            subtitle = stringResource(R.string.travel_alerts_settings_subtitle),
-                            id = "travel-alerts"
-                        ) {
-                            SettingsRow(
-                                icon = Icons.Default.DirectionsCar,
-                                label = stringResource(R.string.travel_alerts_settings_title),
-                                subtitle = stringResource(R.string.travel_alerts_settings_subtitle),
-                                onClick = onNavigateToTravelAlerts,
-                                showDivider = false,
-                                searchQuery = searchQuery
-                            )
-                        }
-
-                        // FORK:experimental-widgets
-                        row(
-                            label = stringResource(R.string.experimental_widgets_settings_title),
-                            subtitle = stringResource(R.string.experimental_widgets_settings_subtitle),
-                            id = "experimental-widgets"
-                        ) {
-                            SettingsRow(
-                                icon = Icons.Default.Widgets,
-                                label = stringResource(R.string.experimental_widgets_settings_title),
-                                subtitle = stringResource(R.string.experimental_widgets_settings_subtitle),
-                                onClick = onNavigateToExperimentalWidgets,
-                                showDivider = false,
-                                searchQuery = searchQuery
-                            )
-                        }
-
                         val offlineCalendarsSubtitle = if (offlineCalendarCount <= 1) stringResource(R.string.offline_calendars_row_hint)
                             else pluralStringResource(R.plurals.calendar_count, offlineCalendarCount, offlineCalendarCount)
                         row(label = stringResource(R.string.offline_calendars_row_label), subtitle = offlineCalendarsSubtitle, id = "offline-calendars") {
@@ -704,6 +660,61 @@ fun AccountSettingsScreen(
                                 checked = showEventEmojis,
                                 onCheckedChange = onShowEventEmojisChange,
                                 info = emojisInfo,
+                                showDivider = false,
+                                searchQuery = searchQuery
+                            )
+                        }
+                    }
+
+                    // ==================== ADVANCED FEATURES Section (FORK) ====================
+                    SearchableSection(
+                        query = searchQuery,
+                        header = stringResource(R.string.settings_section_advanced_features),
+                        tracker = emittedTracker,
+                    ) {
+                        if (tasksOrgInstalled) {
+                            val tasksOrgSubtitle = stringResource(
+                                if (tasksOrgEnabled) R.string.settings_tasks_org_enabled else R.string.settings_tasks_org_hint
+                            )
+                            row(label = stringResource(R.string.settings_tasks_org), subtitle = tasksOrgSubtitle, id = "tasks-org") {
+                                SettingsRow(
+                                    icon = Icons.Default.TaskAlt,
+                                    label = stringResource(R.string.settings_tasks_org),
+                                    subtitle = tasksOrgSubtitle,
+                                    onClick = onNavigateToTasksOrg,
+                                    showDivider = false,
+                                    searchQuery = searchQuery
+                                )
+                            }
+                        }
+
+                        // FORK:travel-time
+                        row(
+                            label = stringResource(R.string.travel_alerts_settings_title),
+                            subtitle = stringResource(R.string.travel_alerts_settings_subtitle),
+                            id = "travel-alerts"
+                        ) {
+                            SettingsRow(
+                                icon = Icons.Default.DirectionsCar,
+                                label = stringResource(R.string.travel_alerts_settings_title),
+                                subtitle = stringResource(R.string.travel_alerts_settings_subtitle),
+                                onClick = onNavigateToTravelAlerts,
+                                showDivider = false,
+                                searchQuery = searchQuery
+                            )
+                        }
+
+                        // FORK:experimental-widgets
+                        row(
+                            label = stringResource(R.string.experimental_widgets_settings_title),
+                            subtitle = stringResource(R.string.experimental_widgets_settings_subtitle),
+                            id = "experimental-widgets"
+                        ) {
+                            SettingsRow(
+                                icon = Icons.Default.Widgets,
+                                label = stringResource(R.string.experimental_widgets_settings_title),
+                                subtitle = stringResource(R.string.experimental_widgets_settings_subtitle),
+                                onClick = onNavigateToExperimentalWidgets,
                                 showDivider = false,
                                 searchQuery = searchQuery
                             )
@@ -901,6 +912,34 @@ fun AccountSettingsScreen(
                                 label = stringResource(R.string.restore_settings_label),
                                 subtitle = stringResource(R.string.restore_settings_subtitle),
                                 onClick = onRestoreSettings,
+                                showChevron = false,
+                                showDivider = false,
+                                searchQuery = searchQuery
+                            )
+                        }
+                        // FORK:auto-backup
+                        val autoBackupSubtitle = if (autoBackupEnabled) {
+                            if (autoBackupLastRunMs > 0) {
+                                stringResource(
+                                    R.string.auto_backup_last_run,
+                                    DateTimeUtils.formatRelativeTime(autoBackupLastRunMs)
+                                )
+                            } else {
+                                stringResource(R.string.auto_backup_enabled_hint)
+                            }
+                        } else {
+                            stringResource(R.string.auto_backup_disabled_hint)
+                        }
+                        row(
+                            label = stringResource(R.string.auto_backup_label),
+                            subtitle = autoBackupSubtitle,
+                            id = "auto-backup"
+                        ) {
+                            SettingsRow(
+                                icon = Icons.Default.History,
+                                label = stringResource(R.string.auto_backup_label),
+                                subtitle = autoBackupSubtitle,
+                                onClick = onOpenAutoBackup,
                                 showChevron = false,
                                 showDivider = false,
                                 searchQuery = searchQuery

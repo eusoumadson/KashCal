@@ -319,6 +319,23 @@ object PreferencesKeys {
     /** The offline estimate adds a margin to a weekday rush-hour car trip. */
     val TRAVEL_RUSH_HOUR_ENABLED = booleanPreferencesKey("travel_rush_hour_enabled")
 
+    // ========== Auto Backup (FORK:auto-backup) ==========
+
+    /** Whether automatic scheduled backup of settings is enabled. */
+    val AUTO_BACKUP_ENABLED = booleanPreferencesKey("auto_backup_enabled")
+
+    /** DocumentTree SAF URI where automatic backups are saved. */
+    val AUTO_BACKUP_TREE_URI = stringPreferencesKey("auto_backup_tree_uri")
+
+    /** Auto-backup schedule interval in days (default 1). */
+    val AUTO_BACKUP_INTERVAL_DAYS = intPreferencesKey("auto_backup_interval_days")
+
+    /** Maximum number of auto-backup JSON files to keep before pruning older ones (default 5). */
+    val AUTO_BACKUP_RETENTION_COUNT = intPreferencesKey("auto_backup_retention_count")
+
+    /** Epoch millis timestamp of last successful auto-backup. */
+    val AUTO_BACKUP_LAST_RUN_MS = longPreferencesKey("auto_backup_last_run_ms")
+
     // ========== Parse Failure Retry (v16.7.0) ==========
 
     /**

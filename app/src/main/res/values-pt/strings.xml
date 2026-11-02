@@ -1685,4 +1685,20 @@
     <string name="travel_providers_header">Provedores de rotas e trânsito</string>
     <string name="travel_provider_local_status_active">Sempre ativo</string>
     <string name="travel_provider_stadia_key_hint">Cole a chave de API do Stadia Maps aqui</string>
+    <string name="settings_section_advanced_features">Recursos avançados</string>
+    <string name="auto_backup_label">Backup automático de configurações</string>
+    <string name="auto_backup_subtitle">Exporta periodicamente as configurações para uma pasta</string>
+    <string name="auto_backup_enabled_hint">Ativado</string>
+    <string name="auto_backup_disabled_hint">Desativado</string>
+    <string name="auto_backup_last_run">Último backup: %1$s</string>
+    <string name="auto_backup_sheet_title">Backup Automático</string>
+    <string name="auto_backup_sheet_desc">Exporta periodicamente um arquivo JSON com todas as configurações do aplicativo e do fork para uma pasta da sua escolha.</string>
+    <string name="auto_backup_folder_label">Pasta de destino</string>
+    <string name="auto_backup_select_folder">Escolher pasta</string>
+    <string name="auto_backup_change_folder">Alterar pasta</string>
+    <string name="auto_backup_frequency_label">Frequência do backup</string>
+    <string name="auto_backup_frequency_daily">Diário</string>
+    <string name="auto_backup_frequency_weekly">Semanal</string>
+    <string name="auto_backup_retention_label">Retenção (manter mais recentes)</string>
+    <string name="auto_backup_retention_val">%1$d backups</string>
 </resources>

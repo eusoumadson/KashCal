@@ -175,6 +175,8 @@ class AccountSettingsViewModel @Inject constructor(
     private val tasksOrgCoordinator: org.onekash.kashcal.domain.tasks.TasksOrgCoordinator? = null,
     // FORK:experimental-widgets
     private val experimentalWidgetsManager: org.onekash.kashcal.widget.ExperimentalWidgetsManager? = null,
+    // FORK:auto-backup
+    private val autoBackupScheduler: org.onekash.kashcal.domain.backup.AutoBackupScheduler? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AccountSettingsUiState(isLoading = true))
@@ -434,6 +436,72 @@ class AccountSettingsViewModel @Inject constructor(
             _experimentalWidgetsEnabled.value = enabled
             experimentalWidgetsManager?.setWidgetsEnabled(enabled)
             widgetUpdateManager.updateAllWidgets("experimental_widgets_toggle")
+        }
+    }
+
+    // FORK:auto-backup
+    val autoBackupEnabled: StateFlow<Boolean> = dataStore.autoBackupEnabled.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = false
+    )
+
+    val autoBackupTreeUri: StateFlow<String?> = dataStore.autoBackupTreeUri.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = null
+    )
+
+    val autoBackupIntervalDays: StateFlow<Int> = dataStore.autoBackupIntervalDays.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = 1
+    )
+
+    val autoBackupRetentionCount: StateFlow<Int> = dataStore.autoBackupRetentionCount.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = 5
+    )
+
+    val autoBackupLastRunMs: StateFlow<Long> = dataStore.autoBackupLastRunMs.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = 0L
+    )
+
+    fun onToggleAutoBackup(enabled: Boolean) {
+        viewModelScope.launch {
+            dataStore.setAutoBackupEnabled(enabled)
+            if (enabled) {
+                autoBackupScheduler?.schedule(autoBackupIntervalDays.value)
+            } else {
+                autoBackupScheduler?.cancel()
+            }
+        }
+    }
+
+    fun onSetAutoBackupTreeUri(uri: String) {
+        viewModelScope.launch {
+            dataStore.setAutoBackupTreeUri(uri)
+            if (autoBackupEnabled.value) {
+                autoBackupScheduler?.schedule(autoBackupIntervalDays.value)
+            }
+        }
+    }
+
+    fun onSetAutoBackupIntervalDays(days: Int) {
+        viewModelScope.launch {
+            dataStore.setAutoBackupIntervalDays(days)
+            if (autoBackupEnabled.value) {
+                autoBackupScheduler?.schedule(days)
+            }
+        }
+    }
+
+    fun onSetAutoBackupRetentionCount(count: Int) {
+        viewModelScope.launch {
+            dataStore.setAutoBackupRetentionCount(count)
         }
     }
 
