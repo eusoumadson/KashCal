@@ -151,6 +151,13 @@ class AccountSettingsScreenViewModelWiringTest {
         every { vm.tasksOrgLists } returns MutableStateFlow(emptyList<org.onekash.kashcal.data.tasks_org.TasksOrgList>())
         every { vm.hiddenTasksOrgListIds } returns MutableStateFlow(emptySet<Long>())
         every { vm.backupRestoreState } returns MutableStateFlow(BackupRestoreUiState.Idle)
+        every { vm.tasksInWidgetsEnabled } returns MutableStateFlow(true)
+        every { vm.experimentalWidgetsEnabled } returns MutableStateFlow(false)
+        every { vm.autoBackupEnabled } returns MutableStateFlow(false)
+        every { vm.autoBackupTreeUri } returns MutableStateFlow<String?>(null)
+        every { vm.autoBackupIntervalDays } returns MutableStateFlow(7)
+        every { vm.autoBackupRetentionCount } returns MutableStateFlow(5)
+        every { vm.autoBackupLastRunMs } returns MutableStateFlow(0L)
         // The route collects the permission state at the top for the ICS subscription dialog;
         // the hint flow is collected only inside the CalDAV sheet (not shown here).
         every { vm.localNetworkPermissionState } returns

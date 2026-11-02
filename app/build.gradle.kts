@@ -212,6 +212,10 @@ android {
                 it.jvmArgs("-XX:TieredStopAtLevel=1", "-XX:ReservedCodeCacheSize=512m")
                 it.maxHeapSize = "1g"
 
+                // Pin zone and locale: the suite asserts UTC wall-clock days and English text,
+                // so a developer machine in another zone or language fails ~30 tests.
+                it.jvmArgs("-Duser.timezone=UTC", "-Duser.language=en", "-Duser.country=US")
+
                 // Exclude integration tests (real servers) by default.
                 // Run with: ./gradlew testDebugUnitTest -Pintegration
                 if (!project.hasProperty("integration")) {
