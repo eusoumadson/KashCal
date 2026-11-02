@@ -2316,4 +2316,7 @@
     <string name="travel_permissions_missing">Location permissions needed</string>
     <string name="travel_permissions_btn_grant">Grant location permissions</string>
     <string name="travel_permissions_open_settings">Open system settings</string>
+    <string name="travel_providers_header">Routing &amp; traffic providers</string>
+    <string name="travel_provider_local_status_active">Always active</string>
+    <string name="travel_provider_stadia_key_hint">Paste Stadia Maps API key here</string>
 </resources>

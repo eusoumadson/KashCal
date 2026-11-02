@@ -28,22 +28,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import android.content.Context
 import androidx.compose.runtime.collectAsState
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import org.onekash.kashcal.R
 import org.onekash.kashcal.data.tasks_org.TasksOrgAccount
-import org.onekash.kashcal.data.tasks_org.TasksOrgContract
 import org.onekash.kashcal.data.tasks_org.TasksOrgList
-import org.onekash.kashcal.data.tasks_org.TasksOrgPlace
-import org.onekash.kashcal.data.tasks_org.TasksOrgTag
 import org.onekash.kashcal.data.tasks_org.TasksOrgVersion
 import org.onekash.kashcal.ui.viewmodels.TasksOrgManageViewModel
 
-/** The colors offered for lists and tags; 0 is Tasks.org's "no color". */
+/** The colors offered for lists; 0 is Tasks.org's "no color". */
 private val PALETTE: List<Int> = listOf(
     0,
     0xFFE53935.toInt(), 0xFFFB8C00.toInt(), 0xFFFDD835.toInt(), 0xFF43A047.toInt(),
@@ -52,7 +47,7 @@ private val PALETTE: List<Int> = listOf(
 
 /**
  * The fork's Tasks.org management section: a notice when the installed Tasks.org is too old,
- * accounts that need attention, and managing lists, tags and places. Self-contained (it owns its
+ * accounts that need attention, and editing list name/colors. Self-contained (it owns its
  * ViewModel), so the settings screen needs only one call to show it.
  */
 @Composable
@@ -61,8 +56,6 @@ fun TasksOrgManagementSection(viewModel: TasksOrgManageViewModel = hiltViewModel
     LaunchedEffect(Unit) { viewModel.refresh() }
 
     var listDialog by remember { mutableStateOf<ListDialog?>(null) }
-    var tagDialog by remember { mutableStateOf<TasksOrgTag?>(null) }
-    var deleting by remember { mutableStateOf<Deletion?>(null) }
     var expanded by rememberSaveable { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -70,9 +63,7 @@ fun TasksOrgManagementSection(viewModel: TasksOrgManageViewModel = hiltViewModel
         state.accounts.filter { it.needsAttention }.forEach { AccountNotice(it) }
 
         TextButton(onClick = { expanded = !expanded }) {
-            Text(stringResource(R.string.tasks_org_manage_lists) + " / " +
-                stringResource(R.string.tasks_org_manage_tags) + " / " +
-                stringResource(R.string.tasks_org_manage_places))
+            Text(stringResource(R.string.tasks_org_manage_lists))
         }
         if (!expanded) return@Column
 
@@ -91,44 +82,13 @@ fun TasksOrgManagementSection(viewModel: TasksOrgManageViewModel = hiltViewModel
             )
         }
 
-        SectionLabel(stringResource(R.string.tasks_org_manage_lists))
+        SectionLabel(stringResource(R.string.tasks_org_lists_header))
         state.lists.forEach { list ->
             ManageRow(
                 title = list.title,
                 color = list.color,
                 readOnly = list.isReadOnly,
-                onEdit = { listDialog = ListDialog.Edit(list) },
-                onDelete = { deleting = Deletion.OfList(list) }
-            )
-        }
-        // Tasks.org's provider can't create a list on every account type (CalDAV ones fail inside
-        // Tasks.org), so new lists are created in Tasks.org itself.
-        val context = LocalContext.current
-        TextButton(onClick = { launchTasksOrgApp(context) }) {
-            Text(stringResource(R.string.tasks_org_create_list_in_app))
-        }
-
-        SectionLabel(stringResource(R.string.tasks_org_manage_tags))
-        if (state.tags.isEmpty()) Muted(stringResource(R.string.tasks_org_no_tags))
-        state.tags.forEach { tag ->
-            ManageRow(
-                title = tag.name,
-                color = tag.color,
-                readOnly = false,
-                onEdit = { tagDialog = tag },
-                onDelete = { deleting = Deletion.OfTag(tag) }
-            )
-        }
-
-        SectionLabel(stringResource(R.string.tasks_org_manage_places))
-        if (state.places.isEmpty()) Muted(stringResource(R.string.tasks_org_no_places))
-        state.places.forEach { place ->
-            ManageRow(
-                title = place.displayName.ifBlank { place.name },
-                color = 0,
-                readOnly = false,
-                onEdit = null,
-                onDelete = { deleting = Deletion.OfPlace(place) }
+                onEdit = { listDialog = ListDialog.Edit(list) }
             )
         }
     }
@@ -148,66 +108,10 @@ fun TasksOrgManagementSection(viewModel: TasksOrgManageViewModel = hiltViewModel
         )
         null -> Unit
     }
-
-    tagDialog?.let { tag ->
-        NameColorDialog(
-            title = stringResource(R.string.tasks_org_rename),
-            label = stringResource(R.string.tasks_org_tag_name),
-            initialName = tag.name,
-            initialColor = tag.color,
-            confirmLabel = stringResource(R.string.tasks_org_save),
-            onDismiss = { tagDialog = null },
-            onConfirm = { name, color ->
-                viewModel.updateTag(tag.id, name, color)
-                tagDialog = null
-            }
-        )
-    }
-
-    deleting?.let { target ->
-        AlertDialog(
-            onDismissRequest = { deleting = null },
-            title = { Text(stringResource(target.titleRes)) },
-            text = { Text(stringResource(target.messageRes)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    when (target) {
-                        is Deletion.OfList -> viewModel.deleteList(target.list.id)
-                        is Deletion.OfTag -> viewModel.deleteTag(target.tag.id)
-                        is Deletion.OfPlace -> viewModel.deletePlace(target.place.id)
-                    }
-                    deleting = null
-                }) { Text(stringResource(R.string.tasks_org_delete)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.tasks_org_cancel)) }
-            }
-        )
-    }
 }
 
 private sealed interface ListDialog {
     data class Edit(val list: TasksOrgList) : ListDialog
-}
-
-private sealed interface Deletion {
-    val titleRes: Int
-    val messageRes: Int
-
-    data class OfList(val list: TasksOrgList) : Deletion {
-        override val titleRes = R.string.tasks_org_delete_list_title
-        override val messageRes = R.string.tasks_org_delete_list_message
-    }
-
-    data class OfTag(val tag: TasksOrgTag) : Deletion {
-        override val titleRes = R.string.tasks_org_delete_tag_title
-        override val messageRes = R.string.tasks_org_delete_tag_message
-    }
-
-    data class OfPlace(val place: TasksOrgPlace) : Deletion {
-        override val titleRes = R.string.tasks_org_delete_place_title
-        override val messageRes = R.string.tasks_org_delete_place_message
-    }
 }
 
 @Composable
@@ -252,8 +156,7 @@ private fun ManageRow(
     title: String,
     color: Int,
     readOnly: Boolean,
-    onEdit: (() -> Unit)?,
-    onDelete: () -> Unit
+    onEdit: (() -> Unit)?
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -267,10 +170,9 @@ private fun ManageRow(
                 .background(if (color != 0) Color(color) else MaterialTheme.colorScheme.outlineVariant)
         )
         Text(title, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        // A read-only list can't be renamed or deleted; Tasks.org would refuse.
+        // A read-only list can't be renamed; Tasks.org would refuse.
         if (!readOnly) {
             if (onEdit != null) TextButton(onClick = onEdit) { Text(stringResource(R.string.tasks_org_rename)) }
-            TextButton(onClick = onDelete) { Text(stringResource(R.string.tasks_org_delete)) }
         } else {
             Text(
                 stringResource(R.string.tasks_org_list_read_only),
@@ -281,7 +183,7 @@ private fun ManageRow(
     }
 }
 
-/** Name and color in one dialog shared by lists and tags. */
+/** Name and color in one dialog for lists. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun NameColorDialog(
@@ -329,14 +231,4 @@ private fun NameColorDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.tasks_org_cancel)) } }
     )
-}
-
-/** Opens the Tasks.org app (where lists are created); does nothing when it can't be launched. */
-private fun launchTasksOrgApp(context: Context) {
-    val intent = context.packageManager.getLaunchIntentForPackage(TasksOrgContract.PACKAGE) ?: return
-    try {
-        context.startActivity(intent)
-    } catch (_: Exception) {
-        // Uninstalled or disabled since the section opened.
-    }
 }

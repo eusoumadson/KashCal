@@ -1682,4 +1682,7 @@
     <string name="travel_permissions_missing">Permissões de localização necessárias</string>
     <string name="travel_permissions_btn_grant">Conceder permissões de localização</string>
     <string name="travel_permissions_open_settings">Abrir configurações do sistema</string>
+    <string name="travel_providers_header">Provedores de rotas e trânsito</string>
+    <string name="travel_provider_local_status_active">Sempre ativo</string>
+    <string name="travel_provider_stadia_key_hint">Cole a chave de API do Stadia Maps aqui</string>
 </resources>

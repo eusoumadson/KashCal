@@ -184,18 +184,11 @@ fun TravelAlertsScreen(
                         }
 
                         val allGranted = hasLocationPerm && hasBackgroundPerm
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = if (allGranted) Color(0xFF2E7D32).copy(alpha = 0.15f) else MaterialTheme.colorScheme.errorContainer
-                        ) {
-                            Text(
-                                text = stringResource(if (allGranted) R.string.travel_permissions_granted else R.string.travel_permissions_missing),
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (allGranted) Color(0xFF2E7D32) else MaterialTheme.colorScheme.onErrorContainer,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
+                        TravelStatusBadge(
+                            text = stringResource(if (allGranted) R.string.travel_permissions_granted else R.string.travel_permissions_missing),
+                            containerColor = if (allGranted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
+                            contentColor = if (allGranted) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
+                        )
                     }
 
                     Text(
@@ -251,7 +244,7 @@ fun TravelAlertsScreen(
 
             // Providers Section Header
             Text(
-                text = stringResource(R.string.settings_tasks_org_enabled), // Reusable or header
+                text = stringResource(R.string.travel_providers_header),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(top = 4.dp)
@@ -282,7 +275,7 @@ fun TravelAlertsScreen(
                 currentApiKey = stadiaKey,
                 onSaveApiKey = viewModel::setStadiaApiKey,
                 keyLabel = stringResource(R.string.travel_provider_stadia_key_label),
-                keyHint = "stadiamaps API key"
+                keyHint = stringResource(R.string.travel_provider_stadia_key_hint)
             )
 
             // Provider 3: Valhalla OpenStreetMap Demo Server
@@ -293,7 +286,7 @@ fun TravelAlertsScreen(
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -311,20 +304,14 @@ fun TravelAlertsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 modifier = Modifier.padding(top = 4.dp)
                             ) {
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = if (isCircuitOpen) Color(0xFFF57C00).copy(alpha = 0.15f) else Color(0xFF2E7D32).copy(alpha = 0.15f)
-                                ) {
-                                    Text(
-                                        text = stringResource(
-                                            if (isCircuitOpen) R.string.travel_provider_status_circuit_open
-                                            else R.string.travel_provider_status_circuit_closed
-                                        ),
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = if (isCircuitOpen) Color(0xFFF57C00) else Color(0xFF2E7D32)
-                                    )
-                                }
+                                TravelStatusBadge(
+                                    text = stringResource(
+                                        if (isCircuitOpen) R.string.travel_provider_status_circuit_open
+                                        else R.string.travel_provider_status_circuit_closed
+                                    ),
+                                    containerColor = if (isCircuitOpen) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = if (isCircuitOpen) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer
+                                )
                             }
                         }
 
@@ -350,7 +337,7 @@ fun TravelAlertsScreen(
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -362,17 +349,11 @@ fun TravelAlertsScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer
-                        ) {
-                            Text(
-                                text = "Always active",
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
+                        TravelStatusBadge(
+                            text = stringResource(R.string.travel_provider_local_status_active),
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
                     }
 
                     Text(
@@ -430,7 +411,6 @@ private fun ProviderConfigCard(
     val uriHandler = LocalUriHandler.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    var isEditingKey by rememberSaveable { mutableStateOf(false) }
     var keyInput by remember(currentApiKey) { mutableStateOf(currentApiKey) }
     var isPasswordVisible by rememberSaveable { mutableStateOf(false) }
 
@@ -532,7 +512,7 @@ private fun ProviderConfigCard(
                                     keyboardController?.hide()
                                 }
                             ) {
-                                Text(stringResource(R.string.tasks_org_save))
+                                Text(stringResource(R.string.action_save))
                             }
                         }
                     }
@@ -541,3 +521,26 @@ private fun ProviderConfigCard(
         }
     }
 }
+
+@Composable
+private fun TravelStatusBadge(
+    text: String,
+    containerColor: Color,
+    contentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = containerColor,
+        modifier = modifier
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = contentColor
+        )
+    }
+}
+
