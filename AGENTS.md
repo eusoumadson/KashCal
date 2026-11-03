@@ -34,7 +34,7 @@ See [docs/agents/coding_guidelines.md](docs/agents/coding_guidelines.md) for ful
 - **Sync Queue**: Route every sync mutation through the `PendingOperation` queue (`PendingOperationsDao`). Never fire-and-forget sync mutations.
 - **Recurrence Identity**: Recurring exception events share the master event `UID` and distinguish themselves via `RECURRENCE-ID`.
 - **Tasks.org Non-Persistence**: Read and mutate Tasks.org items directly through `ContentProvider` (`AndroidTasksOrgRepository`) and expose them as `DisplayEvent.Task`. Never persist Tasks.org tasks in Room.
-- **Fork Toggle & Graft Points**: Gate all Tasks.org behavior behind the "Integração com Tasks.org ativada" toggle so disabling it preserves upstream behavior. Keep core graft points minimal (`// FORK:tasks-org`, `// FORK:travel-time`) and update `FORK_INTEGRATION.md` whenever modifying core files.
+- **Fork Toggle & Graft Points**: Gate all Tasks.org behavior behind the "Integração com Tasks.org ativada" toggle so disabling it preserves upstream behavior. Keep core graft points minimal (`// FORK:tasks-org`, `// FORK:travel-time`) and update `docs/fork/FORK_INTEGRATION.md` whenever modifying core files.
 - **String Resources & Localization**: Never hardcode user-facing strings. Upstream edits only `values/strings.xml`; in this fork, update `values/strings.xml`, `values-pt/strings.xml`, and `values-pt-rBR/strings.xml` together (`app/src/fork/tools/gen_strings_pt.py`). Do not hand-edit other locale directories.
 - **UI Feedback**: Prefer inline banners over blocking dialogs; use confirmation dialogs only for destructive actions.
 - **Comments & KDoc**: Document only non-obvious invariants, consequences, and RFC 5545/5546/6350 rules. Describe current rules rather than history, and update or delete comments when code changes.
@@ -80,10 +80,10 @@ export PATH="$HOME/.nvm/versions/node/v20.20.0/bin:$PATH"
 | [README.md](README.md) | Project overview, supported CalDAV providers, and APK verification |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Upstream contributor workflow and build instructions |
 | [CHANGELOG.md](CHANGELOG.md) | Release version history |
-| [FORK_FEATURES.md](FORK_FEATURES.md) | Fork feature documentation (Tasks.org integration, Travel Time alerts, Auto-backup) |
-| [FORK_INTEGRATION.md](FORK_INTEGRATION.md) | Unified map of `// FORK:tasks-org` and `// FORK:travel-time` graft points in core |
-| [TRAVEL_TIME_DEVICE_TEST.md](TRAVEL_TIME_DEVICE_TEST.md) | Manual physical-device test script for Travel Time departure alerts |
-| [TASKS_ORG_DEVICE_TEST.md](TASKS_ORG_DEVICE_TEST.md) | Manual physical-device test script for Tasks.org integration |
+| [docs/fork/FORK_FEATURES.md](docs/fork/FORK_FEATURES.md) | Fork feature documentation (Tasks.org integration, Travel Time alerts, Auto-backup) |
+| [docs/fork/FORK_INTEGRATION.md](docs/fork/FORK_INTEGRATION.md) | Unified map of `// FORK:tasks-org` and `// FORK:travel-time` graft points in core |
+| [docs/testing/TRAVEL_TIME_DEVICE_TEST.md](docs/testing/TRAVEL_TIME_DEVICE_TEST.md) | Manual physical-device test script for Travel Time departure alerts |
+| [docs/testing/TASKS_ORG_DEVICE_TEST.md](docs/testing/TASKS_ORG_DEVICE_TEST.md) | Manual physical-device test script for Tasks.org integration |
 | [docs/RRULE_ENGINE_PARITY.md](docs/RRULE_ENGINE_PARITY.md) | RFC 5545 RRULE expansion parity notes |
 
 ## 6. Agent Documentation
