@@ -109,3 +109,11 @@ releases/*.apk
 
 # Local fuzzing workspace (Jazzer harnesses + binaries, never shipped)
 fuzz/
+
+# Open Spec Harness (opsh)
+.phases/
+.env
+.spec/features/*/.handoff/
+
+# Open Spec Harness (opsh)
+.opshrc

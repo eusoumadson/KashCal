@@ -14,11 +14,11 @@
 
 1. `git rebase upstream/main` (ou merge). Os conflitos vão se concentrar nos 5 arquivos de core
    listados na §2.
-2. Para localizar **todos** os pontos de enxerto mecanicamente:
+2. Para localizar **todos** os pontos de enxerto mecanicamente (tanto Tasks.org quanto Travel Time):
    ```sh
-   grep -rn "FORK:tasks-org" app/src app/src/main/AndroidManifest.xml
+   grep -rn -E "FORK:(tasks-org|travel-time)" app/src app/src/main/AndroidManifest.xml
    ```
-   Cada linha marcada com `// FORK:tasks-org` (ou `<!-- FORK:tasks-org -->` no manifesto) é uma
+   Cada linha marcada com `// FORK:tasks-org` ou `// FORK:travel-time` (ou `<!-- FORK:... -->` no manifesto) é uma
    adição do fork. Nenhuma linha do original leva essa marca.
 3. Resolva cada conflito mantendo **ambos** os lados: a versão do upstream **mais** as linhas
    `FORK:tasks-org`. Nenhum toque do fork substitui lógica original — todos são aditivos, exceto
@@ -394,4 +394,39 @@ Notas:
 - A primeira abertura pede a permissão do Tasks.org pelo diálogo normal do sistema.
 - Para publicar no futuro, o workflow `release.yml` espera os secrets `KEYSTORE_BASE64`,
   `KEYSTORE_PASSWORD`, `KEY_ALIAS` e `KEY_PASSWORD` no GitHub do fork.
+
+---
+
+## 10. Enxerto da Feature Alertas de Saída (`// FORK:travel-time`)
+
+Assim como a integração com o Tasks.org, os **Alertas de Saída por Tempo de Viagem (Departure Alerts)** foram construídos lateralmente e todos os pontos que tocam arquivos do *core* levam a marcação `// FORK:travel-time`.
+
+### 10.1 Pacotes 100% do fork (sem conflito de rebase)
+- `org.onekash.kashcal.data.travel`: Clientes HTTP de roteamento (`TomTomRoutingClient`, `StadiaRoutingClient`, `ValhallaRoutingClient`), orquestrador em cascata de 4 níveis (`RoutingService`: TomTom $\rightarrow$ Stadia $\rightarrow$ Valhalla Demo $\rightarrow$ Local Haversine Offline), `TravelCircuitBreaker`, rate limiter e `LocalTravelEstimator`.
+- `org.onekash.kashcal.reminder.travel`: Worker WorkManager (`TravelAlarmWorker`), agendador de janela de 7 dias (`TravelReminderScheduler`) e provedor de localização AOSP sem dependência de GMS (`TravelLocationProvider`).
+- `org.onekash.kashcal.ui.screens.settings`: Tela de configuração e onboarding de chaves/circuit breaker (`TravelAlertsScreen.kt`, `TravelAlertsViewModel.kt`).
+
+### 10.2 Migração de Banco Room (27 $\rightarrow$ 28 — `MIGRATION_27_28`)
+- **Tabela `events`:**
+  - `travel_mode` (`TEXT`, nullable: `CAR`, `FOOT`, `TRANSIT`; quando `NULL`, alertas de saída ficam desativados no evento).
+  - `travel_depart_buffer_min` (`INTEGER`, nullable: antecedência adicional `0`, `5`, `10`, `15`, `30` min).
+  - `travel_origin_fixed` (`TEXT`, nullable: endereço de origem fixo; quando nulo, usa GPS atual via AOSP `LocationManager`).
+- **Tabela `scheduled_reminders`:**
+  - `reminder_type` (`TEXT`, not null, default `'TIME_BEFORE'`: diferencia `'TIME_BEFORE'` de `'TRAVEL_DEPART'` e `'TRAVEL_BUFFER'`).
+  - `estimated_travel_min` (`INTEGER`, nullable) e `travel_note` (`TEXT`, nullable).
+
+### 10.3 Pontos de toque no core (`grep -rn "FORK:travel-time" app/src`)
+- `EventFormSheet.kt`: Autocomplete de coordenadas (`locationLat`/`locationLon`) e linha de configuração de Alerta de Saída para eventos com horário (`!isAllDay`).
+- `HomeViewModel.kt`: Persistência de `geoLat`, `geoLon`, `travelMode`, `travelDepartBufferMin` e `travelOriginFixed` nos 5 ramos de criação/atualização de evento.
+- `ReminderAlarmReceiver.kt` e `ReminderNotificationManager.kt`: Renderização das notificações de saída com botões de ação (`geo:` e transporte público).
+- `Migrations.kt` e `KashCalDatabase.kt`: Registro da `MIGRATION_27_28`.
+
+### 10.4 Verificação pós-rebase dos testes de Travel Time
+```sh
+./gradlew :app:testDebugUnitTest \
+  --tests "*Travel*" \
+  --tests "*Routing*" \
+  --tests "*Migration*"
+```
+
 
