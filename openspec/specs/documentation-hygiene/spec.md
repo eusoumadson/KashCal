@@ -1,6 +1,9 @@
-# Delta Specification: documentation-hygiene
+# Documentation Hygiene Specification
 
-## ADDED Requirements
+## Purpose
+Estabelece a política de organização documental do repositório, garantindo que arquivos específicos do fork e roteiros de teste residam organizados sob `docs/` mantendo a raiz limpa.
+
+## Requirements
 
 ### Requirement: RF-01 - Consolidação da Documentação do Fork sob `docs/fork/`
 WHEN a etapa de limpeza pós-`/opsh:ai-context --adopt` for executada, THE SYSTEM SHALL mover `FORK_INTEGRATION.md` e `FORK_FEATURES.md` da raiz do repositório para `docs/fork/FORK_INTEGRATION.md` e `docs/fork/FORK_FEATURES.md` preservando integralmente o mapa de rebase (`// FORK:tasks-org` e `// FORK:travel-time`).
