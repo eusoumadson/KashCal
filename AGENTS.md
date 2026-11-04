@@ -58,7 +58,7 @@ See [docs/agents/coding_guidelines.md](docs/agents/coding_guidelines.md) for ful
 
 ## 4. Setup, Troubleshooting and Tips
 
-- **Prerequisites**: JDK 21 (Temurin 21 in `.github/workflows/build.yml`), Android SDK (`compileSdk 37`, `minSdk 31`, `targetSdk 37`), Gradle 9.7.1 (`gradle/wrapper/gradle-wrapper.properties`), Kotlin 2.3.21, and Node.js ≥ 20 for the `openspec` CLI.
+- **Prerequisites**: JDK 21 (Temurin 21 in `.github/workflows/build.yml`), Android SDK (`compileSdk 37`, `minSdk 31`, `targetSdk 37`), Gradle 9.8.2 (`gradle/wrapper/gradle-wrapper.properties`), Kotlin 2.3.21, and Node.js ≥ 20 for the `openspec` CLI.
 - **Modules**: `:app` (Android app), `:icaldav-core` (pure-JVM RFC 5545 iCalendar/RRULE library on `ical4j`), `:vcard-core` (pure-JVM RFC 2426/6350 vCard library on `ez-vcard`).
 
 ```sh
