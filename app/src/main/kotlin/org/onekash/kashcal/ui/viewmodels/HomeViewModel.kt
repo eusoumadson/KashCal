@@ -2620,7 +2620,7 @@ class HomeViewModel(
     fun loadEventsForDayPagerRange(centerDateMs: Long) {
         dayEventsCacheJob?.cancel()
 
-        Log.d(TAG, "Day pager cache: loading range centered on ${DayPagerUtils.msToDayCode(centerDateMs)}")
+        Log.d(TAG, "Day pager cache: loading range centered on ${DayPagerUtils.msToDayCode(centerDateMs, _displayZone.value)}")
 
         dayEventsCacheJob = viewModelScope.launch {
             try {
@@ -2629,7 +2629,7 @@ class HomeViewModel(
                     .collect { grouped ->
                         // Loaded days, empty ones included.
                         val loadedCodes = (-3..3).map { offset ->
-                            DayPagerUtils.msToDayCode(centerDateMs + (offset * DayPagerUtils.DAY_MS))
+                            DayPagerUtils.msToDayCode(centerDateMs + (offset * DayPagerUtils.DAY_MS), _displayZone.value)
                         }.toPersistentSet()
 
                         _uiState.update {
@@ -2810,15 +2810,16 @@ class HomeViewModel(
         viewModelScope.launch {
             try {
                 val dateFilter = _uiState.value.searchDateFilter
-                val timeRange = dateFilter.getTimeRange(ZoneId.systemDefault(), _uiState.value.firstDayOfWeek)
+                val activeZone = _displayZone.value
+                val timeRange = dateFilter.getTimeRange(activeZone, _uiState.value.firstDayOfWeek)
                 val calendarMap = _uiState.value.calendars.associateBy { it.id }
 
                 // Day range for the device calendar search.
-                val today = LocalDate.now()
+                val today = LocalDate.now(activeZone)
                 val todayCode = today.year * 10000 + today.monthValue * 100 + today.dayOfMonth
                 val (searchStartDayCode, searchEndDayCode) = when {
                     timeRange != null -> {
-                        DayPagerUtils.msToDayCode(timeRange.first) to DayPagerUtils.msToDayCode(timeRange.second)
+                        DayPagerUtils.msToDayCode(timeRange.first, activeZone) to DayPagerUtils.msToDayCode(timeRange.second, activeZone)
                     }
                     dateFilter is DateFilter.AnyTime -> {
                         val syncPastDays = dataStore.syncPastDays.first()

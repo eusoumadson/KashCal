@@ -2663,25 +2663,25 @@ internal fun parseDurationMs(duration: String?, isAllDay: Boolean): Long {
     }
 }
 
-/** Converts a YYYYMMDD day code to local start-of-day epoch ms. */
-internal fun dayCodeToStartOfDayMs(dayCode: Int): Long {
+/** Converts a YYYYMMDD day code to local start-of-day epoch ms in [zone]. */
+internal fun dayCodeToStartOfDayMs(dayCode: Int, zone: ZoneId = ZoneId.systemDefault()): Long {
     val year = dayCode / 10000
     val month = (dayCode % 10000) / 100
     val day = dayCode % 100
     return LocalDate.of(year, month, day)
-        .atStartOfDay(ZoneId.systemDefault())
+        .atStartOfDay(zone)
         .toInstant().toEpochMilli()
 }
 
 
-/** Converts a YYYYMMDD day code to local end-of-day epoch ms (23:59:59.999). */
-internal fun dayCodeToEndOfDayMs(dayCode: Int): Long {
+/** Converts a YYYYMMDD day code to local end-of-day epoch ms (23:59:59.999) in [zone]. */
+internal fun dayCodeToEndOfDayMs(dayCode: Int, zone: ZoneId = ZoneId.systemDefault()): Long {
     val year = dayCode / 10000
     val month = (dayCode % 10000) / 100
     val day = dayCode % 100
     return LocalDate.of(year, month, day)
         .atTime(23, 59, 59, 999_000_000)
-        .atZone(ZoneId.systemDefault())
+        .atZone(zone)
         .toInstant().toEpochMilli()
 }
 

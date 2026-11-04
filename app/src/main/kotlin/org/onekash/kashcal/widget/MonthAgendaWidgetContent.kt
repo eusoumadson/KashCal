@@ -1,5 +1,6 @@
 package org.onekash.kashcal.widget
 
+import android.annotation.SuppressLint
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,6 +42,7 @@ import java.util.Locale
  * Left column: Full month calendar grid (30/31 days with today highlighted and dots for days with events).
  * Right column: Today's agenda with events and tasks (with interactive checkboxes).
  */
+@SuppressLint("NonObservableLocale")
 @Composable
 fun MonthAgendaWidgetContent(
     today: LocalDate,

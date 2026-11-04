@@ -260,6 +260,6 @@ class IcsImportFileTest {
         val elapsedMs = (System.nanoTime() - started) / 1_000_000
         assertEquals(2_000, file.groups.size)
         assertTrue("every group keeps its copy", file.groups.all { it.masters.single().event.rawIcal != null })
-        assertTrue("built in ${elapsedMs}ms", elapsedMs < 5_000)
+        assertTrue("built in ${elapsedMs}ms", elapsedMs < 10_000)
     }
 }

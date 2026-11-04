@@ -156,7 +156,10 @@ sealed interface DisplayEvent {
     // branch (also FORK:tasks-org tagged). Removing the fork = delete this variant and those
     // branches.
     @Immutable
-    data class Task(val task: TasksOrgTask) : DisplayEvent {
+    data class Task(
+        val task: TasksOrgTask,
+        val zone: ZoneId = ZoneId.systemDefault()
+    ) : DisplayEvent {
         override val title get() =
             if (task.isFutureOccurrence) TASK_FUTURE_PREFIX + task.title
             else taskDisplayTitle(task.title, task.isCompleted)
@@ -165,8 +168,12 @@ sealed interface DisplayEvent {
         override val categories: List<String> get() = emptyList()
         override val startTs get() = task.startTs
         override val endTs get() = task.endTs
-        override val startDay get() = task.startDay
-        override val endDay get() = task.endDay
+        override val startDay: Int = DateTimeUtils.occurrenceStartDay(
+            task.startTs, task.startDay, task.isAllDay, zone
+        )
+        override val endDay: Int = DateTimeUtils.occurrenceEndDay(
+            task.startTs, task.endTs, task.endDay, task.isAllDay, zone
+        )
         override val isAllDay get() = task.isAllDay
         override val hasRrule get() = task.isRecurring
         override val calendarColor get() = task.listColor.takeIf { it != 0 } ?: DEFAULT_TASK_LIST_COLOR

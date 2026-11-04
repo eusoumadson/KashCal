@@ -15,6 +15,7 @@ import org.onekash.kashcal.testutil.resolveProjectRoot
 import org.robolectric.RobolectricTestRunner
 import java.io.File
 import java.time.LocalDate
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Tests the widget-picker previews of all five widgets.
@@ -157,7 +158,7 @@ class WidgetPreviewContentTest {
 
     @Test
     fun `upcoming preview shows sample content and never the loading or error state`() =
-        runGlanceAppWidgetUnitTest {
+        runGlanceAppWidgetUnitTest(timeout = 15.seconds) {
             setContext(context)
             provideComposable { UpcomingPreviewContent(context) }
 

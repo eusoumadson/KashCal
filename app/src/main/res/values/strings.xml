@@ -2480,7 +2480,7 @@
     <string name="travel_provider_local_title">Local Offline Estimator</string>
     <string name="travel_provider_local_desc">Always available fallback using geodesic distance, average speeds, and weekday rush-hour compensation.</string>
     <string name="travel_provider_rush_hour_title">Weekday rush-hour adjustment</string>
-    <string name="travel_provider_rush_hour_desc">Adds +30% buffer during morning (07:30-09:30) and evening (17:30-19:30) peaks for offline/static car routes.</string>
+    <string name="travel_provider_rush_hour_desc" formatted="false">Adds +30% buffer during morning (07:30-09:30) and evening (17:30-19:30) peaks for offline/static car routes.</string>
     <string name="travel_provider_status_circuit_open">Temporarily paused (Circuit Breaker active)</string>
     <string name="travel_provider_status_circuit_closed">Operational</string>
     <string name="travel_permissions_title">Location Permissions</string>

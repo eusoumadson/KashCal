@@ -79,10 +79,10 @@ object DayPagerUtils {
         return INITIAL_PAGE + dayOffset
     }
 
-    /** Returns the YYYYMMDD day code of [ms] in the system time zone, e.g. 20260115. */
-    fun msToDayCode(ms: Long): Int {
+    /** Returns the YYYYMMDD day code of [ms] in [zone], e.g. 20260115. */
+    fun msToDayCode(ms: Long, zone: ZoneId = ZoneId.systemDefault()): Int {
         val localDate = Instant.ofEpochMilli(ms)
-            .atZone(ZoneId.systemDefault())
+            .atZone(zone)
             .toLocalDate()
         return localDateToDayCode(localDate)
     }

@@ -265,6 +265,7 @@ internal fun TaskRecurrenceSection(
             Text(stringResource(unitLabel(simple.frequency)), style = MaterialTheme.typography.bodyLarge)
         }
         if (simple.frequency == SimpleRecurrence.Frequency.WEEKLY) {
+            val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
             Text(stringResource(R.string.task_repeat_on_days), style = MaterialTheme.typography.bodyMedium)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 DayOfWeek.entries.forEach { day ->
@@ -274,7 +275,7 @@ internal fun TaskRecurrenceSection(
                             val days = if (day in simple.weekdays) simple.weekdays - day else simple.weekdays + day
                             onChoice(RecurrenceChoice.Simple(simple.copy(weekdays = days)))
                         },
-                        label = { Text(day.getDisplayName(TextStyle.SHORT, Locale.getDefault())) }
+                        label = { Text(day.getDisplayName(TextStyle.SHORT, locale)) }
                     )
                 }
             }

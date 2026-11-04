@@ -29,7 +29,9 @@ import org.onekash.kashcal.domain.model.overlapsWindow
 import org.onekash.kashcal.domain.tasks.FUTURE_OCCURRENCE_LOOKBACK_MS // FORK:tasks-org
 import org.onekash.kashcal.domain.tasks.futureOccurrences // FORK:tasks-org
 import org.onekash.kashcal.ui.util.DayPagerUtils
+import org.onekash.kashcal.util.ZoneSource
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -49,7 +51,8 @@ class DisplayEventRepository @Inject constructor(
     private val attendeesDao: AttendeesDao,
     private val accountsDao: AccountsDao,
     private val tasksOrgRepository: TasksOrgRepository, // FORK:tasks-org
-    private val tasksOrgManager: TasksOrgManager // FORK:tasks-org
+    private val tasksOrgManager: TasksOrgManager, // FORK:tasks-org
+    private val zoneSource: ZoneSource = ZoneSource()
 ) {
     companion object {
         private const val TAG = "DisplayEventRepo"
@@ -63,11 +66,11 @@ class DisplayEventRepository @Inject constructor(
     val deviceCalendarChangeSignal: StateFlow<Int> get() = calendarProviderManager.changeSignal
 
     /**
-     * Emits when either source outside Room changes: device calendars or Tasks.org. One flow, so
+     * Emits when either source outside Room changes: device calendars, Tasks.org, or device zone. One flow, so
      * the view flows' combine stays within its five-argument overload.
      */
-    private val externalChangeSignal: Flow<Pair<Int, Int>>
-        get() = combine(calendarProviderManager.changeSignal, tasksOrgManager.changeSignal) { d, t -> d to t } // FORK:tasks-org (original: = calendarProviderManager.changeSignal)
+    private val externalChangeSignal: Flow<Triple<Int, Int, ZoneId>>
+        get() = combine(calendarProviderManager.changeSignal, tasksOrgManager.changeSignal, zoneSource.zone) { d, t, z -> Triple(d, t, z) } // FORK:tasks-org (original: = calendarProviderManager.changeSignal)
 
     /**
      * Emits the day pager's events, from 3 days before [centerDateMs] to 4 days after, grouped
@@ -94,10 +97,13 @@ class DisplayEventRepository @Inject constructor(
             attendeesDao.attendeesChangeSignal(),
             dataStore.hiddenDeviceCalendarIds
         ) { roomOccurrences, _, showDeclined, _, _ ->
-            val roomEvents = applyDeclinedPolicy(roomOccurrences, showDeclined)
-            val deviceEvents = queryDeviceEvents(startDayCode, endDayCode) +
-                queryTaskEvents(startDayCode, endDayCode) // FORK:tasks-org (original: no task append)
-            mergeAndGroupByDay(roomEvents, deviceEvents, startDayCode, endDayCode)
+            val zone = ZoneId.systemDefault()
+            val activeStartDayCode = DayPagerUtils.msToDayCode(rangeStart, zone)
+            val activeEndDayCode = DayPagerUtils.msToDayCode(rangeEnd, zone)
+            val roomEvents = applyDeclinedPolicy(roomOccurrences, showDeclined, zone)
+            val deviceEvents = queryDeviceEvents(activeStartDayCode, activeEndDayCode) +
+                queryTaskEvents(activeStartDayCode, activeEndDayCode, zone = zone) // FORK:tasks-org (original: no task append)
+            mergeAndGroupByDay(roomEvents, deviceEvents, activeStartDayCode, activeEndDayCode)
         }
     }
 
@@ -120,9 +126,12 @@ class DisplayEventRepository @Inject constructor(
             attendeesDao.attendeesChangeSignal(),
             dataStore.hiddenDeviceCalendarIds
         ) { roomOccurrences, _, showDeclined, _, _ ->
-            val roomEvents = applyDeclinedPolicy(roomOccurrences, showDeclined)
-            val deviceEvents = queryDeviceEvents(startDayCode, endDayCode) +
-                queryTaskEvents(startDayCode, endDayCode) // FORK:tasks-org (original: no task append)
+            val zone = ZoneId.systemDefault()
+            val activeStartDayCode = DayPagerUtils.msToDayCode(startMs, zone)
+            val activeEndDayCode = DayPagerUtils.msToDayCode(endMs, zone)
+            val roomEvents = applyDeclinedPolicy(roomOccurrences, showDeclined, zone)
+            val deviceEvents = queryDeviceEvents(activeStartDayCode, activeEndDayCode) +
+                queryTaskEvents(activeStartDayCode, activeEndDayCode, zone = zone) // FORK:tasks-org (original: no task append)
             (roomEvents + deviceEvents)
                 .sortedBy { it.startTs }
                 .toPersistentList()
@@ -148,9 +157,10 @@ class DisplayEventRepository @Inject constructor(
             attendeesDao.attendeesChangeSignal(),
             dataStore.hiddenDeviceCalendarIds
         ) { roomOccurrences, _, showDeclined, _, _ ->
-            val roomEvents = applyDeclinedPolicy(roomOccurrences, showDeclined)
+            val zone = ZoneId.systemDefault()
+            val roomEvents = applyDeclinedPolicy(roomOccurrences, showDeclined, zone)
             val deviceEvents = queryDeviceEvents(startDayCode, endDayCode) +
-                queryTaskEvents(startDayCode, endDayCode) // FORK:tasks-org (original: no task append)
+                queryTaskEvents(startDayCode, endDayCode, zone = zone) // FORK:tasks-org (original: no task append)
             mergeAndGroupByDay(roomEvents, deviceEvents, startDayCode, endDayCode)
         }
     }
@@ -190,7 +200,8 @@ class DisplayEventRepository @Inject constructor(
         }
 
         // FORK:tasks-org — task results folded into search (original: roomResults + deviceResults only)
-        val taskResults = queryTaskEvents(startDayCode, endDayCode, search = query)
+        val zone = ZoneId.systemDefault()
+        val taskResults = queryTaskEvents(startDayCode, endDayCode, search = query, zone = zone)
             .map { SearchResult(it, it.startTs) }
 
         return (roomResults + deviceResults + taskResults).sortedBy { it.displayTs } // FORK:tasks-org (original: roomResults + deviceResults)
@@ -208,16 +219,17 @@ class DisplayEventRepository @Inject constructor(
         startDayCode: Int,
         endDayCode: Int
     ): Map<Int, List<DisplayEvent>> {
-        val startMs = dayCodeToStartOfDayMs(startDayCode)
-        val endMs = dayCodeToEndOfDayMs(endDayCode)
+        val zone = ZoneId.systemDefault()
+        val startMs = dayCodeToStartOfDayMs(startDayCode, zone)
+        val endMs = dayCodeToEndOfDayMs(endDayCode, zone)
 
         val roomOccurrences = eventReader
             .getVisibleOccurrencesWithEventsInRangeFlow(startMs, endMs)
             .first()
         val showDeclined = dataStore.getShowDeclinedEvents()
-        val roomEvents = applyDeclinedPolicy(roomOccurrences, showDeclined)
+        val roomEvents = applyDeclinedPolicy(roomOccurrences, showDeclined, zone)
         val deviceEvents = queryDeviceEvents(startDayCode, endDayCode) +
-            queryTaskEvents(startDayCode, endDayCode) // FORK:tasks-org (original: no task append)
+            queryTaskEvents(startDayCode, endDayCode, zone = zone) // FORK:tasks-org (original: no task append)
 
         return mergeAndGroupByDay(roomEvents, deviceEvents, startDayCode, endDayCode)
     }
@@ -319,7 +331,8 @@ class DisplayEventRepository @Inject constructor(
      */
     private suspend fun applyDeclinedPolicy(
         roomOccurrences: List<EventReader.OccurrenceWithEvent>,
-        showDeclined: Boolean
+        showDeclined: Boolean,
+        zone: ZoneId = ZoneId.systemDefault()
     ): List<DisplayEvent.Room> {
         if (roomOccurrences.isEmpty()) return emptyList()
 
@@ -327,7 +340,7 @@ class DisplayEventRepository @Inject constructor(
         val declinedAttendees = attendeesDao.getDeclinedAttendeesForEvents(eventIds)
         if (declinedAttendees.isEmpty()) {
             return roomOccurrences.map {
-                DisplayEvent.Room(it.event, it.occurrence, it.calendar)
+                DisplayEvent.Room(it.event, it.occurrence, it.calendar, zone = zone)
             }
         }
 
@@ -350,13 +363,14 @@ class DisplayEventRepository @Inject constructor(
                     event = it.event,
                     occurrence = it.occurrence,
                     calendar = it.calendar,
-                    isDeclinedByMe = it.event.id in declinedByMeIds
+                    isDeclinedByMe = it.event.id in declinedByMeIds,
+                    zone = zone
                 )
             }
         } else {
             roomOccurrences
                 .filter { it.event.id !in declinedByMeIds }
-                .map { DisplayEvent.Room(it.event, it.occurrence, it.calendar) }
+                .map { DisplayEvent.Room(it.event, it.occurrence, it.calendar, zone = zone) }
         }
     }
 
@@ -406,7 +420,8 @@ class DisplayEventRepository @Inject constructor(
     private suspend fun queryTaskEvents(
         startDayCode: Int,
         endDayCode: Int,
-        search: String? = null
+        search: String? = null,
+        zone: ZoneId = ZoneId.systemDefault()
     ): List<DisplayEvent> {
         val tasksOrgEnabled = try {
             dataStore.getTasksOrgEnabled()
@@ -414,8 +429,8 @@ class DisplayEventRepository @Inject constructor(
             false
         }
         if (!tasksOrgEnabled) return emptyList()
-        val startMs = dayCodeToStartOfDayMs(startDayCode)
-        val endMs = dayCodeToEndOfDayMs(endDayCode)
+        val startMs = dayCodeToStartOfDayMs(startDayCode, zone)
+        val endMs = dayCodeToEndOfDayMs(endDayCode, zone)
         val hiddenListIds = dataStore.getHiddenTasksOrgListIds()
         val current = tasksOrgRepository.getTasksDueInRange(
             startMs = startMs,
@@ -424,15 +439,15 @@ class DisplayEventRepository @Inject constructor(
             search = search
         )
         // Search lists tasks, not every date a rule reaches.
-        if (search != null) return current.map { DisplayEvent.Task(it) }
+        if (search != null) return current.map { DisplayEvent.Task(it, zone) }
         // The later occurrences of repeating tasks, dimmed and not completable. A task whose
         // current occurrence is before the range still reaches it through its rule.
         val later = tasksOrgRepository.getRecurringTasksDueInRange(
             startMs = startMs - FUTURE_OCCURRENCE_LOOKBACK_MS,
             endMs = endMs,
             hiddenListIds = hiddenListIds
-        ).flatMap { futureOccurrences(it, startMs, endMs) }
-        return (current + later).map { DisplayEvent.Task(it) }
+        ).flatMap { futureOccurrences(it, startMs, endMs, zone) }
+        return (current + later).map { DisplayEvent.Task(it, zone) }
     }
 
     /** Returns the enabled, not hidden device calendar IDs; empty when the feature is off. */

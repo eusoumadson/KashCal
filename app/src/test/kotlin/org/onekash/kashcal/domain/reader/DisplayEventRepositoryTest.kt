@@ -3,13 +3,30 @@ package org.onekash.kashcal.domain.reader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.runTest
+import org.onekash.kashcal.data.calendar_provider.CalendarProviderManager
+import org.onekash.kashcal.data.calendar_provider.CalendarProviderRepository
 import org.onekash.kashcal.data.calendar_provider.DeviceCalendarInstance
 import org.onekash.kashcal.data.calendar_provider.FakeCalendarProviderRepository
+import org.onekash.kashcal.data.db.dao.AccountsDao
+import org.onekash.kashcal.data.db.dao.AttendeesDao
 import org.onekash.kashcal.data.db.entity.Calendar
 import org.onekash.kashcal.data.db.entity.Event
 import org.onekash.kashcal.data.db.entity.Occurrence
+import org.onekash.kashcal.data.preferences.KashCalDataStore
+import org.onekash.kashcal.data.tasks_org.TasksOrgManager
+import org.onekash.kashcal.data.tasks_org.TasksOrgRepository
+import org.onekash.kashcal.data.tasks_org.TasksOrgTask
 import org.onekash.kashcal.domain.model.DisplayEvent
 import org.onekash.kashcal.domain.model.SearchResult
+import org.onekash.kashcal.util.ZoneSource
+import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZoneOffset
 
 /**
@@ -528,4 +545,151 @@ class DisplayEventRepositoryTest {
         timezone = "America/New_York",
         eventStartTs = startTs,
     )
+
+    // ========== Tasks.org Timezone & Integration Tests (RF-01, AC-04) ==========
+
+    @Test
+    fun `DisplayEvent Task keeps all-day task on its scheduled date regardless of zone`() {
+        val allDayTask = TasksOrgTask(
+            id = 100L,
+            title = "File Taxes",
+            notes = "",
+            dueTs = LocalDate.of(2026, 11, 4).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+            isAllDay = true,
+            startTs = LocalDate.of(2026, 11, 4).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+            endTs = LocalDate.of(2026, 11, 4).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli() + 86400000L - 1,
+            startDay = 20261104,
+            endDay = 20261104,
+            completedAt = null,
+            recurrence = null,
+            listId = 1L,
+            listTitle = "Inbox",
+            listColor = 0,
+            isReadOnly = false
+        )
+
+        val tokyoZone = ZoneId.of("Asia/Tokyo")
+        val laZone = ZoneId.of("America/Los_Angeles")
+        val spZone = ZoneId.of("America/Sao_Paulo")
+
+        val tokyoEvent = DisplayEvent.Task(allDayTask, zone = tokyoZone)
+        val laEvent = DisplayEvent.Task(allDayTask, zone = laZone)
+        val spEvent = DisplayEvent.Task(allDayTask, zone = spZone)
+
+        assertEquals(20261104, tokyoEvent.startDay)
+        assertEquals(20261104, tokyoEvent.endDay)
+        assertEquals(20261104, laEvent.startDay)
+        assertEquals(20261104, laEvent.endDay)
+        assertEquals(20261104, spEvent.startDay)
+        assertEquals(20261104, spEvent.endDay)
+    }
+
+    @Test
+    fun `DisplayEvent Task updates timed task startDay based on active zone`() {
+        // Tue Nov 3 2026 12:00:00 PST is Wed Nov 4 2026 05:00:00 JST
+        val laZone = ZoneId.of("America/Los_Angeles")
+        val tokyoZone = ZoneId.of("Asia/Tokyo")
+        val instant = LocalDate.of(2026, 11, 3).atTime(12, 0).atZone(laZone).toInstant().toEpochMilli()
+
+        val timedTask = TasksOrgTask(
+            id = 101L,
+            title = "Doctor Appointment",
+            notes = "",
+            dueTs = instant,
+            isAllDay = false,
+            startTs = instant,
+            endTs = instant,
+            startDay = 20261103,
+            endDay = 20261103,
+            completedAt = null,
+            recurrence = null,
+            listId = 1L,
+            listTitle = "Inbox",
+            listColor = 0,
+            isReadOnly = false
+        )
+
+        val laEvent = DisplayEvent.Task(timedTask, zone = laZone)
+        val tokyoEvent = DisplayEvent.Task(timedTask, zone = tokyoZone)
+
+        assertEquals(20261103, laEvent.startDay)
+        assertEquals(20261104, tokyoEvent.startDay)
+    }
+
+    @Test
+    fun `DisplayEventRepository groups tasks into the correct day when zone changes without off-by-one`() = runTest {
+        val targetDay = 20261104
+        val allDayTask = TasksOrgTask(
+            id = 200L,
+            title = "Buy Groceries",
+            notes = "",
+            dueTs = LocalDate.of(2026, 11, 4).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+            isAllDay = true,
+            startTs = LocalDate.of(2026, 11, 4).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+            endTs = LocalDate.of(2026, 11, 4).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli() + 86400000L - 1,
+            startDay = targetDay,
+            endDay = targetDay,
+            completedAt = null,
+            recurrence = null,
+            listId = 1L,
+            listTitle = "Inbox",
+            listColor = 0,
+            isReadOnly = false
+        )
+
+        val eventReader: EventReader = mockk {
+            every { getVisibleOccurrencesWithEventsInRangeFlow(any(), any()) } returns flowOf(emptyList())
+        }
+        val dataStore: KashCalDataStore = mockk {
+            coEvery { getShowDeclinedEvents() } returns false
+            coEvery { getDeviceCalendarsEnabled() } returns false
+            coEvery { getTasksOrgEnabled() } returns true
+            coEvery { getHiddenTasksOrgListIds() } returns emptySet()
+            every { hiddenDeviceCalendarIds } returns flowOf(emptySet())
+            every { showDeclinedEvents } returns flowOf(false)
+        }
+        val tasksRepository: TasksOrgRepository = mockk {
+            coEvery { getTasksDueInRange(any(), any(), any(), any()) } returns listOf(allDayTask)
+            coEvery { getRecurringTasksDueInRange(any(), any(), any()) } returns emptyList()
+        }
+
+        val zoneSource = ZoneSource()
+        val repo = DisplayEventRepository(
+            eventReader = eventReader,
+            calendarProviderRepository = mockk(),
+            calendarProviderManager = mockk { every { changeSignal } returns MutableStateFlow(0) },
+            dataStore = dataStore,
+            attendeesDao = mockk { every { attendeesChangeSignal() } returns flowOf(0) },
+            accountsDao = mockk(),
+            tasksOrgRepository = tasksRepository,
+            tasksOrgManager = mockk { every { changeSignal } returns MutableStateFlow(0) },
+            zoneSource = zoneSource
+        )
+
+        val savedZone = java.util.TimeZone.getDefault()
+        try {
+            // Read in default zone
+            val result1 = repo.getDisplayEventsGroupedByDayOnce(targetDay, targetDay)
+            assertTrue("Task should be present on targetDay", result1.containsKey(targetDay))
+            assertEquals(listOf(200L), result1[targetDay]?.map { (it as DisplayEvent.Task).task.id })
+
+            // Change zone to Tokyo and refresh
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Tokyo"))
+            zoneSource.refresh()
+
+            val resultTokyo = repo.getDisplayEventsGroupedByDayOnce(targetDay, targetDay)
+            assertTrue("Task should remain on targetDay in Tokyo", resultTokyo.containsKey(targetDay))
+            assertEquals(listOf(200L), resultTokyo[targetDay]?.map { (it as DisplayEvent.Task).task.id })
+
+            // Change zone to Los Angeles and refresh
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("America/Los_Angeles"))
+            zoneSource.refresh()
+
+            val resultLA = repo.getDisplayEventsGroupedByDayOnce(targetDay, targetDay)
+            assertTrue("Task should remain on targetDay in LA", resultLA.containsKey(targetDay))
+            assertEquals(listOf(200L), resultLA[targetDay]?.map { (it as DisplayEvent.Task).task.id })
+        } finally {
+            java.util.TimeZone.setDefault(savedZone)
+        }
+    }
 }

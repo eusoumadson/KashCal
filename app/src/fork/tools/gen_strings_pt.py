@@ -148,6 +148,92 @@ PT = {
 'snackbar_tasks_org_manage_done': 'Pronto',
 'snackbar_tasks_org_manage_failed': 'O Tasks.org recusou a alteração',
 'snackbar_tasks_org_manage_read_only': 'Essa lista é somente leitura',
+
+# FORK:travel-time & auto-backup & widgets
+'auto_backup_label': 'Backup automático de configurações',
+'auto_backup_subtitle': 'Exportar automaticamente configurações para uma pasta agendada',
+'auto_backup_enabled_hint': 'Ativo',
+'auto_backup_disabled_hint': 'Desativado',
+'auto_backup_last_run': 'Último backup: %1$s',
+'auto_backup_sheet_title': 'Backup Automático',
+'auto_backup_sheet_desc': 'Exporta periodicamente um arquivo JSON contendo todas as configurações do fork para uma pasta escolhida.',
+'auto_backup_folder_label': 'Pasta de backup',
+'auto_backup_select_folder': 'Escolher pasta',
+'auto_backup_change_folder': 'Alterar pasta',
+'auto_backup_frequency_label': 'Frequência de backup',
+'auto_backup_frequency_daily': 'Diário',
+'auto_backup_frequency_weekly': 'Semanal',
+'auto_backup_retention_label': 'Retenção (manter mais recentes)',
+'auto_backup_retention_val': '%1$d backups',
+'channel_travel_reminders': 'Alertas de Partida',
+'channel_travel_reminders_desc': 'Notificações de quando é hora de sair para um evento',
+'travel_leave_now_title': 'Saia agora → %1$s',
+'travel_leave_in_min_title': 'Saia em %1$d min → %2$s',
+'travel_notification_with_traffic': 'Est. %1$d min via %2$s (incl. %3$d min de atraso no trânsito)',
+'travel_notification_rush_hour': 'Est. %1$d min via %2$s (ajustado para horário de pico)',
+'travel_notification_basic': 'Est. %1$d min via %2$s',
+'travel_action_view_on_map': 'Ver no mapa',
+'travel_action_transit_lines': 'Linhas de transporte',
+'travel_mode_car': 'Carro',
+'travel_mode_foot': 'A pé',
+'travel_mode_transit': 'Transporte público',
+'travel_alerts_settings_title': 'Alertas de Partida',
+'travel_alerts_settings_subtitle': 'Alertas de hora de saída baseados em localização em tempo real',
+'travel_alerts_form_toggle': 'Alerta de partida',
+'travel_alerts_origin_label': 'Origem',
+'travel_alerts_origin_current': 'Localização atual',
+'travel_alerts_origin_fixed': 'Endereço fixo',
+'travel_alerts_origin_fixed_hint': 'Endereço de origem (ex: Casa ou Trabalho)',
+'travel_alerts_buffer_label': 'Margem antes da partida',
+'travel_alerts_buffer_none': 'Na hora de sair',
+'travel_alerts_buffer_5min': '5 min antes',
+'travel_alerts_buffer_10min': '10 min antes',
+'travel_alerts_buffer_15min': '15 min antes',
+'travel_alerts_buffer_30min': '30 min antes',
+'travel_alerts_info_desc': 'Calcula o trânsito e o tempo de rota em tempo real aproximadamente 1 hora antes da partida. Alerta quando for a hora de sair.',
+'travel_provider_tomtom_title': 'TomTom (Trânsito em Tempo Real)',
+'travel_provider_tomtom_desc': 'Trânsito e atrasos por congestionamento em tempo real. Chave de API gratuita (2.500 requisições/dia) em developer.tomtom.com.',
+'travel_provider_tomtom_key_label': 'Chave de API TomTom',
+'travel_provider_tomtom_key_hint': 'Cole a chave de API TomTom aqui',
+'travel_provider_stadia_title': 'Stadia Maps (Nuvem Valhalla)',
+'travel_provider_stadia_desc': 'Roteamento multimodal rápido via Valhalla. Nível gratuito (200k créditos/mês) em stadiamaps.com.',
+'travel_provider_stadia_key_label': 'Chave de API Stadia Maps',
+'travel_provider_stadia_key_hint': 'Cole a chave de API Stadia Maps aqui',
+'travel_provider_valhalla_title': 'OpenStreetMap Valhalla Demo',
+'travel_provider_valhalla_desc': 'Servidor público da comunidade (valhalla1.openstreetmap.de). Nenhuma chave necessária; limitado automaticamente com Circuit Breaker.',
+'travel_provider_local_title': 'Estimador Local Offline',
+'travel_provider_local_desc': 'Fallback sempre disponível usando distância geodésica, velocidades médias e compensação de horário de pico.',
+'travel_provider_rush_hour_title': 'Ajuste para horário de pico em dias úteis',
+'travel_provider_rush_hour_desc': 'Adiciona margem de +30% durante picos da manhã (07:30-09:30) e noite (17:30-19:30) para rotas estáticas/offline de carro.',
+'travel_provider_status_circuit_open': 'Temporariamente pausado (Circuit Breaker ativo)',
+'travel_provider_status_circuit_closed': 'Operacional',
+'travel_permissions_title': 'Permissões de Localização',
+'travel_permissions_desc': 'Exige acesso à localização para calcular rotas a partir de onde você está. A localização em segundo plano permite calcular a rota mesmo quando o telefone estiver no bolso.',
+'travel_permissions_granted': 'Permissões de localização concedidas',
+'travel_permissions_missing': 'Permissões de localização necessárias',
+'travel_permissions_btn_grant': 'Conceder permissões de localização',
+'travel_permissions_open_settings': 'Abrir configurações do sistema',
+'travel_providers_header': 'Provedores de rotas e trânsito',
+'travel_provider_local_status_active': 'Sempre ativo',
+'settings_section_advanced_features': 'Recursos avançados',
+'split_agenda_widget_name': 'Agenda Dividida',
+'split_agenda_widget_description': 'Agenda ampla de duas colunas com cabeçalho de data grande e tarefas; coluna única compacta em tamanhos menores',
+'month_agenda_widget_name': 'Mês + Agenda',
+'month_agenda_widget_description': 'Duas colunas com calendário mensal completo à esquerda e eventos e tarefas de hoje à direita',
+'experimental_widgets_settings_title': 'Widgets Experimentais',
+'experimental_widgets_settings_subtitle': 'Modelos de duas colunas: Agenda Dividida e Mês+Agenda',
+'tasks_org_show_in_widgets': 'Mostrar tarefas nos widgets',
+'tasks_org_show_in_widgets_desc': 'Exibe lembretes e tarefas com caixa de seleção interativa nos widgets da tela inicial',
+'status_more_events_compact': '+%1$d',
+'placeholder_email': 'email@icloud.com',
+'placeholder_password': 'xxxx-xxxx-xxxx-xxxx',
+'placeholder_server_url': 'nextcloud.exemplo.com',
+'placeholder_url': 'https://...',
+'placeholder_username': 'usuario@exemplo.com',
+'recent_changes_detail_separator': '" · "',
+'whats_new_v598_action_url': 'https://keepandroidopen.org/',
+'whats_new_v732_action_url': 'https://kashcal.onekash.org/donate/',
+'holiday_catalog_attribution_license': 'CC BY-SA 3.0',
 }
 names = list(PT)
 src = open('app/src/main/res/values/strings.xml').read()
@@ -156,10 +242,13 @@ assert not absent, f"no English string for: {absent}"
 ph = lambda s: sorted(re.findall(r'%\d\$[sd]', s))
 lines = []
 for n in names:
-    en = re.search(r'<string name="%s"[^>]*>(.*?)</string>' % re.escape(n), src, re.S).group(1)
+    m = re.search(r'<string name="%s"([^>]*)>(.*?)</string>' % re.escape(n), src, re.S)
+    attrs = m.group(1)
+    en = m.group(2)
     assert ph(en) == ph(PT[n]), (n, en, PT[n])
     t = PT[n].replace("'", "\\'").replace('&', '&amp;').replace('<', '&lt;')
-    lines.append(f'    <string name="{n}">{t}</string>')
+    extra = ' formatted="false"' if 'formatted="false"' in attrs else ''
+    lines.append(f'    <string name="{n}"{extra}>{t}</string>')
 body = '\n'.join(lines)
 block = ('\n    <!-- FORK:tasks-org Strings of the Tasks.org integration. Generated from the English ones in\n'
          '         values/strings.xml; keep both in step when one of them changes. -->\n' + body + '\n')

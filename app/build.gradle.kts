@@ -194,6 +194,9 @@ android {
         // Strings with %d that could be plurals: most are always >1 or use
         // adjectives that don't inflect ("new", "updated", "more")
         disable += "PluralsCandidate"
+        // FORK:tasks-org Fork strings are maintained in English (values), pt, and pt-rBR.
+        // Other locales are not maintained in this fork.
+        disable += "MissingTranslation"
         // Fail the build on missing content descriptions on interactive/image
         // elements. Compose coverage is limited (these checks mostly target
         // View/XML), but promoting them to error guards the widgets and any

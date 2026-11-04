@@ -1,5 +1,6 @@
 package org.onekash.kashcal.ui.screens
 
+import android.annotation.SuppressLint
 import android.Manifest
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.platform.LocalContext
@@ -191,6 +192,7 @@ class AccountSettingsScreenViewModelWiringTest {
         return vm
     }
 
+    @SuppressLint("ContextCastToActivity")
     private fun setRoute(
         vm: AccountSettingsViewModel,
         onExportDebugReport: () -> Unit = {},

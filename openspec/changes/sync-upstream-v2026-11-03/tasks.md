@@ -42,21 +42,21 @@ Antes de implementar, leia:
 2. `openspec/changes/sync-upstream-v2026-11-03/specs/` — especificações formais de paridade e Tasks.org
 3. `app/src/fork/tools/gen_strings_pt.py` — script de sincronização de strings em português
 
-- [ ] T05 — Harmonizar reatividade de fuso horário em tarefas e calendário
+- [x] T05 — Harmonizar reatividade de fuso horário em tarefas e calendário
       Arquivos: `app/src/main/kotlin/org/onekash/kashcal/domain/reader/DisplayEventRepository.kt`, `app/src/main/kotlin/org/onekash/kashcal/ui/viewmodels/HomeViewModel.kt`
       Mudança: Garantir que a leitura de tarefas do Tasks.org e seu mapeamento em DisplayEvent.Task considerem a zona ativa do ZoneSource sem sofrer off-by-one ou mudança de dia em transições de fuso
       Cobre: RF-01, AC-04
       Acceptance criteria: Tarefas agendadas para uma data continuam exibidas no dia correto após mudança simulada de fuso
       Testes: `app/src/test/kotlin/org/onekash/kashcal/domain/reader/DisplayEventRepositoryTest.kt` — teste de integração do repositório de eventos com tarefas
 
-- [ ] T06 — Sincronizar localização em português para novas strings upstream
+- [x] T06 — Sincronizar localização em português para novas strings upstream
       Arquivos: `app/src/main/res/values/strings.xml`, `app/src/main/res/values-pt/strings.xml`, `app/src/main/res/values-pt-rBR/strings.xml`
       Mudança: Adicionar as traduções das novas strings do upstream (seletor de data/hora, mascote Kash, calendários offline, force sync) em values-pt e values-pt-rBR
       Cobre: RF-02, RF-05, AC-05
       Acceptance criteria: Todas as novas chaves presentes em `values/strings.xml` possuem traduções equivalentes em `values-pt` e `values-pt-rBR`
       Testes: `./gradlew lintDebug` — verificação de integridade de recursos e traduções
 
-- [ ] T07 — Executar suíte de testes e fechar commit de sincronização
+- [x] T07 — Executar suíte de testes e fechar commit de sincronização
       Arquivos: `git status`, `build.gradle.kts`
       Mudança: Executar compilação completa e suíte de testes unitários do projeto, finalizando o commit de merge `chore: sync upstream v2026.11.03 into fork`
       Cobre: AC-06

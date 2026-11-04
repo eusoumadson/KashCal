@@ -1,5 +1,6 @@
 package org.onekash.kashcal.widget
 
+import android.annotation.SuppressLint
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -82,6 +83,7 @@ fun SplitAgendaWidgetContent(
     }
 }
 
+@SuppressLint("NonObservableLocale")
 @Composable
 private fun WideSplitLayout(
     events: List<WidgetDataRepository.WidgetEvent>,
@@ -257,6 +259,7 @@ private fun WideSplitLayout(
     }
 }
 
+@SuppressLint("NonObservableLocale")
 @Composable
 private fun CompactSplitLayout(
     events: List<WidgetDataRepository.WidgetEvent>,
