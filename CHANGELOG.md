@@ -1,3 +1,109 @@
+## [2026.11.03]
+
+### Time zones (#422)
+- Fixed timed events showing on the wrong day, or not at all, after the phone's time zone changed; events made before this update are fixed too
+- Fixed the week view drawing such an event from its start to midnight in the old day's column
+- Changed open screens to update when the time zone changes, without a restart
+
+### Sync (#417, #421)
+- Fixed `Sync History` filling with failures when only offline and phone calendars are set up; nothing is recorded when there is nothing to sync
+- Changed `Force full sync` to be greyed out with "No sync account set up" when no iCloud or CalDAV account syncs
+- Changed `Force full sync` to confirm in place, naming what it re-downloads and keeping changes not yet synced, instead of a dialog
+- Changed an empty `Sync History` with no sync account to say why nothing syncs
+- Fixed a CalDAV events calendar whose path ends in `/Tasks/` not being listed, for example on Radicale (#421)
+
+### Readability (#419)
+- Changed text on mid-tone calendar colors such as blue and red to white once white reaches 3:1 contrast, on event chips, the month widget, the event form's `Save` button, guest avatars and the color check mark
+
+## [2026.11.01]
+
+Meet Kash.
+
+Back in 2024 and 2025, while we were building KashCal, we noticed a little teal dot on an empty day. We didn't think much of it. A week later it was back. Then it came back again, and soon we were clearing our schedules just to see it.
+
+It loved free weekends. It loved cancelled meetings even more. Each one made it a little rounder, and by 2026 it had ear tufts, a belly shaped like a calendar card, and strong opinions about naps.
+
+It landed on Halloween night, which was good timing. Everyone thought it was a costume.
+
+Today it moved onto your device, and hopefully into your heart too.
+
+<img src="https://kashcal.onekash.org/img/kash/kash-wave.png" alt="Kash waving" width="160">
+
+| | |
+|---|---|
+| Name | Kash |
+| Species | Fluffball, the first of its kind |
+| Arrived | Halloween night, 2026 |
+| Weight | 230 KB, all fluff |
+| Height | 120 dp, 160 dp on special occasions |
+| Diet | Free days |
+| Data collected | None |
+
+You've asked why a calendar app is called KashCal. Some say the app is named after Kash. Others say it's the other way around. Kash isn't saying.
+
+Kash keeps to itself, like the rest of KashCal: no account, no followers, and your plans stay between the two of you. It shows up on the days you don't have to.
+
+Confirmed sightings:
+- Month view: tap a free day. Five lines, five poses.
+- First launch: Kash waves hello.
+- Your avatar > About: Kash with an armful of calendars.
+
+Free up a day. Kash will find it.
+
+### Everything in this release
+
+- Added Kash to empty days in the Month view, the first-run sheet, and `About`
+- Fixed phone-calendar reminders not ringing for events added while KashCal wasn't running (#417)
+- Fixed a phone-calendar reminder being missed after turning `Device calendars` back on
+- Added a note with `Allow` in `Settings > Device calendars` when calendar access is off
+- Fixed `Edit` and `Delete` falling off the quick view for long titles (#418)
+- Fixed repeating `.ics` events with a UTC start showing an hour off in device calendars (#410)
+- Changed the `Offline calendars` note to "Kept on this device and never synced."
+
+## [2026.10.30]
+
+Pick a time without a fight, keep calendars that never leave your phone, and put your week on the fridge.
+
+### New date and time sheet (#330, #88)
+- Start and end share one sheet. Flip between them with Starts | Ends.
+- Chips set the length in one tap: 30m, 1h, 2h, or 2, 5, 7 days.
+- Spin the wheel all you like; the sheet stays where it is.
+
+### Offline calendars (#257)
+- Make as many as you like in Settings > Offline calendars. Rename, recolor, swipe to delete.
+
+### Automatic backup (#99)
+- Offline calendars copy themselves to a folder you pick, on a schedule you set.
+
+### Print your week
+- Account hub > Print your week, ready for the fridge. Your notes stay off the paper.
+
+### Export and import
+- Any calendar exports as .ics, guests included.
+- Imported files keep the details KashCal doesn't show, so they export back whole.
+
+### First launch
+- New users get one question: where are your calendars?
+- If KashCal was never allowed to ring your reminders, a banner tells you, with Turn on right there.
+
+### Quick Add
+- Reads "party tomorrow evening at 9", "Aug 23-28", "an hour and a half" and "every 1st".
+- "Become a morning person" stays a person, not "1 morning person".
+
+### About
+- Help, the source code, your version, and a thank-you to everyone who chips in.
+
+### Smaller changes
+- Colors are picked in place, so sheets hold still.
+- Emptied feeds now clear, and feed errors come in your language (#408).
+- Birthdays without a year survive CardDAV sync.
+- Shared availability gets back the space after its comma.
+- The Device calendars switch opens Android settings when Android stops asking.
+- Odia and Tamil fixes.
+
+### Privacy policy
+- Updated for automatic calendar backup: it is off by default, and files you back up or export stay in the folder you chose.
+
 ## [2026.10.26]
 
 - Fixed repeating events written in UTC showing an hour off after a daylight-saving change; events already on your phone are corrected when you update

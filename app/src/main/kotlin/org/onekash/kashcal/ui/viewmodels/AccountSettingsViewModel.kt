@@ -5,6 +5,7 @@ import org.onekash.kashcal.domain.ics.GroupPlan
 import org.onekash.kashcal.domain.ics.IcsImportResult
 import android.content.Context
 import android.util.Log
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -91,6 +92,7 @@ import org.onekash.kashcal.ui.screens.settings.AccountDetailSyncStatus
 import org.onekash.kashcal.ui.screens.settings.CalDavAccountUiModel
 import org.onekash.kashcal.ui.screens.settings.ContactSyncConfirmation
 import org.onekash.kashcal.ui.screens.settings.CalDavConnectionState
+import org.onekash.kashcal.ui.screens.settings.SettingsDestination
 import org.onekash.kashcal.ui.screens.settings.ICloudConnectionState
 import org.onekash.kashcal.ui.screens.settings.IcsSubscriptionUiModel
 import org.onekash.kashcal.ui.screens.settings.toDetailUiModel
@@ -117,6 +119,12 @@ private const val DISCOVERY_TIMEOUT_MS = 30_000L
 private const val MAX_DISCOVERY_RETRIES = 2
 private const val DISCOVERY_RETRY_DELAY_MS = 1000L
 
+// Saved-state key for [AccountSettingsViewModel.markDeviceCalendarsPendingSettings].
+private const val KEY_DEVICE_CALENDARS_PENDING_SETTINGS = "device_calendars_pending_settings"
+
+// Saved-state key: the user left the onboarding route to stay in Settings.
+private const val KEY_ONBOARDING_ROUTE_LEFT = "onboarding_route_left"
+
 /**
  * Runs [block] with a per-attempt timeout, trying again only after a timeout.
  *
@@ -140,6 +148,9 @@ private suspend fun <T> withRetryOnTimeout(
     }
     return null
 }
+
+/** Names the Settings screen the first-launch onboarding sheet sends the user to. */
+enum class OnboardingRoute { ICLOUD, CALDAV, DEVICE_CALENDARS }
 
 /**
  * Holds the state and actions of the settings screens that `SettingsActivity` hosts through
@@ -171,6 +182,8 @@ class AccountSettingsViewModel @Inject constructor(
     private val reminderNotificationChannels: ReminderNotificationChannels,
     @ApplicationContext private val context: Context,
     @ApplicationScope private val applicationScope: CoroutineScope,
+    // Hilt supplies the activity's handle; the default keeps direct constructions compiling.
+    private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
     /** The Tasks.org source; null in tests that don't exercise it. */
     private val tasksOrgCoordinator: org.onekash.kashcal.domain.tasks.TasksOrgCoordinator? = null,
     // FORK:experimental-widgets
@@ -187,9 +200,17 @@ class AccountSettingsViewModel @Inject constructor(
     private var passwordInput = ""
     private var showHelpState = false
 
-    // Set when launched from onboarding: a successful iCloud sign-in finishes the activity back to
-    // HomeScreen instead of showing the success sheet.
-    private var isInitialSetup = false
+    // Set by [applyOnboardingRoute]: closing the sign-in sheet finishes the activity back to
+    // HomeScreen (unless a sign-in is still connecting), and a successful iCloud sign-in skips
+    // the success sheet. Cleared when the user stays in Settings from the success sheet.
+    private var onOnboardingRoute = false
+
+    // Whether [applyOnboardingRoute] already ran for this view model. A plain field on purpose:
+    // it survives a rotation with the view model, so the route isn't re-applied, and dies with
+    // the process, so after a process death the route applies again and the sheet reopens. A
+    // route the user left ([hideAccountConnectedSheet]) is recorded in the saved state instead,
+    // so it stays left after a process death.
+    private var onboardingRouteApplied = false
 
     // CalDAV sign-in sheet input
     private var calDavServerUrl = ""
@@ -1159,7 +1180,10 @@ class AccountSettingsViewModel @Inject constructor(
         }
     }
 
-    /** Records a POST_NOTIFICATIONS result in the denial count the permanent-denial check reads. */
+    /**
+     * Records a POST_NOTIFICATIONS result in the denial count the permanent-denial check reads,
+     * and that the app asked (which ends the "Reminders are off" banner).
+     */
     private fun recordNotificationPermissionResult(granted: Boolean) {
         viewModelScope.launch {
             if (granted) {
@@ -1167,6 +1191,7 @@ class AccountSettingsViewModel @Inject constructor(
             } else {
                 userPreferences.incrementNotificationPermissionDeniedCount()
             }
+            userPreferences.setNotificationAskDone()
         }
     }
 
@@ -1298,16 +1323,36 @@ class AccountSettingsViewModel @Inject constructor(
         _uiState.update { it.copy(showICloudSignInSheet = true) }
     }
 
+    /**
+     * Hides the iCloud sign-in sheet; on an onboarding route this also returns to HomeScreen,
+     * except while a sign-in is connecting: finishing then would clear this view model and cancel
+     * the sign-in mid-write, so its own success path returns instead.
+     */
     fun hideICloudSignInSheet() {
-        _uiState.update { it.copy(showICloudSignInSheet = false) }
+        _uiState.update {
+            val returnHome = onOnboardingRoute && it.iCloudState !is ICloudConnectionState.Connecting
+            it.copy(
+                showICloudSignInSheet = false,
+                pendingFinishActivity = it.pendingFinishActivity || returnHome
+            )
+        }
     }
 
     /**
-     * Makes a successful iCloud sign-in finish the activity back to HomeScreen instead of showing
-     * the success sheet. `SettingsActivity` sets it when onboarding launches it.
+     * Applies the route the onboarding sheet launched Settings with, once per view model: the
+     * sign-in routes open their sheet and make closing it return to HomeScreen. The Device
+     * calendars route's Back is decided by [SettingsDestination.closesActivity] instead.
      */
-    fun setInitialSetupMode(initial: Boolean) {
-        isInitialSetup = initial
+    fun applyOnboardingRoute(route: OnboardingRoute) {
+        val routeLeft = savedStateHandle.get<Boolean>(KEY_ONBOARDING_ROUTE_LEFT) == true
+        if (onboardingRouteApplied || routeLeft) return
+        onboardingRouteApplied = true
+        onOnboardingRoute = true
+        when (route) {
+            OnboardingRoute.ICLOUD -> showICloudSignInSheet()
+            OnboardingRoute.CALDAV -> showCalDavSignInSheet()
+            OnboardingRoute.DEVICE_CALENDARS -> Unit
+        }
     }
 
     fun onAppleIdChange(appleId: String) {
@@ -1417,13 +1462,13 @@ class AccountSettingsViewModel @Inject constructor(
                                 isEnabled = result.account.isEnabled
                             ),
                             showICloudSignInSheet = false,
-                            // Initial setup finishes back to HomeScreen; otherwise the success
-                            // sheet shows.
-                            pendingFinishActivity = isInitialSetup,
-                            showAccountConnectedSheet = !isInitialSetup,
-                            connectedProviderName = if (!isInitialSetup) "iCloud" else "",
-                            connectedEmail = if (!isInitialSetup) result.account.email else "",
-                            connectedCalendarCount = if (!isInitialSetup) result.calendars.size else 0
+                            // An onboarding route finishes back to HomeScreen; otherwise
+                            // the success sheet shows.
+                            pendingFinishActivity = onOnboardingRoute,
+                            showAccountConnectedSheet = !onOnboardingRoute,
+                            connectedProviderName = if (!onOnboardingRoute) "iCloud" else "",
+                            connectedEmail = if (!onOnboardingRoute) result.account.email else "",
+                            connectedCalendarCount = if (!onOnboardingRoute) result.calendars.size else 0
                         )
                     }
 
@@ -1554,8 +1599,14 @@ class AccountSettingsViewModel @Inject constructor(
         }
     }
 
-    /** Hides the CalDAV sign-in sheet and resets its input, discovery and LAN-hint state. */
+    /**
+     * Hides the CalDAV sign-in sheet and resets its input, discovery and LAN-hint state; on an
+     * onboarding route this also returns to HomeScreen, except while discovery runs (it would be
+     * cancelled; its success shows the connected sheet instead).
+     */
     fun hideCalDavSignInSheet() {
+        val returnHome = onOnboardingRoute &&
+            _uiState.value.calDavState !is CalDavConnectionState.Discovering
         validateDisplayNameJob?.cancel()
         validateDisplayNameJob = null
 
@@ -1574,7 +1625,8 @@ class AccountSettingsViewModel @Inject constructor(
             it.copy(
                 showCalDavSignInSheet = false,
                 calDavState = CalDavConnectionState.NotConnected(),
-                calDavSignInAgainAccountId = null
+                calDavSignInAgainAccountId = null,
+                pendingFinishActivity = it.pendingFinishActivity || returnHome
             )
         }
     }
@@ -2477,14 +2529,18 @@ class AccountSettingsViewModel @Inject constructor(
         }
     }
 
-    /** Turns device calendar reminders on (schedules the next one) or off (cancels its alarm). */
+    /**
+     * Turns device calendar reminders on (schedules the next one and the calendar-change job) or
+     * off (cancels both), through [CalendarProviderManager.onRemindersEnabled] and
+     * [CalendarProviderManager.onRemindersDisabled].
+     */
     fun onToggleDeviceCalendarReminders(enabled: Boolean) {
         viewModelScope.launch {
             dataStore.setDeviceCalendarRemindersEnabled(enabled)
             if (enabled) {
-                deviceCalendarReminderScheduler.scheduleNextReminder()
+                calendarProviderManager.onRemindersEnabled()
             } else {
-                deviceCalendarReminderScheduler.cancelPendingAlarm()
+                calendarProviderManager.onRemindersDisabled()
             }
         }
     }
@@ -2493,8 +2549,9 @@ class AccountSettingsViewModel @Inject constructor(
      * Ticks or unticks one device calendar. Ticking makes it visible in the provider; unticking
      * also drops it from the hidden and muted sets, so it comes back visible and notifying if
      * ticked again, and re-picks the device reminder, whose one alarm may belong to this
-     * calendar. If leaving Settings cancels the re-pick, that alarm is dropped when it fires
-     * ([DeviceCalendarReminderScheduler.shouldFireReminder]) and the next one is armed.
+     * calendar (here, and through [CalendarProviderManager.onDeviceCalendarSettingsChanged] when
+     * device calendars are on). An alarm still armed for an unticked calendar is dropped when it
+     * fires ([DeviceCalendarReminderScheduler.shouldFireReminder]) and the next one is armed.
      */
     fun onToggleDeviceCalendar(calendarId: Long, enabled: Boolean) {
         viewModelScope.launch {
@@ -2514,11 +2571,28 @@ class AccountSettingsViewModel @Inject constructor(
     }
 
     /**
-     * Re-reads the calendar permissions and reloads the device calendar lists that depend on them.
+     * Records that a Device calendars request (its switch or its access note's Allow) sent the
+     * user to Android's app settings, so the first [refreshCalendarPermission] that sees calendar
+     * read access turns device calendars on.
+     * Kept in the saved state, so it outlasts a process death while the user is in settings.
+     */
+    fun markDeviceCalendarsPendingSettings() {
+        savedStateHandle[KEY_DEVICE_CALENDARS_PENDING_SETTINGS] = true
+    }
+
+    /**
+     * Re-reads the calendar permissions and reloads the device calendar lists that depend on them,
+     * and finishes a pending [markDeviceCalendarsPendingSettings] once read access is there.
      * Called on resume and after a calendar permission request returns.
      */
     fun refreshCalendarPermission() {
         checkCalendarPermission()
+        if (_hasReadCalendarPermission.value &&
+            savedStateHandle.get<Boolean>(KEY_DEVICE_CALENDARS_PENDING_SETTINGS) == true
+        ) {
+            savedStateHandle[KEY_DEVICE_CALENDARS_PENDING_SETTINGS] = false
+            onToggleDeviceCalendars(true)
+        }
         if (_hasReadCalendarPermission.value && _deviceCalendarsEnabled.value) {
             viewModelScope.launch { loadDeviceCalendars() }
         }
@@ -2888,8 +2962,13 @@ class AccountSettingsViewModel @Inject constructor(
         }
     }
 
-    /** Hides the success sheet without leaving settings. */
+    /**
+     * Hides the success sheet without leaving settings. Staying in Settings ends an onboarding
+     * route, so later sign-ins behave as they do from Settings.
+     */
     fun hideAccountConnectedSheet() {
+        if (onOnboardingRoute) savedStateHandle[KEY_ONBOARDING_ROUTE_LEFT] = true
+        onOnboardingRoute = false
         _uiState.update {
             it.copy(
                 showAccountConnectedSheet = false,

@@ -4,6 +4,7 @@ import org.onekash.kashcal.data.ics.IcsImportFile
 import org.onekash.kashcal.domain.ics.GroupPlan
 import org.onekash.kashcal.domain.ics.IcsImportResult
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -50,6 +51,8 @@ import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.onekash.kashcal.R
+import org.onekash.kashcal.domain.reminders.shouldShowRemindersOffBanner
+import org.onekash.kashcal.reminder.scheduler.ReminderScheduler
 import org.onekash.kashcal.data.db.entity.Event
 import org.onekash.kashcal.data.db.entity.Occurrence
 import org.onekash.kashcal.data.preferences.DefaultCalendar
@@ -69,9 +72,11 @@ import org.onekash.kashcal.domain.rrule.RruleShift
 import org.onekash.kashcal.domain.model.DisplayEvent
 import org.onekash.kashcal.domain.model.isStripItem
 import org.onekash.kashcal.domain.planner.PlannerWeekState
-import org.onekash.kashcal.domain.planner.isChangedOccurrence
+import org.onekash.kashcal.domain.planner.lookUpRoomSeriesAllDay
 import org.onekash.kashcal.domain.monthfull.clampMonthFullZoom
 import org.onekash.kashcal.domain.planner.clampPlannerZoom
+import org.onekash.kashcal.domain.onboarding.shouldShowOnboarding
+import org.onekash.kashcal.domain.model.AccountProvider
 import org.onekash.kashcal.ui.util.plannerPageForDate
 import org.onekash.kashcal.ui.util.plannerWeekStart
 import org.onekash.kashcal.domain.model.SearchResult
@@ -115,6 +120,7 @@ import org.onekash.kashcal.BuildConfig
 import org.onekash.kashcal.KashCalApplication
 import org.onekash.kashcal.util.DateTimeUtils
 import org.onekash.kashcal.util.TimezoneUtils
+import org.onekash.kashcal.util.ZoneSource
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
@@ -142,11 +148,17 @@ private data class CalendarsSnapshot(
 )
 
 /**
- * A range in epoch millis that keys the time-grid and agenda event StateFlows. The query treats
- * both ends as inclusive ([DisplayEventRepository.getDisplayEventsForRange]). A null key keeps
- * the derived Flow idle.
+ * A range in epoch millis that keys the agenda event StateFlow. The query treats both ends as
+ * inclusive ([DisplayEventRepository.getDisplayEventsForRange]). A null key keeps the derived
+ * Flow idle.
  */
 data class EpochRange(val startMs: Long, val endMs: Long)
+
+/**
+ * The time grid's loaded dates, both inclusive, that key [HomeViewModel.weekEvents]. Dates, not
+ * millis, so the query bounds can be taken in the zone current when it runs.
+ */
+private data class TimeGridDates(val start: LocalDate, val endInclusive: LocalDate)
 
 /** UI state for the week, 3-day and day grids: timed and all-day events, each sorted by start. */
 data class WeekEventsUiState(
@@ -294,6 +306,8 @@ class HomeViewModel(
     /** Runs a drag's save, which must finish even when this ViewModel is cleared. */
     private val applicationScope: CoroutineScope,
     private val currentDayCodeProvider: () -> Int,
+    /** Hilt passes the app's singleton; the default is for tests that build the ViewModel. */
+    private val zoneSource: ZoneSource = ZoneSource(),
     /** Completes Tasks.org tasks; null in tests that don't exercise them. */
     private val tasksOrgCoordinator: org.onekash.kashcal.domain.tasks.TasksOrgCoordinator? = null // FORK:tasks-org
 ) : ViewModel() {
@@ -314,6 +328,7 @@ class HomeViewModel(
         @ApplicationContext context: Context,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
         @ApplicationScope applicationScope: CoroutineScope,
+        zoneSource: ZoneSource = ZoneSource(),
         tasksOrgCoordinator: org.onekash.kashcal.domain.tasks.TasksOrgCoordinator? = null, // FORK:tasks-org
     ) : this(
         eventCoordinator,
@@ -331,11 +346,27 @@ class HomeViewModel(
         ioDispatcher,
         applicationScope,
         { DayPagerUtils.msToDayCode(System.currentTimeMillis()) },
+        zoneSource,
         tasksOrgCoordinator // FORK:tasks-org
     )
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    // The zone the stored dates and the reads are in; [handleZoneChange] moves both to a new one.
+    private var lastHandledZone: ZoneId = ZoneId.systemDefault()
+
+    private val _displayZone = MutableStateFlow(lastHandledZone)
+
+    /**
+     * The device zone the home screen is laid out in. It changes after [handleZoneChange] has
+     * moved the stored dates; the reactive views below restart their reads on it
+     * ([restartOnZoneChange]).
+     */
+    val displayZone: StateFlow<ZoneId> = _displayZone.asStateFlow()
+
+    /** Emits each key again when [displayZone] changes, so a `flatMapLatest` re-runs its read. */
+    private fun <K> Flow<K>.restartOnZoneChange(): Flow<K> = combine(this, _displayZone) { key, _ -> key }
 
     /** The drag waiting out its Undo window, or being saved; see [savePendingMove]. */
     private val _pendingMove = MutableStateFlow<PendingMove?>(null)
@@ -599,15 +630,16 @@ class HomeViewModel(
         dayVisibleEventIds.value = ids
     }
 
-    // Time-grid (week, 3-day, day) events. The visible date range is the only key: navigation
-    // sets it, and [weekEvents] re-queries when the key or the data changes. A create, edit,
-    // delete or sync shows up without a manual reload because
-    // [DisplayEventRepository.getDisplayEventsForRange] is reactive (#297). The key is null, and
-    // the upstream Flow idle, only until the first time-grid load; leaving the view keeps it.
-    private val timeGridRange = MutableStateFlow<EpochRange?>(null)
+    // Time-grid (week, 3-day, day) events. The visible dates and [displayZone] are the keys:
+    // navigation sets the dates, and [weekEvents] re-queries when a key or the data changes. A
+    // create, edit, delete or sync shows up without a manual reload because
+    // [DisplayEventRepository.getDisplayEventsForRange] is reactive (#297). The dates are null,
+    // and the upstream Flow idle, only until the first time-grid load; leaving the view keeps
+    // them.
+    private val timeGridRange = MutableStateFlow<TimeGridDates?>(null)
 
     /** Sets the visible time-grid range; no caller passes null. */
-    private fun setTimeGridRange(range: EpochRange?) {
+    private fun setTimeGridRange(range: TimeGridDates?) {
         timeGridRange.value = range
     }
 
@@ -622,12 +654,15 @@ class HomeViewModel(
      */
     @Suppress("OPT_IN_USAGE")
     val weekEvents: StateFlow<WeekEventsUiState> =
-        timeGridRange
+        timeGridRange.restartOnZoneChange()
             .flatMapLatest { range ->
                 if (range == null) {
                     flowOf(RawWeekEvents.EMPTY)
                 } else {
-                    displayEventRepository.getDisplayEventsForRange(range.startMs, range.endMs)
+                    // The dates' midnights in the current zone, so a zone change re-reads them.
+                    val startMs = WeekViewUtils.dateToEpochMs(range.start)
+                    val endMs = WeekViewUtils.dateToEpochMs(range.endInclusive.plusDays(1))
+                    displayEventRepository.getDisplayEventsForRange(startMs, endMs)
                         .map { events -> RawWeekEvents(events) }
                         .catch { e ->
                             if (e is CancellationException) throw e
@@ -654,8 +689,8 @@ class HomeViewModel(
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), WeekEventsUiState.EMPTY)
 
-    // Agenda events: the same range key as the time grid, a [AGENDA_WINDOW_MS] window set on
-    // entering the agenda and nulled on leaving, so the upstream Flow and its device-calendar
+    // Agenda events, keyed by an [EpochRange]: a [AGENDA_WINDOW_MS] window set on entering the
+    // agenda and nulled on leaving, so the upstream Flow and its device-calendar
     // queries go idle while the agenda isn't shown.
     private val agendaRange = MutableStateFlow<EpochRange?>(null)
 
@@ -671,7 +706,7 @@ class HomeViewModel(
      */
     @Suppress("OPT_IN_USAGE")
     val agendaEvents: StateFlow<AgendaUiState> =
-        agendaRange
+        agendaRange.restartOnZoneChange()
             .flatMapLatest { range ->
                 if (range == null) {
                     flowOf(AgendaUiState.EMPTY)
@@ -705,7 +740,7 @@ class HomeViewModel(
      */
     @Suppress("OPT_IN_USAGE")
     val monthEvents: StateFlow<ImmutableMap<Int, ImmutableList<DisplayEvent>>> =
-        monthGridKey
+        monthGridKey.restartOnZoneChange()
             .flatMapLatest { key ->
                 if (key == null) {
                     flowOf(persistentMapOf())
@@ -735,7 +770,7 @@ class HomeViewModel(
      */
     @Suppress("OPT_IN_USAGE")
     val plannerState: StateFlow<PlannerWeekState?> =
-        plannerWeekKey
+        plannerWeekKey.restartOnZoneChange()
             .flatMapLatest { weekStartDayCode ->
                 if (weekStartDayCode == null) {
                     flowOf(null)
@@ -749,7 +784,7 @@ class HomeViewModel(
                                 eventsByDayCode = byDay,
                                 rangeStartDayCode = rangeStart,
                                 rangeEndDayCode = rangeEnd,
-                                roomSeriesAllDayById = lookUpRoomSeriesAllDay(byDay),
+                                roomSeriesAllDayById = eventReader.lookUpRoomSeriesAllDay(byDay.values.flatten()),
                             )
                         }
                         .catch { e ->
@@ -764,32 +799,6 @@ class HomeViewModel(
                 state?.copy(showMultiDayTimedInAllDayStrip = show)
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
-
-    /**
-     * Returns the all-day flag of each Room series with a changed occurrence in [byDay], for the
-     * Planner's "was" cue. One read for the whole range, none when there is no changed Room
-     * occurrence. A failed read is logged and returns an empty map, so the events still show and
-     * the cue falls back to what the occurrence alone says.
-     */
-    private suspend fun lookUpRoomSeriesAllDay(
-        byDay: Map<Int, List<DisplayEvent>>
-    ): ImmutableMap<Long, Boolean> {
-        val seriesIds = byDay.values.asSequence().flatten()
-            .filterIsInstance<DisplayEvent.Room>()
-            .filter { it.isChangedOccurrence() }
-            .map { it.occurrence.eventId }
-            .distinct()
-            .toList()
-        if (seriesIds.isEmpty()) return persistentMapOf()
-        return try {
-            eventReader.getEventsByIds(seriesIds).mapValues { (_, event) -> event.isAllDay }.toPersistentMap()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.w(TAG, "Planner series look-up failed: ${e.javaClass.simpleName}")
-            persistentMapOf()
-        }
-    }
 
     /**
      * Emits the attendee state of [eventId] for the quick view and the form.
@@ -877,6 +886,19 @@ class HomeViewModel(
     // Reads the Recent changes log while its sheet shows.
     private var recentChangesJob: Job? = null
 
+    // The "Reminders are off" banner: the permission facts the activity reported (null until it
+    // has), the running evaluation, and a latch set once the user answered, so an evaluation
+    // already running can't bring the banner back.
+    private var notificationPermissionFacts: NotificationPermissionFacts? = null
+    private var remindersOffJob: Job? = null
+    private var remindersOffAnswered = false
+
+    /**
+     * Whether the immediate sync is running, not just enqueued: an enqueued sync waits for a
+     * network that may not come, so it doesn't hold the banner back.
+     */
+    private var syncWorkRunning = false
+
     /** Checks which series scopes a staged cross-day drop may offer. */
     private var dragAvailabilityJob: Job? = null
 
@@ -933,6 +955,10 @@ class HomeViewModel(
         // Device calendar changes, which invalidate the event dots.
         observeDeviceCalendarChanges()
 
+        // Zone changes, which move the stored dates and re-read the home views.
+        zoneSource.refresh()
+        observeZoneChanges()
+
         // Persists the settled pinch-zoom level across restarts.
         observeHourHeightPersistence()
         observePlannerZoomPersistence()
@@ -955,13 +981,9 @@ class HomeViewModel(
 
             checkAccountStatus()
 
-            // Onboarding shows when no account is configured and it was never dismissed.
-            if (!_uiState.value.isConfigured) {
-                val dismissed = dataStore.onboardingDismissed.first()
-                if (!dismissed) {
-                    Log.d(TAG, "Showing onboarding sheet (first launch, no account configured)")
-                    _uiState.update { it.copy(showOnboardingSheet = true) }
-                }
+            if (readShouldShowOnboarding()) {
+                Log.d(TAG, "Showing onboarding sheet (nothing set up yet)")
+                _uiState.update { it.copy(showOnboardingSheet = true) }
             }
 
             // What's New: release notes the user hasn't acknowledged. MainActivity shows them only
@@ -1027,6 +1049,144 @@ class HomeViewModel(
                 it.copy(syncMessage = "Initialization failed: ${e.message}")
             }
         }
+    }
+
+    /**
+     * Reads the facts for [shouldShowOnboarding]. A failed read hides the sheet, so startup
+     * carries on to What's New and today.
+     */
+    private suspend fun readShouldShowOnboarding(): Boolean = try {
+        shouldShowOnboarding(
+            isCompleted = { dataStore.onboardingCompleted.first() },
+            hasSignedInSyncAccount = { _uiState.value.isConfigured },
+            hasFeedOrBirthdaysAccount = {
+                withContext(ioDispatcher) { accountRepository.getAllAccounts() }.any {
+                    it.provider == AccountProvider.ICS || it.provider == AccountProvider.CONTACTS
+                }
+            },
+            deviceCalendarsEnabled = { dataStore.deviceCalendarsEnabled.first() },
+            eventCount = { withContext(ioDispatcher) { eventReader.getTotalEventCount() } },
+        )
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.e(TAG, "Onboarding check failed; not showing the sheet", e)
+        false
+    }
+
+    // ==================== Reminders are off ====================
+
+    /** What the activity read about the notification permission on its last resume. */
+    private data class NotificationPermissionFacts(
+        val granted: Boolean,
+        val rationaleDue: Boolean,
+        val sdkInt: Int,
+    )
+
+    /**
+     * Takes the notification permission state the activity read on resume and re-checks the
+     * "Reminders are off" banner. Below Android 13 the activity reports [granted] as true.
+     */
+    fun onNotificationPermissionChecked(
+        granted: Boolean,
+        rationaleDue: Boolean,
+        sdkInt: Int = Build.VERSION.SDK_INT,
+    ) {
+        notificationPermissionFacts = NotificationPermissionFacts(granted, rationaleDue, sdkInt)
+        evaluateRemindersOffBanner()
+    }
+
+    /**
+     * Hides the banner for good and records the ask: called for the banner's Not now and Turn on,
+     * and for every answer to Android's notification dialog. A dismissed dialog leaves no
+     * rationale, so without this the next resume could show the banner before the answer is
+     * written.
+     */
+    fun endRemindersOffBanner() {
+        remindersOffAnswered = true
+        remindersOffJob?.cancel()
+        _uiState.update { it.copy(remindersOffBannerCount = null) }
+        viewModelScope.launch {
+            try {
+                dataStore.setNotificationAskDone()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to record the notification ask", e)
+            }
+        }
+    }
+
+    /** Confirms a grant from the banner's Turn on with a snackbar. */
+    fun onRemindersOffPermissionResult(granted: Boolean) {
+        if (granted) showSnackbar(context.getString(R.string.reminders_on_snackbar))
+    }
+
+    /**
+     * Re-checks the banner once the permission facts are known, one check at a time; a failed
+     * read leaves it hidden.
+     */
+    private fun evaluateRemindersOffBanner() {
+        val facts = notificationPermissionFacts ?: return
+        if (remindersOffAnswered) return
+        remindersOffJob?.cancel()
+        remindersOffJob = viewModelScope.launch {
+            val count = try {
+                readRemindersOffCount(facts)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Reminders-are-off check failed; not showing the banner", e)
+                null
+            }
+            if (remindersOffAnswered) return@launch
+            _uiState.update { it.copy(remindersOffBannerCount = count) }
+        }
+    }
+
+    /**
+     * Returns the banner's count when it should show, else null; see
+     * [shouldShowRemindersOffBanner].
+     */
+    private suspend fun readRemindersOffCount(facts: NotificationPermissionFacts): Int? {
+        val askDone = dataStore.notificationAskDone.first()
+        if (facts.granted) {
+            // Remembered, so a later switch-off in Android settings never shows the banner.
+            if (!askDone) dataStore.setNotificationAskDone()
+            return null
+        }
+        val deniedCount = dataStore.notificationPermissionDeniedCount.first()
+        val alreadyShown = _uiState.value.remindersOffBannerCount != null
+        // The cheap facts first: the counts are read only when nothing else rules it out.
+        if (!shouldShowRemindersOffBanner(
+                sdkInt = facts.sdkInt,
+                permissionGranted = false,
+                askDone = askDone,
+                deniedCount = deniedCount,
+                rationaleDue = facts.rationaleDue,
+                syncRunning = syncWorkRunning,
+                alreadyShown = alreadyShown,
+                eventsWithReminders = 1,
+            )
+        ) return null
+        val now = System.currentTimeMillis()
+        val windowEnd = now + ReminderScheduler.SCHEDULE_WINDOW_MS
+        val roomCount = withContext(ioDispatcher) {
+            eventReader.countOccurrencesWithPendingReminders(now, windowEnd)
+        }
+        val total = roomCount + deviceReminderCount(now, windowEnd)
+        return total.takeIf { it > 0 }
+    }
+
+    /**
+     * Counts device events with a reminder in [fromMs]..[toMs] in the calendars whose reminders
+     * KashCal shows: device calendars and their reminders on, enabled calendars minus muted ones.
+     */
+    private suspend fun deviceReminderCount(fromMs: Long, toMs: Long): Int {
+        if (!dataStore.deviceCalendarsEnabled.first()) return 0
+        if (!dataStore.deviceCalendarRemindersEnabled.first()) return 0
+        val ids = dataStore.enabledDeviceCalendarIds.first() - dataStore.mutedDeviceCalendarIds.first()
+        return withContext(ioDispatcher) { deviceEventReader.countInstancesWithReminders(ids, fromMs, toMs) }
     }
 
     // ==================== Account Status ====================
@@ -1117,6 +1277,7 @@ class HomeViewModel(
             syncScheduler.observeImmediateSyncStatus().collect { status ->
                 val showBanner = syncScheduler.showBannerForSync.value
                 Log.d(TAG, "Sync status changed: $status (showBanner=$showBanner)")
+                syncWorkRunning = status is SyncStatus.Running
                 when (status) {
                     is SyncStatus.Running, is SyncStatus.Enqueued -> {
                         // isSyncing is the duplicate-sync guard, true while work is live. It
@@ -1147,6 +1308,8 @@ class HomeViewModel(
                             )
                         }
                         reloadCurrentView()
+                        // The sync's reminders are armed now; re-checked before the banner's delay.
+                        evaluateRemindersOffBanner()
                         // Auto-dismiss.
                         if (showBanner || hasPartialError) {
                             delay(if (hasPartialError) 3000 else 2000)
@@ -1172,6 +1335,7 @@ class HomeViewModel(
                             // on another screen) can't leak a banner into the next silent sync.
                             syncScheduler.resetBannerFlag()
                             showError(CalendarError.Unknown(status.errorMessage ?: "Sync failed"))
+                            evaluateRemindersOffBanner()
                         } else {
                             // Banner only with the flag (force sync, first sync after setup); a
                             // silent sync's failure shows nothing on a normal app open.
@@ -1184,6 +1348,7 @@ class HomeViewModel(
                                     syncErrorDetail = status.errorMessage
                                 )
                             }
+                            evaluateRemindersOffBanner()
                             if (showBanner) {
                                 delay(3000)
                                 _uiState.update { it.copy(showSyncBanner = false) }
@@ -1200,6 +1365,7 @@ class HomeViewModel(
                                 syncBannerState = SyncBannerState.Syncing  // No stale Error flash
                             )
                         }
+                        evaluateRemindersOffBanner()
                     }
                 }
             }
@@ -1317,6 +1483,72 @@ class HomeViewModel(
                 }
         }
         observeTasksOrgChanges() // FORK:tasks-org
+    }
+
+    /** Handles each device zone [ZoneSource] reports; see [handleZoneChange]. */
+    private fun observeZoneChanges() {
+        viewModelScope.launch {
+            zoneSource.zone.collect { handleZoneChange(it) }
+        }
+    }
+
+    /**
+     * Moves the home screen to [newZone] when it differs from the zone last handled; a zone
+     * already handled (the collector after [onAppResume], or the first emission) does nothing.
+     *
+     * The dates kept as local midnights move to the same date's midnight in [newZone] (the day
+     * sheet's date keeps its time of day too), the cached dots are dropped with them, and the
+     * time-grid pager, whose pages count from today, moves to the page of the date it showed.
+     * Then [displayZone] changes, which restarts the reactive reads, the dots and the day pager
+     * cache are rebuilt ([reloadCurrentView]), and an open search runs again.
+     */
+    private fun handleZoneChange(newZone: ZoneId) {
+        val oldZone = lastHandledZone
+        if (newZone == oldZone) return
+        lastHandledZone = newZone
+        Log.d(TAG, "Zone changed from $oldZone to $newZone")
+
+        val oldToday = LocalDate.now(oldZone)
+        val newToday = LocalDate.now(newZone)
+        val state = _uiState.value
+        val newPagerPosition = rezonePagerPosition(
+            state.weekViewPagerPosition, state.viewMode, state.firstDayOfWeek, oldToday, newToday
+        )
+        _uiState.update {
+            it.copy(
+                selectedDate = rezoneMidnight(it.selectedDate, oldZone, newZone),
+                cacheRangeCenter = rezoneMidnight(it.cacheRangeCenter, oldZone, newZone),
+                // The day sheet holds the tapped day at a time of day, which seeds "+".
+                dayDetailDate = rezoneLocalDateTime(it.dayDetailDate, oldZone, newZone),
+                searchDateRangeStart = it.searchDateRangeStart
+                    ?.let { ms -> rezoneMidnight(ms, oldZone, newZone) },
+                searchDateFilter = rezoneDateFilter(it.searchDateFilter, oldZone, newZone),
+                loadedMonths = persistentSetOf(),
+                loadedYears = persistentSetOf(),
+                eventDots = persistentMapOf(),
+            )
+        }
+        if (newPagerPosition != state.weekViewPagerPosition) {
+            if (state.viewMode.isTimeGrid) {
+                _uiState.update { it.copy(pendingWeekViewPagerPosition = newPagerPosition) }
+                onDayPagerPageChanged(newPagerPosition)
+            } else {
+                _uiState.update { it.copy(weekViewPagerPosition = newPagerPosition) }
+            }
+        }
+        _displayZone.value = newZone
+        reloadCurrentView()
+        // reloadCurrentView leaves the day pager cache alone in MONTH_FULL, but the Month view
+        // comes back to it, and its old job would write the old zone's center back.
+        val center = _uiState.value.cacheRangeCenter
+        if (_uiState.value.viewMode == ViewMode.MONTH_FULL && center != 0L) {
+            loadEventsForDayPagerRange(center)
+        }
+        // Search results hold the old zone's ranges and day codes.
+        val query = _uiState.value.searchQuery
+        if (_uiState.value.isSearchActive && query.length >= 2) {
+            performSearch(query)
+        }
     }
 
     // ==================== Sync Operations ====================
@@ -2082,10 +2314,7 @@ class HomeViewModel(
      * the loading.
      */
     private fun loadEventsForDateRange(startDate: LocalDate, endDate: LocalDate) {
-        val startMs = WeekViewUtils.dateToEpochMs(startDate)
-        val endMs = WeekViewUtils.dateToEpochMs(endDate.plusDays(1)) // exclusive end
-
-        setTimeGridRange(EpochRange(startMs, endMs))
+        setTimeGridRange(TimeGridDates(startDate, endDate))
     }
 
     /**
@@ -2669,8 +2898,13 @@ class HomeViewModel(
 
     // ==================== UI Sheets/Dialogs ====================
 
-    fun toggleAppInfoSheet() {
-        _uiState.update { it.copy(showAppInfoSheet = !it.showAppInfoSheet) }
+    // Open and close are separate so a quick double tap on About can't open and close it again.
+    fun openAboutSheet() {
+        _uiState.update { it.copy(showAboutSheet = true) }
+    }
+
+    fun closeAboutSheet() {
+        _uiState.update { it.copy(showAboutSheet = false) }
     }
 
     fun openShareAvailabilitySheet() {
@@ -2689,20 +2923,17 @@ class HomeViewModel(
         _uiState.update { it.copy(isInvitationInboxOpen = false) }
     }
 
-    fun toggleOnboardingSheet() {
-        _uiState.update { it.copy(showOnboardingSheet = !it.showOnboardingSheet) }
-    }
-
-    fun dismissOnboardingSheet() {
+    /** Records the onboarding sheet as answered and closes it; called for every choice. */
+    fun completeOnboarding() {
         viewModelScope.launch {
             // Persist first, so a process death between the UI clear and the write can't
             // re-show the sheet on the next launch.
             try {
-                dataStore.setOnboardingDismissed(true)
+                dataStore.setOnboardingCompleted(true)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
-                Log.e(TAG, "Failed to persist onboarding dismissal", e)
+                Log.e(TAG, "Failed to persist onboarding completion", e)
             }
             _uiState.update { it.copy(showOnboardingSheet = false) }
         }
@@ -3097,10 +3328,16 @@ class HomeViewModel(
     // ==================== Refresh ====================
 
     /**
-     * Snaps to today when the calendar day has changed since the previous resume. Events need
-     * no reload here: the range-keyed StateFlows and the day pager cache follow the data.
+     * Handles a zone change whose broadcast was missed ([handleZoneChange], which reloads), then
+     * snaps to today when the calendar day has changed since the previous resume. Otherwise
+     * events need no reload here: the range-keyed StateFlows and the day pager cache follow the
+     * data.
      */
     fun onAppResume() {
+        // A zone change whose broadcast was missed, handled before the day check so a snap to
+        // today works on dates already in the new zone.
+        zoneSource.refresh()
+        handleZoneChange(zoneSource.zone.value)
         val currentDayCode = currentDayCodeProvider()
         val previous = lastResumeDayCode
         if (previous != null && previous != currentDayCode) {
@@ -3617,7 +3854,8 @@ class HomeViewModel(
                     endTs = newEndTs,
                     startDay = Occurrence.toDayFormat(newStartTs, isAllDay),
                     endDay = endDay,
-                )
+                ),
+                zone = ZoneId.systemDefault(),
             )
             is DisplayEvent.Device -> copy(
                 instance = instance.copy(
@@ -5365,3 +5603,58 @@ data class FormAttendeeContext(
     val account: org.onekash.kashcal.data.db.entity.Account?,
     val isSchedulable: Boolean
 )
+
+/** Returns the midnight of [ms]'s [oldZone] date in [newZone]; 0, "no date", stays 0. */
+internal fun rezoneMidnight(ms: Long, oldZone: ZoneId, newZone: ZoneId): Long {
+    if (ms == 0L) return 0L
+    return Instant.ofEpochMilli(ms).atZone(oldZone).toLocalDate()
+        .atStartOfDay(newZone).toInstant().toEpochMilli()
+}
+
+/**
+ * Returns the time-grid page that shows, against [newToday], the date [position] showed
+ * against [oldToday]. A day page is told from a week page by its scale
+ * ([WeekViewUtils.isSettledDayPage]); a week page is only moved in WEEK, the mode it belongs
+ * to.
+ */
+internal fun rezonePagerPosition(
+    position: Int,
+    mode: ViewMode,
+    firstDayOfWeek: Int,
+    oldToday: LocalDate,
+    newToday: LocalDate,
+): Int {
+    if (oldToday == newToday) return position
+    return when {
+        WeekViewUtils.isSettledDayPage(position) -> WeekViewUtils.dateToPage(
+            WeekViewUtils.pageToDate(position, oldToday), newToday
+        )
+        mode == ViewMode.WEEK -> WeekViewUtils.dateToWeekPage(
+            WeekViewUtils.weekPageToStartDate(position, firstDayOfWeek, oldToday),
+            firstDayOfWeek,
+            newToday,
+        )
+        else -> position
+    }
+}
+
+/** Returns the instant in [newZone] at [ms]'s local date and time in [oldZone]; 0 stays 0. */
+internal fun rezoneLocalDateTime(ms: Long, oldZone: ZoneId, newZone: ZoneId): Long {
+    if (ms == 0L) return 0L
+    return Instant.ofEpochMilli(ms).atZone(oldZone).toLocalDateTime()
+        .atZone(newZone).toInstant().toEpochMilli()
+}
+
+/**
+ * Returns [filter] with the dates a picked day or range holds as local midnights moved to the
+ * same dates in [newZone]; the relative filters (Upcoming, This week and the like) are kept.
+ */
+internal fun rezoneDateFilter(filter: DateFilter, oldZone: ZoneId, newZone: ZoneId): DateFilter =
+    when (filter) {
+        is DateFilter.SingleDay -> DateFilter.SingleDay(rezoneMidnight(filter.dateMs, oldZone, newZone))
+        is DateFilter.CustomRange -> DateFilter.CustomRange(
+            rezoneMidnight(filter.startMs, oldZone, newZone),
+            rezoneMidnight(filter.endMs, oldZone, newZone),
+        )
+        else -> filter
+    }

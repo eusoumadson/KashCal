@@ -7,28 +7,28 @@ Antes de implementar, leia:
 2. `proposal.md`, `specs/` e `design.md` deste diretório de change — requisitos RIGID, cenários e decisões técnicas
 3. `docs/fork/FORK_INTEGRATION.md` — mapa dos pontos de enxerto do fork no core
 
-- [ ] T01 — Executar merge de origin/main e isolar conflitos
+- [x] T01 — Executar merge de origin/main e isolar conflitos
       Arquivos: `git status`, `CHANGELOG.md`
       Mudança: Executar `git merge origin/main --no-commit` para aplicar os commits upstream no fork e deixar os conflitos prontos para resolução cirúrgica
       Cobre: RF-01, RF-02, RF-03, RF-04, RF-05, AC-01
       Acceptance criteria: Árvore git em estado de merge ativo com os 7 arquivos de conflito identificados
       Testes: `git status` — confirma merge em andamento e arquivos em conflito
 
-- [ ] T02 — Resolver conflitos em KashCalApplication e DisplayEventRepository
+- [x] T02 — Resolver conflitos em KashCalApplication e DisplayEventRepository
       Arquivos: `app/src/main/kotlin/org/onekash/kashcal/KashCalApplication.kt`, `app/src/main/kotlin/org/onekash/kashcal/domain/reader/DisplayEventRepository.kt`
       Mudança: Resolver conflitos mantendo os imports e inicializadores de TasksOrgManager e Travel Time em KashCalApplication, e mantendo a injeção de tasksOrgRepository em DisplayEventRepository integrada ao novo parâmetro de ZoneId do upstream
       Cobre: RF-01, RF-04, AC-02, AC-03, AC-04
       Acceptance criteria: Arquivos sem marcadores de conflito git e com comentários sentinela `// FORK:tasks-org` intactos
       Testes: `./gradlew compileDebugKotlin` — compilação bem-sucedida desses dois módulos
 
-- [ ] T03 — Resolver conflitos de rotas e ViewModel de configurações
+- [x] T03 — Resolver conflitos de rotas e ViewModel de configurações
       Arquivos: `app/src/main/kotlin/org/onekash/kashcal/ui/screens/SettingsRoute.kt`, `app/src/main/kotlin/org/onekash/kashcal/ui/viewmodels/AccountSettingsViewModel.kt`, `app/src/test/kotlin/org/onekash/kashcal/ui/screens/settings/SettingsDestinationTest.kt`
       Mudança: Preservar as rotas de Tasks.org (`SettingsDestination.TasksOrg`, gestão de listas/tags/lugares) ao lado das novas rotas upstream de Force Full Sync in-place e Offline Calendars
       Cobre: RF-04, AC-02, AC-03
       Acceptance criteria: Rotas do Tasks.org e rotas upstream coexistem em SettingsRoute e SettingsDestinationTest passa sem falhas
       Testes: `app/src/test/kotlin/org/onekash/kashcal/ui/screens/settings/SettingsDestinationTest.kt` — teste de cobertura de rotas passando
 
-- [ ] T04 — Resolver conflitos em HomeViewModel e strings.xml
+- [x] T04 — Resolver conflitos em HomeViewModel e strings.xml
       Arquivos: `app/src/main/kotlin/org/onekash/kashcal/ui/viewmodels/HomeViewModel.kt`, `app/src/main/res/values/strings.xml`
       Mudança: Incorporar o novo fluxo reativo de fuso (`ZoneSource`, `displayZone`) no HomeViewModel mantendo os seletores, toggles e ações do Tasks.org; mesclar novas chaves de strings upstream mantendo chaves exclusivas do fork
       Cobre: RF-01, RF-02, RF-03, AC-02, AC-03, AC-04

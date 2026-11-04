@@ -157,6 +157,23 @@ class DayIconsTest {
             match.groupValues[1][0] to args
         }.toList()
 
+    @Test
+    fun `every day foreground is three cards side by side`() {
+        days.forEach { day ->
+            val parser = context.resources.getXml(DayIcons.foregroundFor(day))
+            var topLevelGroups = 0
+            while (parser.next() != XmlPullParser.END_DOCUMENT) {
+                // The vector root is depth 1, so its direct children are depth 2.
+                if (parser.eventType == XmlPullParser.START_TAG && parser.depth == 2) {
+                    assertEquals("day $day top-level element", "group", parser.name)
+                    topLevelGroups++
+                }
+            }
+            // FORK:tasks-org — 3 card groups plus 1 Tasks.org badge group = 4 groups (original: 3)
+            assertEquals("day $day card groups", 4, topLevelGroups)
+        }
+    }
+
     private fun themedLayerOf(day: Int): Int =
         layerDrawables(DayIcons.mipmapFor(day)).getValue("monochrome")
 

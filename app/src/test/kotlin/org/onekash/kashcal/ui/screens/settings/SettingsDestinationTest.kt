@@ -22,7 +22,9 @@ class SettingsDestinationTest {
         assertTrue(SettingsDestination.Subscriptions.depth > 0)
         assertTrue(SettingsDestination.Tags.depth > 0)
         assertTrue(SettingsDestination.DeviceCalendars.depth > 0)
+        assertTrue(SettingsDestination.TasksOrg.depth > 0) // FORK:tasks-org
         assertTrue(SettingsDestination.TravelAlerts.depth > 0) // FORK:travel-time
+        assertTrue(SettingsDestination.ExperimentalWidgets.depth > 0) // FORK:experimental-widgets
         assertTrue(SettingsDestination.OfflineCalendars.depth > 0)
     }
 
@@ -33,7 +35,9 @@ class SettingsDestinationTest {
         assertTrue(SettingsDestination.Root.isForwardTo(SettingsDestination.Subscriptions))
         assertTrue(SettingsDestination.Root.isForwardTo(SettingsDestination.Tags))
         assertTrue(SettingsDestination.Root.isForwardTo(SettingsDestination.DeviceCalendars))
+        assertTrue(SettingsDestination.Root.isForwardTo(SettingsDestination.TasksOrg)) // FORK:tasks-org
         assertTrue(SettingsDestination.Root.isForwardTo(SettingsDestination.TravelAlerts)) // FORK:travel-time
+        assertTrue(SettingsDestination.Root.isForwardTo(SettingsDestination.ExperimentalWidgets)) // FORK:experimental-widgets
         assertTrue(SettingsDestination.Root.isForwardTo(SettingsDestination.OfflineCalendars))
     }
 
@@ -44,7 +48,9 @@ class SettingsDestinationTest {
         assertFalse(SettingsDestination.Subscriptions.isForwardTo(SettingsDestination.Root))
         assertFalse(SettingsDestination.Tags.isForwardTo(SettingsDestination.Root))
         assertFalse(SettingsDestination.DeviceCalendars.isForwardTo(SettingsDestination.Root))
+        assertFalse(SettingsDestination.TasksOrg.isForwardTo(SettingsDestination.Root)) // FORK:tasks-org
         assertFalse(SettingsDestination.TravelAlerts.isForwardTo(SettingsDestination.Root)) // FORK:travel-time
+        assertFalse(SettingsDestination.ExperimentalWidgets.isForwardTo(SettingsDestination.Root)) // FORK:experimental-widgets
         assertFalse(SettingsDestination.OfflineCalendars.isForwardTo(SettingsDestination.Root))
     }
 
@@ -118,6 +124,24 @@ class SettingsDestinationTest {
         )
     }
 
+    // FORK:tasks-org
+    @Test
+    fun `the tasks org flag opens the Tasks org screen`() {
+        assertEquals(1, SettingsDestination.TasksOrg.depth)
+        assertEquals(
+            SettingsDestination.TasksOrg,
+            SettingsDestination.from(
+                accounts = false,
+                birthdaysAnniversaries = false,
+                subscriptions = false,
+                tags = false,
+                deviceCalendars = false,
+                offlineCalendars = false,
+                tasksOrg = true
+            )
+        )
+    }
+
     // FORK:travel-time
     @Test
     fun `the travel alerts flag opens the Travel alerts screen`() {
@@ -133,6 +157,25 @@ class SettingsDestinationTest {
                 offlineCalendars = false,
                 travelAlerts = true
             )
+        )
+    }
+
+    @Test
+    fun `backing out of the screen Settings was launched on finishes the activity`() {
+        assertTrue(SettingsDestination.Tags.closesActivity(launchedOn = SettingsDestination.Tags))
+        assertTrue(
+            SettingsDestination.DeviceCalendars.closesActivity(
+                launchedOn = SettingsDestination.DeviceCalendars
+            )
+        )
+    }
+
+    @Test
+    fun `backing out of any other screen returns within Settings`() {
+        assertFalse(SettingsDestination.DeviceCalendars.closesActivity(launchedOn = null))
+        assertFalse(SettingsDestination.Tags.closesActivity(launchedOn = null))
+        assertFalse(
+            SettingsDestination.DeviceCalendars.closesActivity(launchedOn = SettingsDestination.Tags)
         )
     }
 }

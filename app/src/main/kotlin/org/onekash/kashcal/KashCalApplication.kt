@@ -6,11 +6,14 @@ import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import androidx.work.WorkManager
+import androidx.work.WorkerFactory
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.onekash.icaldav.model.ICalDateTime
+import org.onekash.kashcal.calendarbackup.CalendarBackupNotifications
+import org.onekash.kashcal.calendarbackup.CalendarBackupReconciler
 import org.onekash.kashcal.data.calendar_provider.CalendarProviderManager
 import org.onekash.kashcal.data.contacts.ContactEventManager
 import org.onekash.kashcal.data.credential.CredentialMigration
@@ -30,6 +33,7 @@ import org.onekash.kashcal.sync.scheduler.IcsRefreshScheduleReconciler
 import org.onekash.kashcal.sync.scheduler.SyncScheduler
 import org.onekash.kashcal.ui.appicon.DateIconRefresher
 import org.onekash.kashcal.ui.appicon.ForegroundActivityTracker
+import org.onekash.kashcal.util.JobSchedulerIds
 import org.onekash.kashcal.widget.WidgetPreviewRegistrar
 import org.onekash.kashcal.widget.WidgetUpdateManager
 import java.time.ZoneId
@@ -50,6 +54,18 @@ class KashCalApplication : Application(), Configuration.Provider {
 
         /** How long after the last screen stops the deferred date-icon switch is retried. */
         private const val DATE_ICON_SETTLE_MS = 3_000L
+
+        /**
+         * Builds the WorkManager configuration: the Hilt worker factory, and a job id range that
+         * keeps WorkManager off the ids the app schedules itself ([JobSchedulerIds]).
+         */
+        internal fun workManagerConfiguration(workerFactory: WorkerFactory): Configuration =
+            Configuration.Builder()
+                .setWorkerFactory(workerFactory)
+                .setMinimumLoggingLevel(Log.INFO)
+                .setJobSchedulerJobIdRange(JobSchedulerIds.WORK_MANAGER_MIN, JobSchedulerIds.WORK_MANAGER_MAX)
+                .build()
+
         const val PREFS_NAME = "kashcal_upgrade"
         const val KEY_LAST_VERSION = "last_version_code"
         /**
@@ -97,6 +113,7 @@ class KashCalApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var calendarProviderManager: CalendarProviderManager
 
+    // FORK:tasks-org
     @Inject
     lateinit var tasksOrgManager: org.onekash.kashcal.data.tasks_org.TasksOrgManager
 
@@ -123,6 +140,12 @@ class KashCalApplication : Application(), Configuration.Provider {
     lateinit var autoBackupScheduler: org.onekash.kashcal.domain.backup.AutoBackupScheduler
 
     @Inject
+    lateinit var calendarBackupReconciler: CalendarBackupReconciler
+
+    @Inject
+    lateinit var calendarBackupNotifications: CalendarBackupNotifications
+
+    @Inject
     @ApplicationScope
     lateinit var applicationScope: CoroutineScope
 
@@ -146,6 +169,7 @@ class KashCalApplication : Application(), Configuration.Provider {
         reminderNotificationChannels.createChannels()
         inviteNotificationChannels.createChannels()
         changeNotificationChannels.createChannels()
+        calendarBackupNotifications.createChannel()
 
         // Long-lived background registrations (network callbacks, WorkManager and AlarmManager
         // scheduling, content observers, the startup coroutines below) are skipped under unit
@@ -176,10 +200,12 @@ class KashCalApplication : Application(), Configuration.Provider {
             // them; without READ_CONTACTS it turns both features off instead.
             contactEventManager.initialize()
 
-            // When device calendars are on, registers their observer; without READ_CALENDAR it
-            // turns the feature off instead.
+            // When device calendars are on, registers their observer, re-picks the next device
+            // reminder and replaces the calendar-change job; without READ_CALENDAR it turns the
+            // feature off instead.
             calendarProviderManager.initialize()
 
+            // FORK:tasks-org
             // When Tasks.org tasks are on, observes them; without the permission it turns the
             // source off instead.
             tasksOrgManager.initialize()
@@ -231,6 +257,13 @@ class KashCalApplication : Application(), Configuration.Provider {
             // FORK:auto-backup
             applicationScope.launch {
                 autoBackupScheduler.reconcile()
+            }
+
+            // Re-arm automatic calendar backup from its settings: a periodic job lost to a
+            // force-stop or a task killer has no other way back. No try/catch: the reconciler
+            // catches and logs.
+            applicationScope.launch {
+                calendarBackupReconciler.reconcile()
             }
         }
 
@@ -344,8 +377,5 @@ class KashCalApplication : Application(), Configuration.Provider {
     }
 
     override val workManagerConfiguration: Configuration
-        get() = Configuration.Builder()
-            .setWorkerFactory(workerFactory)
-            .setMinimumLoggingLevel(android.util.Log.INFO)
-            .build()
+        get() = workManagerConfiguration(workerFactory)
 }
