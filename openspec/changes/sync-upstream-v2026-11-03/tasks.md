@@ -69,7 +69,7 @@ Antes de implementar, leia:
 1. `docs/fork/FORK_FEATURES.md` e `docs/testing/TASKS_ORG_DEVICE_TEST.md` — roteiro de teste em hardware
 2. Dispositivo conectado: `RQ8N502VJ1M`
 
-- [ ] T08 — Deploy e teste de fumaça no dispositivo Android físico
+- [x] T08 — Deploy e teste de fumaça no dispositivo Android físico
       Arquivos: `app/build/outputs/apk/debug/app-debug.apk`
       Mudança: Instalar o build debug no dispositivo conectado `RQ8N502VJ1M` via `adb install -r` e validar abertura, visualização do calendário com tarefas do Tasks.org, novo seletor de data/hora e tela Sobre com o mascote Kash
       Cobre: AC-07
