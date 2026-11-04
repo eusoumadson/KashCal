@@ -1,9 +1,9 @@
-# Spec Delta: upstream-sync-parity
+# Upstream Sync Parity Specification
 
 ## Purpose
 Estabelece a paridade com as funcionalidades incorporadas no KashCal upstream (versões v2026.10.30 a v2026.11.03), incluindo gerenciamento dinâmico de fusos horários, seletor unificado de datas, acessibilidade de contraste e hardening de sincronização.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: RF-01 - Upstream Timezone Dynamic Reactivity
 WHEN the device time zone changes while KashCal is running, THE SYSTEM SHALL dynamically update event positions and lengths in active views (month view, week view, day sheet, and search) via `ZoneSource` and `LocalDisplayZone` without requiring an application restart.
