@@ -20,7 +20,6 @@ class WidgetKindTest {
             WidgetKind.UPCOMING to UpcomingWidget::class.java,
             // FORK:experimental-widgets
             WidgetKind.SPLIT_AGENDA to SplitAgendaWidget::class.java,
-            WidgetKind.MONTH_AGENDA to MonthAgendaWidget::class.java,
         )
         // Fails if a new enum value is added without extending this map.
         assertEquals(expected.keys, WidgetKind.entries.toSet())

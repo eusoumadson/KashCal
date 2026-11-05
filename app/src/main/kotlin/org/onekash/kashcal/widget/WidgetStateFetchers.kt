@@ -7,7 +7,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import org.onekash.kashcal.data.preferences.KashCalDataStore
+import org.onekash.kashcal.ui.model.MonthGrid
 import org.onekash.kashcal.util.DateTimeUtils
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * Each widget's data-fetch step, which the widget runs inside `provideContent` through
@@ -206,3 +210,84 @@ internal suspend fun fetchMonthEvents(
         emptyMap()
     }
 }
+
+/** Resolved data for [SplitAgendaWidget]'s `provideContent` render. */
+internal data class SplitAgendaData(
+    val eventsByDay: Map<Int, List<WidgetDataRepository.WidgetEvent>>,
+    val monthEvents: Map<Int, List<WidgetDataRepository.WidgetEvent>>,
+    val monthGrid: MonthGrid,
+    val today: LocalDate,
+    val todayDayCode: Int,
+    val maxEventsPerDay: Int,
+    val detailedRows: Boolean,
+    val firstDayOfWeek: Int,
+    val timePattern: String
+)
+
+/**
+ * Fetches the Split Agenda widget's data: 3-day upcoming window, full month grid and events,
+ * and user preferences (maxEventsPerDay, detailedRows, firstDayOfWeek, timePattern).
+ * On failure, returns empty events with default settings and a fallback MonthGrid.
+ */
+internal suspend fun fetchSplitAgendaData(
+    repository: WidgetDataRepository,
+    dataStore: KashCalDataStore,
+    context: Context,
+    nowMs: Long = System.currentTimeMillis()
+): SplitAgendaData {
+    return try {
+        val (startDayCode, endDayCode) = upcomingWindow(
+            nowMs = nowMs,
+            horizonDays = 3
+        )
+        val eventsByDay = withTimeoutOrNull(WIDGET_FETCH_TIMEOUT_MS) {
+            repository.getEventsInRange(startDayCode, endDayCode)
+        } ?: throw WidgetFetchTimeoutException("getEventsInRange (3 days) exceeded ${WIDGET_FETCH_TIMEOUT_MS}ms")
+
+        val today = Instant.ofEpochMilli(nowMs).atZone(ZoneId.systemDefault()).toLocalDate()
+        val firstDayOfWeek = dataStore.firstDayOfWeek.first()
+        val monthGrid = MonthGrid.compute(today.year, today.monthValue - 1, firstDayOfWeek)
+        val (monthStart, monthEnd) = monthGrid.toDayCodeRange()
+
+        val monthEvents = withTimeoutOrNull(WIDGET_FETCH_TIMEOUT_MS) {
+            repository.getEventsInRange(monthStart, monthEnd)
+        } ?: throw WidgetFetchTimeoutException("getEventsInRange (month) exceeded ${WIDGET_FETCH_TIMEOUT_MS}ms")
+
+        val maxEventsPerDay = dataStore.widgetMaxEventsPerDay.first()
+        val detailedRows = dataStore.widgetDetailedRows.first()
+        val timeFormatPref = dataStore.getTimeFormat()
+        val is24Hour = DateFormat.is24HourFormat(context)
+        val timePattern = DateTimeUtils.getTimePattern(timeFormatPref, is24Hour)
+
+        SplitAgendaData(
+            eventsByDay = eventsByDay,
+            monthEvents = monthEvents,
+            monthGrid = monthGrid,
+            today = today,
+            todayDayCode = startDayCode,
+            maxEventsPerDay = maxEventsPerDay,
+            detailedRows = detailedRows,
+            firstDayOfWeek = firstDayOfWeek,
+            timePattern = timePattern
+        )
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.w(TAG, "fetchSplitAgendaData failed", e)
+        val fallbackToday = Instant.ofEpochMilli(nowMs).atZone(ZoneId.systemDefault()).toLocalDate()
+        val fallbackDayCode = fallbackToday.year * 10000 + fallbackToday.monthValue * 100 + fallbackToday.dayOfMonth
+        val defaultFirstDayOfWeek = KashCalDataStore.FIRST_DAY_SYSTEM
+        SplitAgendaData(
+            eventsByDay = emptyMap(),
+            monthEvents = emptyMap(),
+            monthGrid = MonthGrid.compute(fallbackToday.year, fallbackToday.monthValue - 1, defaultFirstDayOfWeek),
+            today = fallbackToday,
+            todayDayCode = fallbackDayCode,
+            maxEventsPerDay = 5,
+            detailedRows = false,
+            firstDayOfWeek = defaultFirstDayOfWeek,
+            timePattern = "h:mm a"
+        )
+    }
+}
+

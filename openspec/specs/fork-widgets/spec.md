@@ -1,9 +1,9 @@
-# Spec Delta: fork-widgets
+# Fork Widgets Specification
 
 ## Purpose
 Prover a especificação dos widgets exclusivos do fork KashCal Tasks, unificando as funcionalidades de agenda dividida e visão de calendário mensal em um widget responsivo avançado (`SplitAgendaWidget`) com exibição inteligente de próximos eventos.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: RF-01 - Exclusão de Componentes do Widget Legado MonthAgendaWidget
 WHEN a unificação for aplicada, THE SYSTEM SHALL remover completamente o componente `MonthAgendaWidget` (verificado em `MonthAgendaWidget.kt:29`), seus layouts `MonthAgendaWidgetContent.kt`, receiver `MonthAgendaWidgetReceiver.kt` e referências em `AndroidManifest.xml` (verificado na linha 997), `ExperimentalWidgetsManager`, `WidgetRefreshAction` e `WidgetStateKeys`.

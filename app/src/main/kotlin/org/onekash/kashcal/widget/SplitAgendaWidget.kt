@@ -16,14 +16,17 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import org.onekash.kashcal.data.preferences.KashCalDataStore
+import org.onekash.kashcal.ui.model.MonthGrid
+import org.onekash.kashcal.ui.util.DayPagerUtils
+import java.time.LocalDate
 
 /**
  * Split Agenda Widget (FORK:experimental-widgets)
  *
  * Responsive dual-column widget on wide grids (e.g. 4x3):
- * Left column: Large date and primary day events/tasks.
- * Right column: Controls, plus scrollable LazyColumn for the rest of the day's events.
- * Compact single column on narrow placements.
+ * Left column: Full month calendar grid with indicator dots for days with events and today highlighted.
+ * Right column: Controls, plus scrollable LazyColumn for upcoming events (Today, Tomorrow, Tomorrow+1).
+ * Compact single column on narrow placements (< 260dp).
  */
 class SplitAgendaWidget : GlanceAppWidget() {
 
@@ -44,23 +47,39 @@ class SplitAgendaWidget : GlanceAppWidget() {
         val repository = entryPoint.widgetDataRepository()
         val dataStore = KashCalDataStore(context)
         val initialAccent = resolveWidgetAccentColors(context, dataStore).colors
+        val firstDayOfWeek = dataStore.getFirstDayOfWeek()
 
         provideContent {
             val prefs = currentState<Preferences>()
             val stamp = prefs[WIDGET_REFRESH_STAMP] ?: 0L
             val isRefreshing = isRefreshCueActive(prefs[WIDGET_REFRESHING_UNTIL], System.currentTimeMillis())
-            val events by produceState(
-                initialValue = emptyList<WidgetDataRepository.WidgetEvent>(),
+
+            val nowMs = System.currentTimeMillis()
+            val today = LocalDate.now()
+            val todayCode = DayPagerUtils.msToDayCode(nowMs)
+
+            val data by produceState(
+                initialValue = SplitAgendaData(
+                    eventsByDay = emptyMap(),
+                    monthEvents = emptyMap(),
+                    monthGrid = MonthGrid.compute(today.year, today.monthValue - 1, firstDayOfWeek),
+                    today = today,
+                    todayDayCode = todayCode,
+                    maxEventsPerDay = 5,
+                    detailedRows = false,
+                    firstDayOfWeek = firstDayOfWeek,
+                    timePattern = "h:mm a"
+                ),
                 key1 = stamp
             ) {
-                value = repository.getTodayEvents()
+                value = fetchSplitAgendaData(repository, dataStore, context, nowMs)
             }
             val accentColors by produceState(initialValue = initialAccent, key1 = stamp) {
                 value = resolveWidgetAccentColors(context, dataStore).colors
             }
             GlanceTheme(colors = accentColors ?: GlanceTheme.colors) {
                 SplitAgendaWidgetContent(
-                    events = events,
+                    data = data,
                     isRefreshing = isRefreshing
                 )
             }

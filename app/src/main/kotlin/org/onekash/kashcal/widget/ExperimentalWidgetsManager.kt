@@ -26,10 +26,8 @@ class ExperimentalWidgetsManager @Inject constructor(
             PackageManager.COMPONENT_ENABLED_STATE_DISABLED
         }
         val splitAgenda = ComponentName(context, SplitAgendaWidgetReceiver::class.java)
-        val monthAgenda = ComponentName(context, MonthAgendaWidgetReceiver::class.java)
         try {
             pm.setComponentEnabledSetting(splitAgenda, state, PackageManager.DONT_KILL_APP)
-            pm.setComponentEnabledSetting(monthAgenda, state, PackageManager.DONT_KILL_APP)
             Log.d("ExperimentalWidgets", "Experimental widgets component enabled state set to: $enabled")
         } catch (e: Exception) {
             Log.e("ExperimentalWidgets", "Error setting widget component state", e)

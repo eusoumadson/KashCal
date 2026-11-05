@@ -39,6 +39,8 @@ class WidgetStateFetchersTest {
         every { dataStore.showEventEmojis } returns flowOf(true)
         every { dataStore.widgetMaxEventsPerDay } returns flowOf(5)
         every { dataStore.widgetDetailedRows } returns flowOf(false)
+        every { dataStore.firstDayOfWeek } returns flowOf(KashCalDataStore.FIRST_DAY_SYSTEM)
+        coEvery { dataStore.getFirstDayOfWeek() } returns KashCalDataStore.FIRST_DAY_SYSTEM
         coEvery { dataStore.getTimeFormat() } returns "system"
 
         // is24HourFormat is pinned to false for determinism. getBestDateTimePattern must be
@@ -206,5 +208,64 @@ class WidgetStateFetchersTest {
         val result = fetchMonthEvents(repository, 20260401, 20260430)
 
         assertTrue(result.isEmpty())
+    }
+
+    // ========== fetchSplitAgendaData ==========
+
+    @Test
+    fun `fetchSplitAgendaData returns Loaded data when repository succeeds`() = runTest {
+        val today = 20260428
+        val expectedUpcoming = mapOf(today to emptyList<WidgetDataRepository.WidgetEvent>())
+        val expectedMonth = mapOf(today to emptyList<WidgetDataRepository.WidgetEvent>())
+        coEvery { repository.getEventsInRange(any(), any()) } returns expectedUpcoming andThen expectedMonth
+
+        val data = fetchSplitAgendaData(repository, dataStore, context)
+
+        assertEquals(expectedUpcoming, data.eventsByDay)
+        assertEquals(expectedMonth, data.monthEvents)
+        assertEquals(5, data.maxEventsPerDay)
+        assertEquals(false, data.detailedRows)
+        assertNotNull(data.monthGrid)
+        assertNotNull(data.timePattern)
+    }
+
+    @Test
+    fun `fetchSplitAgendaData threads preferences`() = runTest {
+        coEvery { repository.getEventsInRange(any(), any()) } returns emptyMap()
+        every { dataStore.widgetDetailedRows } returns flowOf(true)
+        every { dataStore.widgetMaxEventsPerDay } returns flowOf(3)
+        every { dataStore.firstDayOfWeek } returns flowOf(java.util.Calendar.SUNDAY)
+
+        val data = fetchSplitAgendaData(repository, dataStore, context)
+
+        assertEquals(true, data.detailedRows)
+        assertEquals(3, data.maxEventsPerDay)
+        assertEquals(java.util.Calendar.SUNDAY, data.firstDayOfWeek)
+    }
+
+    @Test
+    fun `fetchSplitAgendaData returns fallback data when repository throws`() = runTest {
+        coEvery { repository.getEventsInRange(any(), any()) } throws IOException("network")
+
+        val data = fetchSplitAgendaData(repository, dataStore, context)
+
+        assertTrue(data.eventsByDay.isEmpty())
+        assertTrue(data.monthEvents.isEmpty())
+        assertEquals(5, data.maxEventsPerDay)
+        assertEquals(false, data.detailedRows)
+        assertNotNull(data.monthGrid)
+    }
+
+    @Test
+    fun `fetchSplitAgendaData returns fallback data when DataStore throws`() = runTest {
+        coEvery { repository.getEventsInRange(any(), any()) } returns emptyMap()
+        coEvery { dataStore.getTimeFormat() } throws IllegalStateException("datastore error")
+
+        val data = fetchSplitAgendaData(repository, dataStore, context)
+
+        assertTrue(data.eventsByDay.isEmpty())
+        assertTrue(data.monthEvents.isEmpty())
+        assertEquals(5, data.maxEventsPerDay)
+        assertEquals(false, data.detailedRows)
     }
 }
