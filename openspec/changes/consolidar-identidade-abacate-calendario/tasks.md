@@ -79,14 +79,14 @@ Antes de implementar, leia:
 1. `specs/fork-identity-distribution/spec.md` — RF-05 e AC-05
 2. `AGENTS.md` — seção 3 (Behavioral Guidelines e Mandatory Completion Gate)
 
-- [ ] T08 — Redigir novo README.md primário em Português do Brasil
+- [x] T08 — Redigir novo README.md primário em Português do Brasil
       Arquivos: `README.md`
       Mudança: Substituir o README upstream por documentação completa em Português (PT-BR): identidade Abacate Calendário, badges de Obtainium e GitHub Releases, resumo dos 3 pilares (eventos, tarefas do Tasks.org e alertas de deslocamento Travel Time), guia de instalação e créditos abertos ao upstream KashCal.
       Cobre: RF-05, AC-05
       Acceptance criteria: `README.md` está redigido em Português, inclui link direto do Obtainium e não contém certificados de assinatura alheios nem links da Google Play/F-Droid oficial.
       Testes: Leitura e validação de links Markdown no arquivo `README.md`.
 
-- [ ] T09 — Executar suíte de testes unitários e validação OpenSpec
+- [x] T09 — Executar suíte de testes unitários e validação OpenSpec
       Arquivos: `app/build.gradle.kts`, `app/src/test/`
       Mudança: Executar a suíte de testes unitários do Android para garantir 100% de passagem sem quebras nas sentinelas de graft (`// FORK:*`).
       Cobre: AC-06
