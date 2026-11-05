@@ -30,8 +30,7 @@ enum class WidgetKind {
     WEEK,
     UPCOMING,
     // FORK:experimental-widgets
-    SPLIT_AGENDA,
-    MONTH_AGENDA;
+    SPLIT_AGENDA;
 
     /** Returns the [GlanceAppWidget] to repaint for this kind. */
     fun widget(): GlanceAppWidget = when (this) {
@@ -39,7 +38,6 @@ enum class WidgetKind {
         WEEK -> WeekWidget()
         UPCOMING -> UpcomingWidget()
         SPLIT_AGENDA -> SplitAgendaWidget()
-        MONTH_AGENDA -> MonthAgendaWidget()
     }
 }
 

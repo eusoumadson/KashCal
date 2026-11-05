@@ -22,7 +22,7 @@ import java.time.LocalDate
 /**
  * Unit tests for fork widget features:
  * - Tasks in widgets (FORK:tasks-widget)
- * - Experimental widgets: SplitAgendaWidget and MonthAgendaWidget (FORK:experimental-widgets)
+ * - Experimental widget: SplitAgendaWidget (FORK:experimental-widgets)
  */
 class ForkWidgetsTest {
 
@@ -129,17 +129,8 @@ class ForkWidgetsTest {
     }
 
     @Test
-    fun `month agenda widget has Exact sizeMode and responsive preview`() {
-        val widget = MonthAgendaWidget()
-        assertEquals(SizeMode.Exact, widget.sizeMode)
-        assertTrue(widget.previewSizeMode is SizeMode.Responsive)
-    }
-
-    @Test
-    fun `widget kind enum contains split and month agenda kinds`() {
+    fun `widget kind enum contains split agenda kind`() {
         assertNotNull(WidgetKind.valueOf("SPLIT_AGENDA"))
-        assertNotNull(WidgetKind.valueOf("MONTH_AGENDA"))
         assertEquals(SplitAgendaWidget::class.java, WidgetKind.SPLIT_AGENDA.widget().javaClass)
-        assertEquals(MonthAgendaWidget::class.java, WidgetKind.MONTH_AGENDA.widget().javaClass)
     }
 }
