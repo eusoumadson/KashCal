@@ -26,6 +26,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +61,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import org.onekash.kashcal.R
+import org.onekash.kashcal.domain.model.DEFAULT_TASK_LIST_COLOR
 import org.onekash.kashcal.domain.model.DisplayEvent
 import org.onekash.kashcal.domain.model.isStripItem
 import org.onekash.kashcal.domain.planner.MovedCue
@@ -418,6 +420,18 @@ private fun PlannerDayBody(
             onClick = { onDayClick(dayMs()) },
         )
     }
+    // FORK:tasks-org — consolidate multiple all-day tasks into a single summary ribbon
+    val (allDayTasks, allDayEvents) = remember(strip) {
+        val tasks = mutableListOf<DisplayEvent.Task>()
+        val events = mutableListOf<DisplayEvent>()
+        strip.forEach {
+            if (it is DisplayEvent.Task) tasks.add(it) else events.add(it)
+        }
+        tasks to events
+    }
+    val hasTaskSummary = allDayTasks.size > 1
+    val ribbonCount = if (hasTaskSummary) allDayEvents.size + 1 else strip.size
+
     Box(modifier = Modifier.fillMaxSize()) {
         when {
             !loaded -> Unit
@@ -430,7 +444,7 @@ private fun PlannerDayBody(
                 if (!isPastDay) PlannerFreeDay(Modifier.fillMaxSize().padding(4.dp))
             }
             else -> PlannerFitColumn(
-                itemCount = strip.size + rows.size,
+                itemCount = ribbonCount + rows.size,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 5.dp, vertical = 3.dp),
                 background = { hidden ->
@@ -466,19 +480,29 @@ private fun PlannerDayBody(
                 },
                 // Ribbons are one line already, so only an event row gets a one-line form.
                 compactItem = { index ->
-                    if (index < strip.size) {
+                    if (index < ribbonCount) {
                         null
                     } else {
-                        rows.getOrNull(index - strip.size)?.let { event -> { eventRow(event, true) } }
+                        rows.getOrNull(index - ribbonCount)?.let { event -> { eventRow(event, true) } }
                     }
                 },
             ) { index ->
                 // An index past the lists draws nothing ([PlannerFitColumn]).
-                val ribbon = strip.getOrNull(index)
-                if (ribbon != null) {
-                    PlannerRibbon(ribbon, dayCode, showEventEmojis, nowMs, todayDayCode) { onDayClick(dayMs()) }
+                if (hasTaskSummary) {
+                    if (index < allDayEvents.size) {
+                        PlannerRibbon(allDayEvents[index], dayCode, showEventEmojis, nowMs, todayDayCode) { onDayClick(dayMs()) }
+                    } else if (index == allDayEvents.size) {
+                        PlannerTaskSummaryRibbon(allDayTasks) { onDayClick(dayMs()) }
+                    } else {
+                        rows.getOrNull(index - ribbonCount)?.let { eventRow(it, false) }
+                    }
                 } else {
-                    rows.getOrNull(index - strip.size)?.let { eventRow(it, false) }
+                    val ribbon = strip.getOrNull(index)
+                    if (ribbon != null) {
+                        PlannerRibbon(ribbon, dayCode, showEventEmojis, nowMs, todayDayCode) { onDayClick(dayMs()) }
+                    } else {
+                        rows.getOrNull(index - strip.size)?.let { eventRow(it, false) }
+                    }
                 }
             }
         }
@@ -705,6 +729,54 @@ private fun PlannerRibbon(
                 color = textColor,
                 textDecoration = declinedTitleDecoration(isDeclined, isCancelled),
                 modifier = Modifier.weight(1f).padding(horizontal = 5.dp, vertical = 2.dp),
+            )
+        }
+    }
+}
+
+// FORK:tasks-org — compact single-line summary of all-day tasks in planner day box
+@Composable
+private fun PlannerTaskSummaryRibbon(
+    tasks: List<DisplayEvent.Task>,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val count = tasks.size
+    val firstTask = tasks.first()
+    val color = firstTask.calendarColor.takeIf { it != 0 } ?: DEFAULT_TASK_LIST_COLOR
+    val fill = Color(color).copy(alpha = 0.2f)
+    val border = Color(color)
+    val shape = RoundedCornerShape(RIBBON_CORNER)
+    val label = stringResource(R.string.label_more_tasks_compact, count)
+
+    Box(
+        modifier = modifier
+            .testTag("planner_task_summary")
+            .fillMaxWidth()
+            .padding(vertical = 1.dp)
+            .clip(shape)
+            .background(fill)
+            .border(1.dp, border, shape)
+            .clickable(onClickLabel = stringResource(R.string.cd_planner_show_day_events), onClick = onClick)
+            .semantics(mergeDescendants = true) {},
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = null,
+                modifier = Modifier.size(12.dp),
+                tint = border
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

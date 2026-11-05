@@ -106,13 +106,6 @@ private fun WideSplitLayout(
 ) {
     val today = data.today
     val locale = Locale.getDefault()
-    val dayOfWeek = today.dayOfWeek.getDisplayName(JavaTextStyle.FULL, locale).uppercase()
-    val dayNumber = today.dayOfMonth.toString()
-    val monthName = today.month.getDisplayName(JavaTextStyle.FULL, locale)
-        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
-    val yearStr = today.year.toString()
-
-    val todayEvents = data.eventsByDay[data.todayDayCode].orEmpty()
 
     Row(
         modifier = GlanceModifier
@@ -122,7 +115,7 @@ private fun WideSplitLayout(
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left Column: Big Date Header + 6-week Month Calendar Grid
+        // Left Column: Compact Date Header + 6-week Month Calendar Grid
         Column(
             modifier = GlanceModifier
                 .defaultWeight()
@@ -130,45 +123,7 @@ private fun WideSplitLayout(
                 .padding(start = 4.dp, top = 2.dp, end = 6.dp, bottom = 4.dp)
         ) {
             // Tapping header goes to today in KashCal
-            Column(
-                modifier = GlanceModifier
-                    .fillMaxWidth()
-                    .clickable(
-                        actionStartActivity<MainActivity>(
-                            parameters = actionParametersOf(
-                                ActionParameters.Key<String>(EXTRA_ACTION) to ACTION_GO_TO_TODAY
-                            )
-                        )
-                    )
-            ) {
-                Text(
-                    text = dayOfWeek,
-                    style = TextStyle(
-                        color = WidgetTheme.accentColor,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    maxLines = 1
-                )
-                Text(
-                    text = dayNumber,
-                    style = TextStyle(
-                        color = WidgetTheme.primaryText,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    maxLines = 1
-                )
-                Text(
-                    text = "$monthName $yearStr",
-                    style = TextStyle(
-                        color = WidgetTheme.secondaryText,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
-                    ),
-                    maxLines = 1
-                )
-            }
+            SplitDateHeader(today = today, locale = locale)
 
             Spacer(modifier = GlanceModifier.height(4.dp))
             Spacer(
@@ -294,9 +249,71 @@ private fun WideSplitLayout(
 }
 
 @Composable
-private fun SplitAgendaListColumn(
+internal fun SplitDateHeader(
+    today: LocalDate,
+    locale: Locale = Locale.getDefault(),
+    modifier: GlanceModifier = GlanceModifier
+) {
+    val dayOfWeekShort = today.dayOfWeek.getDisplayName(JavaTextStyle.SHORT, locale).uppercase()
+    val dayNumber = today.dayOfMonth.toString()
+    val shortMonth = today.month.getDisplayName(JavaTextStyle.SHORT, locale)
+        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
+    val shortYear = String.format(Locale.ROOT, "'%02d", today.year % 100)
+    val monthAndYear = "$shortMonth $shortYear"
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(32.dp)
+            .clickable(
+                actionStartActivity<MainActivity>(
+                    parameters = actionParametersOf(
+                        ActionParameters.Key<String>(EXTRA_ACTION) to ACTION_GO_TO_TODAY
+                    )
+                )
+            ),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = dayNumber,
+            style = TextStyle(
+                color = WidgetTheme.primaryText,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            ),
+            maxLines = 1
+        )
+        Spacer(modifier = GlanceModifier.width(6.dp))
+        Column(
+            modifier = GlanceModifier.defaultWeight(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = dayOfWeekShort,
+                style = TextStyle(
+                    color = WidgetTheme.accentColor,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                ),
+                maxLines = 1
+            )
+            Text(
+                text = monthAndYear,
+                style = TextStyle(
+                    color = WidgetTheme.secondaryText,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium
+                ),
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+internal fun SplitAgendaListColumn(
     data: SplitAgendaData,
-    isRefreshing: Boolean,
+    isRefreshing: Boolean = false,
     modifier: GlanceModifier = GlanceModifier.fillMaxSize()
 ) {
     val context = LocalContext.current
@@ -313,55 +330,154 @@ private fun SplitAgendaListColumn(
         )
     }
 
-    Column(modifier = modifier) {
-        Row(
-            modifier = GlanceModifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val title = context.getString(R.string.upcoming_widget_name)
-            Text(
-                text = title,
-                style = TextStyle(
-                    color = WidgetTheme.secondaryText,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                ),
-                maxLines = 1,
-                modifier = GlanceModifier.defaultWeight()
-            )
-            WidgetRefreshButton(kind = WidgetKind.SPLIT_AGENDA, isRefreshing = isRefreshing)
-            WidgetAddButton()
-        }
-
-        LazyColumn(
-            modifier = GlanceModifier
-                .fillMaxSize()
-                .padding(vertical = 2.dp)
-        ) {
-            upcomingItems.forEach { item ->
-                when (item) {
-                    is SplitAgendaItem.DayHeader -> item(itemId = item.itemId) {
-                        SplitDayHeader(
-                            dayCode = item.dayCode,
-                            todayDayCode = data.todayDayCode,
-                            label = item.label
-                        )
-                    }
-                    is SplitAgendaItem.EventRow -> item(itemId = item.itemId) {
-                        SplitEventRow(
-                            event = item.event,
-                            timePattern = data.timePattern,
-                            detailedRows = data.detailedRows,
-                            dayCode = item.dayCode
-                        )
-                    }
-                    is SplitAgendaItem.EmptyTodayNotice -> item(itemId = item.itemId) {
-                        SplitEmptyTodayNotice(
-                            message = item.message
-                        )
-                    }
+    LazyColumn(
+        modifier = modifier
+    ) {
+        upcomingItems.forEach { item ->
+            when (item) {
+                is SplitAgendaItem.DayHeader -> item(itemId = item.itemId) {
+                    SplitDayHeader(
+                        dayCode = item.dayCode,
+                        todayDayCode = data.todayDayCode,
+                        label = item.label
+                    )
+                }
+                is SplitAgendaItem.EventRow -> item(itemId = item.itemId) {
+                    SplitEventRow(
+                        event = item.event,
+                        timePattern = data.timePattern,
+                        detailedRows = data.detailedRows,
+                        dayCode = item.dayCode
+                    )
+                }
+                is SplitAgendaItem.EmptyTodayNotice -> item(itemId = item.itemId) {
+                    SplitEmptyTodayNotice(
+                        message = item.message
+                    )
+                }
+                is SplitAgendaItem.AllDayEventStack -> item(itemId = item.itemId) {
+                    SplitAllDayEventStack(
+                        count = item.count,
+                        dayCode = item.dayCode,
+                        todayDayCode = data.todayDayCode
+                    )
+                }
+                is SplitAgendaItem.AllDayTaskStack -> item(itemId = item.itemId) {
+                    SplitAllDayTaskStack(
+                        count = item.count,
+                        dayCode = item.dayCode,
+                        todayDayCode = data.todayDayCode
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+internal fun SplitAllDayEventStack(
+    count: Int,
+    dayCode: Int,
+    todayDayCode: Int
+) {
+    val context = LocalContext.current
+    val isToday = dayCode == todayDayCode
+    val text = context.getString(R.string.split_agenda_more_all_day_events, count)
+
+    Row(
+        modifier = GlanceModifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp)
+            .clickable(
+                if (isToday) {
+                    actionStartActivity<MainActivity>(
+                        parameters = actionParametersOf(
+                            ActionParameters.Key<String>(EXTRA_ACTION) to ACTION_GO_TO_TODAY
+                        )
+                    )
+                } else {
+                    actionStartActivity<MainActivity>(
+                        parameters = actionParametersOf(
+                            ActionParameters.Key<String>(EXTRA_ACTION) to ACTION_GO_TO_DATE,
+                            ActionParameters.Key<Int>(EXTRA_DAY_CODE) to dayCode
+                        )
+                    )
+                }
+            ),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = GlanceModifier
+                .background(WidgetTheme.dimmedOnHeaderBackground)
+                .cornerRadius(12.dp)
+                .padding(horizontal = 8.dp, vertical = 2.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "📅 $text",
+                style = TextStyle(
+                    color = WidgetTheme.primaryText,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium
+                ),
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+internal fun SplitAllDayTaskStack(
+    count: Int,
+    dayCode: Int,
+    todayDayCode: Int
+) {
+    val context = LocalContext.current
+    val isToday = dayCode == todayDayCode
+    val text = if (isToday) {
+        context.getString(R.string.split_agenda_more_all_day_tasks_today, count)
+    } else {
+        context.getString(R.string.label_more_tasks_compact, count)
+    }
+
+    Row(
+        modifier = GlanceModifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp)
+            .clickable(
+                if (isToday) {
+                    actionStartActivity<MainActivity>(
+                        parameters = actionParametersOf(
+                            ActionParameters.Key<String>(EXTRA_ACTION) to ACTION_GO_TO_TODAY
+                        )
+                    )
+                } else {
+                    actionStartActivity<MainActivity>(
+                        parameters = actionParametersOf(
+                            ActionParameters.Key<String>(EXTRA_ACTION) to ACTION_GO_TO_DATE,
+                            ActionParameters.Key<Int>(EXTRA_DAY_CODE) to dayCode
+                        )
+                    )
+                }
+            ),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = GlanceModifier
+                .background(WidgetTheme.dimmedOnHeaderBackground)
+                .cornerRadius(12.dp)
+                .padding(horizontal = 8.dp, vertical = 2.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "✓ $text",
+                style = TextStyle(
+                    color = WidgetTheme.primaryText,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium
+                ),
+                maxLines = 1
+            )
         }
     }
 }

@@ -8,6 +8,7 @@ import org.junit.Test
 import org.onekash.kashcal.data.db.entity.Calendar
 import org.onekash.kashcal.data.db.entity.Event
 import org.onekash.kashcal.data.db.entity.Occurrence
+import org.onekash.kashcal.data.tasks_org.TasksOrgTask
 import org.onekash.kashcal.domain.model.DisplayEvent
 import java.time.ZoneOffset
 
@@ -70,6 +71,28 @@ class MonthFullSpanLayoutTest {
     private fun utcMidnight(dayCode: Int): Long =
         java.time.LocalDate.of(dayCode / 10000, dayCode / 100 % 100, dayCode % 100)
             .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+
+    private fun taskAllDay(id: Long, dayCode: Int, title: String): DisplayEvent.Task {
+        val ms = utcMidnight(dayCode)
+        val task = TasksOrgTask(
+            id = id,
+            title = title,
+            notes = "",
+            dueTs = ms,
+            isAllDay = true,
+            startTs = ms,
+            endTs = ms,
+            startDay = dayCode,
+            endDay = dayCode,
+            completedAt = null,
+            recurrence = null,
+            listId = 1L,
+            listTitle = "List",
+            listColor = 0xFF2196F3.toInt(),
+            isReadOnly = false
+        )
+        return DisplayEvent.Task(task, ZoneOffset.UTC)
+    }
 
     private val HOUR = 3_600_000L
 
@@ -958,5 +981,50 @@ class MonthFullSpanLayoutTest {
         assertEquals(1f, monthDateNumberAlpha(isPastDay = false, isSelected = false))
         assertEquals(0.6f, monthDateNumberAlpha(isPastDay = true, isSelected = false))
         assertEquals(1f, monthDateNumberAlpha(isPastDay = true, isSelected = true))
+    }
+
+    @Test
+    fun `multiple all-day tasks are consolidated into single slot preserving slots for timed events`() {
+        // Tuesday index 2 in weekSunToSat = 20260310
+        val tueDayCode = weekSunToSat[2]
+        val tasks = (1..5).map { taskAllDay(it.toLong(), tueDayCode, "Task $it") }
+        val meeting1 = roomEvent(101L, tueDayCode, tueDayCode, isAllDay = false, occStartTs = 1000L)
+        val meeting2 = roomEvent(102L, tueDayCode, tueDayCode, isAllDay = false, occStartTs = 2000L)
+
+        val byDay = mapOf(tueDayCode to (tasks + listOf(meeting1, meeting2)))
+        val render = computeMonthFullWeekRender(weekSunToSat, byDay, rows = 3)
+
+        // Slot 0 holds the first all-day task
+        val slot0 = render.slots[0][2]
+        assertTrue(slot0 is SlotContent.CellEvent)
+        assertEquals(tasks[0], (slot0 as SlotContent.CellEvent).displayEvent)
+
+        // Slots 1 and 2 hold the timed meetings (not pushed out by the remaining tasks)
+        val slot1 = render.slots[1][2]
+        assertTrue(slot1 is SlotContent.CellEvent)
+        assertEquals(meeting1, (slot1 as SlotContent.CellEvent).displayEvent)
+
+        val slot2 = render.slots[2][2]
+        assertTrue(slot2 is SlotContent.CellEvent)
+        assertEquals(meeting2, (slot2 as SlotContent.CellEvent).displayEvent)
+
+        // 4 surplus tasks are reported in hidden count
+        assertEquals(4, render.hiddenCounts[2])
+    }
+
+    @Test
+    fun `single all-day task with timed events fits slots without artificial hidden count`() {
+        val tueDayCode = weekSunToSat[2]
+        val task = taskAllDay(1L, tueDayCode, "Task 1")
+        val meeting1 = roomEvent(101L, tueDayCode, tueDayCode, isAllDay = false, occStartTs = 1000L)
+        val meeting2 = roomEvent(102L, tueDayCode, tueDayCode, isAllDay = false, occStartTs = 2000L)
+
+        val byDay = mapOf(tueDayCode to listOf(task, meeting1, meeting2))
+        val render = computeMonthFullWeekRender(weekSunToSat, byDay, rows = 3)
+
+        assertEquals(task, (render.slots[0][2] as SlotContent.CellEvent).displayEvent)
+        assertEquals(meeting1, (render.slots[1][2] as SlotContent.CellEvent).displayEvent)
+        assertEquals(meeting2, (render.slots[2][2] as SlotContent.CellEvent).displayEvent)
+        assertEquals(0, render.hiddenCounts[2])
     }
 }

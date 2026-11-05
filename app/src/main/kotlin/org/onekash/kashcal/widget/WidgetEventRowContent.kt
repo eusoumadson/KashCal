@@ -58,35 +58,40 @@ internal fun RowScope.EventRowInner(
                 ),
                 maxLines = 1
             )
-            // Same color as the title so the row reads as one unit.
-            Text(
-                text = formatWidgetEventTimeRange(context, event, dayCode, timePattern, allDayText),
-                style = TextStyle(
-                    color = textColor,
-                    fontSize = WidgetTypography.secondary,
-                    textDecoration = decoration
-                ),
-                maxLines = 1
-            )
+            // Same color as the title so the row reads as one unit. All-day tasks suppress time.
+            if (!(event.isTask && event.isAllDay)) {
+                Text(
+                    text = formatWidgetEventTimeRange(context, event, dayCode, timePattern, allDayText),
+                    style = TextStyle(
+                        color = textColor,
+                        fontSize = WidgetTypography.secondary,
+                        textDecoration = decoration
+                    ),
+                    maxLines = 1
+                )
+            }
         }
     } else {
         if (!event.isTask) {
             CalendarColorBar(event.calendarColor)
             Spacer(modifier = GlanceModifier.width(BAR_TO_TIME_GAP_DP.dp))
         }
-        // The time column's width follows the resolved 12h/24h format. The time shares the
-        // title's color so the row reads as one unit, not a two-tone split.
-        Text(
-            text = formatWidgetEventTime(event, dayCode, timePattern, allDayText),
-            style = TextStyle(
-                color = textColor,
-                fontSize = WidgetTypography.secondary,
-                textDecoration = decoration
-            ),
-            maxLines = 1,
-            modifier = GlanceModifier.width(timeColumnWidthDp(timePattern).dp)
-        )
-        Spacer(modifier = GlanceModifier.width(TIME_TO_TITLE_GAP_DP.dp))
+        // All-day tasks do not reserve a time column in compact mode.
+        if (!(event.isTask && event.isAllDay)) {
+            // The time column's width follows the resolved 12h/24h format. The time shares the
+            // title's color so the row reads as one unit, not a two-tone split.
+            Text(
+                text = formatWidgetEventTime(event, dayCode, timePattern, allDayText),
+                style = TextStyle(
+                    color = textColor,
+                    fontSize = WidgetTypography.secondary,
+                    textDecoration = decoration
+                ),
+                maxLines = 1,
+                modifier = GlanceModifier.width(timeColumnWidthDp(timePattern).dp)
+            )
+            Spacer(modifier = GlanceModifier.width(TIME_TO_TITLE_GAP_DP.dp))
+        }
         Text(
             text = displayTitle,
             style = TextStyle(

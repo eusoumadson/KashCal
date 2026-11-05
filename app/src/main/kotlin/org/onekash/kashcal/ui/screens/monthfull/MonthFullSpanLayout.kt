@@ -204,12 +204,25 @@ fun computeMonthFullWeekRender(
                 compareBy<DisplayEvent> { eventOrderRank(it) }.thenBy { it.startTs }
             )
 
-        val freeSlots = (0 until numSlots).filter { grid[it][col] === SlotContent.Empty }
-        val shown = minOf(cellEvents.size, freeSlots.size)
-        for (i in 0 until shown) {
-            grid[freeSlots[i]][col] = SlotContent.CellEvent(cellEvents[i])
+        // FORK:tasks-org — consolidate multiple all-day tasks to at most 1 slot per day
+        val allDayTasks = cellEvents.filter { it is DisplayEvent.Task && it.isAllDay }
+        val candidateEvents = if (allDayTasks.size > 1) {
+            val firstTask = allDayTasks.first()
+            cellEvents.filter { event ->
+                val isAllDayTask = event is DisplayEvent.Task && event.isAllDay
+                !isAllDayTask || event === firstTask
+            }
+        } else {
+            cellEvents
         }
-        hidden[col] += cellEvents.size - shown
+        val extraTaskHidden = if (allDayTasks.size > 1) allDayTasks.size - 1 else 0
+
+        val freeSlots = (0 until numSlots).filter { grid[it][col] === SlotContent.Empty }
+        val shown = minOf(candidateEvents.size, freeSlots.size)
+        for (i in 0 until shown) {
+            grid[freeSlots[i]][col] = SlotContent.CellEvent(candidateEvents[i])
+        }
+        hidden[col] += (candidateEvents.size - shown) + extraTaskHidden
     }
 
     return WeekSlotRender(
