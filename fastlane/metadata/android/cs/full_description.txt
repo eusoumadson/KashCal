@@ -1,9 +1,0 @@
-Rodinný kalendář je na iCloudu, práce na Googlu a tvůj Nextcloud bzučí ve skříni vedle routeru. KashCal ukáže všechno v jedné aplikaci.
-
-Bez reklam, bez účtu a bez tušení, co jsi dělal loni v létě!
-
-Naplánuj týden na jedné stránce, vytiskni ho na lednici a pošli své volné termíny místo e-mailového ping-pongu. Jednou se přihlas k odběru kalendáře školních prázdnin a svozu odpadu a přestaň se ptát ve skupinovém chatu.
-
-Open source, v 63 jazycích, od lidí, kteří taky zapomínají na narozeniny. Teď si je aplikace pamatuje za tebe, ty už jen koupíš dárek.
-
-https://kashcal.onekash.org

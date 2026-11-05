@@ -1,3 +1,0 @@
-• New documentation site: https://kashcal.onekash.org/docs/
-• Widget times fit cleanly, no more clipped or wrapped clock times
-• Fixed CalDAV sync with Xandikos servers

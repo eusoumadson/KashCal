@@ -1,9 +1,0 @@
-Familiekalenderen bor i iCloud, jobben i Google, og Nextcloud-en din surrer i et skap ved siden av ruteren. KashCal viser alt i én app.
-
-Ingen reklame, ingen konto og ingen anelse om hva du gjorde i fjor sommer!
-
-Planlegg uka på én side, skriv den ut til kjøleskapet og send ledige tider i stedet for å spille e-post-pingpong. Abonner én gang på skoleruta og søppeltømming, og slutt å spørre i gruppechatten.
-
-Åpen kildekode, på 63 språk og laget av folk som også glemmer bursdager. Nå husker appen dem, så du trenger bare å kjøpe gaven.
-
-https://kashcal.onekash.org

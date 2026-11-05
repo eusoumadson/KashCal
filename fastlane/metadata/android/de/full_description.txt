@@ -1,9 +1,0 @@
-Der Familienkalender liegt in iCloud, die Arbeit bei Google, und deine Nextcloud brummt im Schrank neben dem Router. KashCal zeigt alles in einer App.
-
-Keine Werbung, kein Konto und keine Ahnung, was du letzten Sommer getan hast!
-
-Plane die Woche auf einer Seite, druck sie für den Kühlschrank aus und schick deine freien Zeiten, statt E-Mail-Pingpong zu spielen. Abonniere einmal die Schulferien und den Müllkalender und frag nicht mehr im Gruppenchat nach.
-
-Open Source, in 63 Sprachen und gemacht von Leuten, die auch Geburtstage vergessen. Jetzt denkt die App daran, und du musst nur noch das Geschenk kaufen.
-
-https://kashcal.onekash.org

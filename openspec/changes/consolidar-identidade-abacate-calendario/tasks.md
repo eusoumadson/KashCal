@@ -46,14 +46,14 @@ Antes de implementar, leia:
 1. `specs/fork-identity-distribution/spec.md` — RF-03 e AC-03
 2. `design.md` — Decisão D-03 (Limpeza de artefatos de loja)
 
-- [ ] T05 — Reorganizar capturas de tela essenciais para pasta dedicada
+- [x] T05 — Reorganizar capturas de tela essenciais para pasta dedicada
       Arquivos: `images/screenshots/`
       Mudança: Mover/copiar as capturas de tela essenciais da pasta `fastlane/metadata/android/en-US/images/phoneScreenshots/` para `images/screenshots/` para servirem de base visual à documentação.
       Cobre: RF-03, AC-03
       Acceptance criteria: Diretório `images/screenshots/` contém as imagens necessárias para o README.
       Testes: `ls images/screenshots/` — confirma presença dos arquivos de imagem PNG.
 
-- [ ] T06 — Expurgar metadados da Google Play Store da pasta fastlane
+- [x] T06 — Expurgar metadados da Google Play Store da pasta fastlane
       Arquivos: `fastlane/metadata/`
       Mudança: Remover os metadados de loja (textos promocionais, changelogs e descrições específicas de submissão do Google Play) que não são utilizados pelo fork.
       Cobre: RF-03, AC-03

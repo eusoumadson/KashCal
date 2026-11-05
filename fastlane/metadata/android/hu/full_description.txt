@@ -1,9 +1,0 @@
-A családi naptár az iCloudban lakik, a munka a Google-on, a Nextcloudod pedig egy szekrényben zümmög a router mellett. A KashCal mindent egy appban mutat.
-
-Nincs reklám, nincs fiók, és fogalma sincs, mit tettél tavaly nyáron!
-
-Tervezd meg a hetet egy oldalon, nyomtasd ki a hűtőre, és küldd el a szabad időpontjaidat e-mail-pingpong helyett. Iratkozz fel egyszer az iskolai szünetek és a szemétszállítás naptárára, és ne kérdezgess többet a csoportchatben.
-
-Nyílt forráskód, 63 nyelv, olyan emberektől, akik szintén elfelejtik a születésnapokat. Most az app emlékszik helyetted, neked csak az ajándékot kell megvenni.
-
-https://kashcal.onekash.org

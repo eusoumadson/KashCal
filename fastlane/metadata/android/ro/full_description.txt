@@ -1,9 +1,0 @@
-Calendarul familiei stă în iCloud, munca în Google, iar Nextcloud-ul tău bâzâie într-un dulap lângă router. KashCal arată totul într-o singură aplicație.
-
-Fără reclame, fără cont și fără nicio idee ce-ai făcut astă-vară!
-
-Planifică săptămâna pe o pagină, tipărește-o pentru frigider și trimite-ți orele libere în loc de ping-pong pe e-mail. Abonează-te o dată la vacanțele școlare și la ridicarea gunoiului, și nu mai întreba pe grup.
-
-Open source, în 63 de limbi, făcut de oameni care uită și ei zilele de naștere. Acum aplicația și le amintește în locul tău, tu doar cumperi cadoul.
-
-https://kashcal.onekash.org

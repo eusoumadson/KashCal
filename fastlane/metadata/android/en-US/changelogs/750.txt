@@ -1,1 +1,0 @@
-• Fixed the account settings sheets jittering when dragged
