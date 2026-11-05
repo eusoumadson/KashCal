@@ -10,8 +10,10 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
@@ -34,6 +36,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -49,8 +52,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
@@ -2315,6 +2321,7 @@ private fun AgendaContent(
     val todayLabel = stringResource(R.string.label_today)
     val tomorrowLabel = stringResource(R.string.label_tomorrow)
     val relativeWithDateTemplate = stringResource(R.string.agenda_header_relative_with_date)
+    var expandedDays by remember { mutableStateOf(setOf<Int>()) } // FORK:tasks-org
 
     if (model.groups.isEmpty()) {
         Box(
@@ -2324,6 +2331,31 @@ private fun AgendaContent(
             Text(stringResource(R.string.empty_no_upcoming_events), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     } else {
+        @Composable
+        fun LazyItemScope.RenderAgendaItem(item: AgendaDisplayItem) {
+            val isPast = item.displayDay < todayDayCode
+            Column(modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) {
+                val taskItem = item.displayEvent as? DisplayEvent.Task // FORK:tasks-org
+                if (taskItem != null && onTaskCheckedChange != null) { // FORK:tasks-org
+                    TaskCard(
+                        displayEvent = taskItem,
+                        showEventEmojis = showEventEmojis,
+                        timePattern = timePattern,
+                        onCheckedChange = onTaskCheckedChange,
+                        onClick = { onEventClick(taskItem) }
+                    )
+                } else {
+                    AgendaCard(
+                        item = item,
+                        isPast = isPast,
+                        showEventEmojis = showEventEmojis,
+                        timePattern = timePattern,
+                        onClick = { onEventClick(item.displayEvent) }
+                    )
+                }
+            }
+        }
+
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -2366,39 +2398,156 @@ private fun AgendaContent(
                         )
                     }
                 }
-                items(
-                    items = group.items,
-                    key = { item ->
-                        when (val de = item.displayEvent) {
-                            is DisplayEvent.Room -> "room_${de.event.id}_${de.occurrence.startTs}_${item.displayDay}"
-                            is DisplayEvent.Device -> "device_${de.instance.instanceId}_${item.displayDay}"
-                            is DisplayEvent.Task -> "task_${de.task.id}_${item.displayDay}"
+
+                // FORK:tasks-org — group all-day tasks exceeding 1 into expandable stack card
+                val allDayTaskIndex = if (group.overflowTasks.isNotEmpty()) {
+                    group.items.indexOfFirst { it.displayEvent is DisplayEvent.Task && it.displayEvent.isAllDay }
+                } else {
+                    -1
+                }
+
+                if (allDayTaskIndex >= 0) {
+                    val beforeAndTask = group.items.subList(0, allDayTaskIndex + 1)
+                    items(
+                        items = beforeAndTask,
+                        key = { item ->
+                            when (val de = item.displayEvent) {
+                                is DisplayEvent.Room -> "room_${de.event.id}_${de.occurrence.startTs}_${item.displayDay}"
+                                is DisplayEvent.Device -> "device_${de.instance.instanceId}_${item.displayDay}"
+                                is DisplayEvent.Task -> "task_${de.task.id}_${item.displayDay}"
+                            }
+                        },
+                        contentType = { "agenda_card" }
+                    ) { item ->
+                        RenderAgendaItem(item)
+                    }
+
+                    item(key = "overflow_tasks_$displayDay", contentType = "task_stack") {
+                        val isExpanded = displayDay in expandedDays
+                        val count = group.overflowTasks.size
+                        val label = if (displayDay == todayDayCode) {
+                            stringResource(R.string.split_agenda_more_all_day_tasks_today, count)
+                        } else {
+                            stringResource(R.string.label_more_tasks_compact, count)
                         }
-                    },
-                    contentType = { "agenda_card" }
-                ) { item ->
-                    val isPast = item.displayDay < todayDayCode
-                    Column(modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) {
-                        val taskItem = item.displayEvent as? DisplayEvent.Task // FORK:tasks-org
-                        if (taskItem != null && onTaskCheckedChange != null) { // FORK:tasks-org
-                            TaskCard(
-                                displayEvent = taskItem,
-                                showEventEmojis = showEventEmojis,
-                                timePattern = timePattern,
-                                onCheckedChange = onTaskCheckedChange,
-                                onClick = { onEventClick(taskItem) }
+                        Column(
+                            modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            AgendaTaskStackCard(
+                                label = label,
+                                isExpanded = isExpanded,
+                                onClick = {
+                                    expandedDays = if (isExpanded) expandedDays - displayDay else expandedDays + displayDay
+                                }
                             )
-                        } else // FORK:tasks-org
-                        AgendaCard(
-                            item = item,
-                            isPast = isPast,
-                            showEventEmojis = showEventEmojis,
-                            timePattern = timePattern,
-                            onClick = { onEventClick(item.displayEvent) }
-                        )
+                            AnimatedVisibility(
+                                visible = isExpanded,
+                                enter = expandVertically() + fadeIn(),
+                                exit = shrinkVertically() + fadeOut()
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    group.overflowTasks.forEach { overflowItem ->
+                                        val taskItem = overflowItem.displayEvent as? DisplayEvent.Task
+                                        if (taskItem != null && onTaskCheckedChange != null) {
+                                            TaskCard(
+                                                displayEvent = taskItem,
+                                                showEventEmojis = showEventEmojis,
+                                                timePattern = timePattern,
+                                                onCheckedChange = onTaskCheckedChange,
+                                                onClick = { onEventClick(taskItem) }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    val afterTask = group.items.subList(allDayTaskIndex + 1, group.items.size)
+                    if (afterTask.isNotEmpty()) {
+                        items(
+                            items = afterTask,
+                            key = { item ->
+                                when (val de = item.displayEvent) {
+                                    is DisplayEvent.Room -> "room_${de.event.id}_${de.occurrence.startTs}_${item.displayDay}"
+                                    is DisplayEvent.Device -> "device_${de.instance.instanceId}_${item.displayDay}"
+                                    is DisplayEvent.Task -> "task_${de.task.id}_${item.displayDay}"
+                                }
+                            },
+                            contentType = { "agenda_card" }
+                        ) { item ->
+                            RenderAgendaItem(item)
+                        }
+                    }
+                } else {
+                    items(
+                        items = group.items,
+                        key = { item ->
+                            when (val de = item.displayEvent) {
+                                is DisplayEvent.Room -> "room_${de.event.id}_${de.occurrence.startTs}_${item.displayDay}"
+                                is DisplayEvent.Device -> "device_${de.instance.instanceId}_${item.displayDay}"
+                                is DisplayEvent.Task -> "task_${de.task.id}_${item.displayDay}"
+                            }
+                        },
+                        contentType = { "agenda_card" }
+                    ) { item ->
+                        RenderAgendaItem(item)
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Compact expandable card indicating stacked all-day tasks in the Agenda view.
+ */
+// FORK:tasks-org
+@Composable
+private fun AgendaTaskStackCard(
+    label: String,
+    isExpanded: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        tonalElevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = if (isExpanded) stringResource(R.string.cd_collapse) else null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

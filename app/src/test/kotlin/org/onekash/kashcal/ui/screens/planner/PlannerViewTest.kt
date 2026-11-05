@@ -50,6 +50,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.onekash.kashcal.data.tasks_org.TasksOrgTask
 import org.onekash.kashcal.domain.model.DisplayEvent
 import org.onekash.kashcal.domain.planner.PlannerTestEvents
 import org.onekash.kashcal.domain.planner.PlannerTestEvents.at
@@ -66,6 +67,7 @@ import org.robolectric.annotation.GraphicsMode
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Locale
@@ -126,6 +128,29 @@ class PlannerViewTest {
             id = id, startTs = at(date, hour, zone = zone), endTs = at(date, hour, zone = zone) + PlannerTestEvents.HOUR,
             zone = zone, title = title, status = status,
         )
+
+    private fun taskAllDay(id: Long, date: LocalDate, title: String): DisplayEvent.Task {
+        val dayCode = PlannerTestEvents.dayCode(date)
+        val ms = PlannerTestEvents.utcMidnight(date)
+        val task = TasksOrgTask(
+            id = id,
+            title = title,
+            notes = "",
+            dueTs = ms,
+            isAllDay = true,
+            startTs = ms,
+            endTs = ms,
+            startDay = dayCode,
+            endDay = dayCode,
+            completedAt = null,
+            recurrence = null,
+            listId = 1L,
+            listTitle = "List",
+            listColor = 0xFF2196F3.toInt(),
+            isReadOnly = false
+        )
+        return DisplayEvent.Task(task, ZoneOffset.UTC)
+    }
 
     /** The theme's colours, read inside the composition. */
     private var scheme: ColorScheme? = null
@@ -854,5 +879,25 @@ class PlannerViewTest {
             0,
             rule.onAllNodes(hasText("Free day") and hasAnyAncestor(hasTestTag("planner_day_20261022"))).fetchSemanticsNodes().size,
         )
+    }
+
+    @Test
+    fun `multiple all-day tasks are consolidated into a single summary line preserving timed events`() {
+        val tasks = (1..8).map { taskAllDay(it.toLong(), mon, "Task $it") }
+        val meeting1 = timed(101L, mon, 9, "Daily Sync")
+        val meeting2 = timed(102L, mon, 14, "Planning Call")
+        val calls = show(stateOf(*(tasks + listOf(meeting1, meeting2)).toTypedArray()))
+
+        val monDayCode = PlannerTestEvents.dayCode(mon)
+        // 1. Task summary ribbon is rendered
+        rule.onNode(hasTestTag("planner_task_summary") and inBox(monDayCode)).assertExists()
+
+        // 2. Both timed meetings are placed and visible in the box (not obscured by 8 ribbons)
+        rule.onNode(hasText("Daily Sync") and inBox(monDayCode)).assertExists()
+        rule.onNode(hasText("Planning Call") and inBox(monDayCode)).assertExists()
+
+        // 3. Clicking the summary ribbon triggers day click to show all day events
+        rule.onNode(hasTestTag("planner_task_summary") and inBox(monDayCode)).performClick()
+        assertEquals(1, calls.dayClicks.size)
     }
 }

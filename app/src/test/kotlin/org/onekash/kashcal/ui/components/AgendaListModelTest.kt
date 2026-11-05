@@ -7,6 +7,7 @@ import org.junit.runner.RunWith
 import org.onekash.kashcal.data.db.entity.Calendar
 import org.onekash.kashcal.data.db.entity.Event
 import org.onekash.kashcal.data.db.entity.Occurrence
+import org.onekash.kashcal.data.tasks_org.TasksOrgTask
 import org.onekash.kashcal.domain.model.DisplayEvent
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -39,6 +40,34 @@ class AgendaListModelTest {
     private fun utcMidnight(dayCode: Int): Long =
         LocalDate.of(dayCode / 10000, dayCode / 100 % 100, dayCode % 100)
             .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+
+    private fun taskEvent(
+        id: Long,
+        dayCode: Int,
+        isAllDay: Boolean = true,
+        title: String = "Task $id",
+        startTs: Long = 0L
+    ): DisplayEvent.Task {
+        val start = if (isAllDay) utcMidnight(dayCode) else utcMidnight(dayCode) + startTs
+        val task = TasksOrgTask(
+            id = id,
+            title = title,
+            notes = "",
+            dueTs = start,
+            isAllDay = isAllDay,
+            startTs = start,
+            endTs = start,
+            startDay = dayCode,
+            endDay = dayCode,
+            completedAt = null,
+            recurrence = null,
+            listId = 1L,
+            listTitle = "List",
+            listColor = 0xFF2196F3.toInt(),
+            isReadOnly = false
+        )
+        return DisplayEvent.Task(task, ZoneOffset.UTC)
+    }
 
     @Test
     fun `single-day event yields one item with total day count 1`() {
@@ -134,5 +163,69 @@ class AgendaListModelTest {
         val model = buildAgendaListModel(emptyList(), todayDayCode = 20260718)
         assertTrue(model.groups.isEmpty())
         assertEquals(-1, resolveScrollTargetIndex(20260718, model))
+    }
+
+    @Test
+    fun `multiple all-day tasks are stacked leaving 1 task in items and rest in overflow`() {
+        val tasks = (1..8).map { taskEvent(it.toLong(), 20260718, isAllDay = true, title = "Task $it") }
+        val model = buildAgendaListModel(tasks, todayDayCode = 20260718)
+
+        assertEquals(1, model.groups.size)
+        val group = model.groups[0]
+        assertEquals(20260718, group.dayCode)
+        assertEquals(1, group.items.size)
+        assertEquals("Task 1", (group.items[0].displayEvent as DisplayEvent.Task).task.title)
+        assertEquals(7, group.overflowTasks.size)
+        assertEquals((2..8).map { "Task $it" }, group.overflowTasks.map { (it.displayEvent as DisplayEvent.Task).task.title })
+    }
+
+    @Test
+    fun `day with 8 all-day tasks and 2 timed meetings preserves meetings in items and offsets header index`() {
+        val tasks = (1..8).map { taskEvent(it.toLong(), 20260718, isAllDay = true, title = "Task $it") }
+        val meeting1 = roomEvent(3_600_000L, 20260718, title = "Meeting 1")
+        val meeting2 = roomEvent(7_200_000L, 20260718, title = "Meeting 2")
+        val nextDayEvent = roomEvent(1_000L, 20260719, title = "Tomorrow Event")
+
+        val model = buildAgendaListModel(tasks + listOf(meeting1, meeting2, nextDayEvent), todayDayCode = 20260718)
+
+        assertEquals(2, model.groups.size)
+        val group1 = model.groups[0]
+        // 1st task + 2 meetings = 3 items in group1.items
+        assertEquals(3, group1.items.size)
+        assertEquals(7, group1.overflowTasks.size)
+
+        // Flat indices:
+        // Group 1 header = index 0.
+        // Group 1 elements: 1 header + 3 items + 1 overflow card = 5.
+        // Group 2 header = index 5.
+        assertEquals(0, model.headerIndexByDayCode[20260718])
+        assertEquals(5, model.headerIndexByDayCode[20260719])
+    }
+
+    @Test
+    fun `single all-day task produces no overflow`() {
+        val singleTask = taskEvent(1L, 20260718, isAllDay = true)
+        val meeting = roomEvent(3_600_000L, 20260718, title = "Meeting")
+
+        val model = buildAgendaListModel(listOf(singleTask, meeting), todayDayCode = 20260718)
+
+        assertEquals(1, model.groups.size)
+        val group = model.groups[0]
+        assertEquals(2, group.items.size)
+        assertTrue(group.overflowTasks.isEmpty())
+        assertEquals(0, model.headerIndexByDayCode[20260718])
+    }
+
+    @Test
+    fun `multiple timed tasks are not grouped into all-day overflow`() {
+        val timedTasks = (1..5).map {
+            taskEvent(it.toLong(), 20260718, isAllDay = false, title = "Timed Task $it", startTs = it * 1000L)
+        }
+        val model = buildAgendaListModel(timedTasks, todayDayCode = 20260718)
+
+        assertEquals(1, model.groups.size)
+        val group = model.groups[0]
+        assertEquals(5, group.items.size)
+        assertTrue(group.overflowTasks.isEmpty())
     }
 }

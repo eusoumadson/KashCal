@@ -60,21 +60,21 @@ Antes de implementar, leia:
 1. `AGENTS.md` e `docs/agents/architecture.md` — regras de arquitetura e comandos de build/teste
 2. `proposal.md`, `specs/` e `design.md` deste diretório de change — requisitos RIGID, cenários e decisões técnicas
 
-- [ ] T07 — Implementar empilhamento de tarefas de dia todo na tela de Agenda
+- [x] T07 — Implementar empilhamento de tarefas de dia todo na tela de Agenda
       Arquivos: `app/src/main/kotlin/org/onekash/kashcal/ui/screens/HomeScreen.kt`, `app/src/main/kotlin/org/onekash/kashcal/ui/components/AgendaListModel.kt`, `app/src/test/kotlin/org/onekash/kashcal/ui/components/AgendaListModelTest.kt`
       Mudança: No `AgendaContent` / `buildAgendaListModel`, agrupar tarefas de dia todo que excedam 1 item em um card compacto expansível inline `+X tarefas`, mantendo as reuniões com horário visíveis na primeira dobra.
       Cobre: RF-03 (tasks-org-integration), AC-07
       Acceptance criteria: Quando um dia na Agenda tem 8 tarefas sem horário, apenas 1 card de tarefa e 1 card compacto de contagem são exibidos inicialmente.
       Testes: `app/src/test/kotlin/org/onekash/kashcal/ui/components/AgendaListModelTest.kt` — Testar agrupamento de tarefas de dia todo no modelo da Agenda.
 
-- [ ] T08 — Implementar consolidação de tarefas de dia todo no Planejador
+- [x] T08 — Implementar consolidação de tarefas de dia todo no Planejador
       Arquivos: `app/src/main/kotlin/org/onekash/kashcal/ui/screens/planner/PlannerView.kt`, `app/src/test/kotlin/org/onekash/kashcal/ui/screens/planner/PlannerViewTest.kt`
       Mudança: Em `PlannerDayBody` / `PlannerFitColumn`, sintetizar tarefas de dia todo em uma única linha de resumo de tarefas, desobstruindo a caixinha do dia para as linhas de eventos com horário.
       Cobre: RF-04 (tasks-org-integration), AC-08
       Acceptance criteria: Um dia no Planejador com múltiplas tarefas sem horário não aloca múltiplos ribbons individuais, reservando espaço para eventos cronológicos.
       Testes: `app/src/test/kotlin/org/onekash/kashcal/ui/screens/planner/PlannerViewTest.kt` — Validar renderização compacta de tarefas no dia do Planejador.
 
-- [ ] T09 — Implementar consolidação de tarefas de dia todo na grade e BottomSheet do Mês
+- [x] T09 — Implementar consolidação de tarefas de dia todo na grade e BottomSheet do Mês
       Arquivos: `app/src/main/kotlin/org/onekash/kashcal/ui/screens/monthfull/MonthFullSpanLayout.kt`, `app/src/main/kotlin/org/onekash/kashcal/ui/components/DayEventsSheet.kt`, `app/src/test/kotlin/org/onekash/kashcal/ui/screens/monthfull/MonthFullSpanLayoutTest.kt`
       Mudança: Consolidar tarefas de dia todo em slot único por dia em `computeMonthFullSpans`; aplicar o empilhamento condensado na exibição de tarefas em `DayEventsSheet`.
       Cobre: RF-04 (tasks-org-integration), AC-08
