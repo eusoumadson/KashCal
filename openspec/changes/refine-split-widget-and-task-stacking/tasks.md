@@ -26,28 +26,28 @@ Antes de implementar, leia:
 1. `AGENTS.md` e `docs/agents/architecture.md` — regras de arquitetura e comandos de build/teste
 2. `proposal.md`, `specs/` e `design.md` deste diretório de change — requisitos RIGID, cenários e decisões técnicas
 
-- [ ] T03 — Suprimir exibição de label 'Dia todo' para tarefas
+- [x] T03 — Suprimir exibição de label 'Dia todo' para tarefas
       Arquivos: `app/src/main/kotlin/org/onekash/kashcal/widget/WidgetEventRowContent.kt`, `app/src/main/kotlin/org/onekash/kashcal/widget/SplitAgendaWidgetContent.kt`, `app/src/test/kotlin/org/onekash/kashcal/widget/SplitAgendaWidgetContentTest.kt`
       Mudança: Modificar `EventRowInner` e `SplitEventRow` para não renderizar string de dia todo quando `event.isTask && event.isAllDay`, ocupando linha única no modo detalhado e sem coluna de horário no compacto.
       Cobre: RF-08, AC-04
       Acceptance criteria: O texto "Dia todo" não é emitido em nenhum nó de Text quando o item for uma tarefa.
       Testes: `app/src/test/kotlin/org/onekash/kashcal/widget/SplitAgendaWidgetContentTest.kt` — Validar renderização de task sem horário em modo compacto e detalhado.
 
-- [ ] T04 — Eliminar barra de ferramentas da coluna direita do widget
+- [x] T04 — Eliminar barra de ferramentas da coluna direita do widget
       Arquivos: `app/src/main/kotlin/org/onekash/kashcal/widget/SplitAgendaWidgetContent.kt`, `app/src/test/kotlin/org/onekash/kashcal/widget/SplitAgendaWidgetContentTest.kt`
       Mudança: Remover `Row` superior que continha `WidgetRefreshButton`, `WidgetAddButton` e o título `upcoming_widget_name`, fazendo a `LazyColumn` ocupar 100% da altura disponível.
       Cobre: RF-03, AC-01
       Acceptance criteria: A árvore de composables de `SplitAgendaListColumn` não contém instâncias de `WidgetRefreshButton` ou `WidgetAddButton`.
       Testes: `app/src/test/kotlin/org/onekash/kashcal/widget/SplitAgendaWidgetContentTest.kt` — Verificar ausência dos botões na composição do widget.
 
-- [ ] T05 — Redesenhar cabeçalho compacto de data na coluna esquerda com ano abreviado
+- [x] T05 — Redesenhar cabeçalho compacto de data na coluna esquerda com ano abreviado
       Arquivos: `app/src/main/kotlin/org/onekash/kashcal/widget/SplitAgendaWidgetContent.kt`, `app/src/test/kotlin/org/onekash/kashcal/widget/SplitAgendaWidgetContentTest.kt`
       Mudança: Reestruturar o topo de `WideSplitLayout` para layout horizontal compacto (número do dia em bloco à esquerda, dia da semana abreviado e mês com ano abreviado `Nov '26` à direita), com altura total <= 36dp.
       Cobre: RF-02, AC-02
       Acceptance criteria: O cabeçalho exibe o ano formatado em 2 dígitos (ex: `'26`) e o container de data tem altura reduzida.
       Testes: `app/src/test/kotlin/org/onekash/kashcal/widget/SplitAgendaWidgetContentTest.kt` — Validar formatação e disposição do cabeçalho da data.
 
-- [ ] T06 — Implementar renderização das pills de empilhamento e navegação por convenção
+- [x] T06 — Implementar renderização das pills de empilhamento e navegação por convenção
       Arquivos: `app/src/main/kotlin/org/onekash/kashcal/widget/SplitAgendaWidgetContent.kt`, `app/src/test/kotlin/org/onekash/kashcal/widget/SplitAgendaWidgetContentTest.kt`
       Mudança: Renderizar composables para `AllDayEventStack` e `AllDayTaskStack`; configurar intents de clique direcionando toques na coluna esquerda, pilhas e eventos para o KashCal (MainActivity), e checkbox para conclusão inline.
       Cobre: RF-08, RF-09, AC-05, AC-06
