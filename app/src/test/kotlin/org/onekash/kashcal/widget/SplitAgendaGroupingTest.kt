@@ -109,10 +109,10 @@ class SplitAgendaGroupingTest {
         assertFalse(eventRows[0].event.isPast)
     }
 
-    // ==================== 3. Mandatory "Hoje" Section When Empty ====================
+    // ==================== 3. Omission of Today When Empty & Window Advancement ====================
 
     @Test
-    fun `today section is always present with EmptyTodayNotice when eventsByDay is empty`() {
+    fun `when eventsByDay is empty list is empty without today header`() {
         val today = 20260428
         val items = buildSplitUpcomingItems(
             eventsByDay = emptyMap(),
@@ -121,68 +121,60 @@ class SplitAgendaGroupingTest {
             maxEventsPerDay = 3
         )
 
-        assertEquals(2, items.size)
-        assertTrue(items[0] is SplitAgendaItem.DayHeader)
-        val header = items[0] as SplitAgendaItem.DayHeader
-        assertEquals(today, header.dayCode)
-        assertEquals("Hoje", header.label)
-        assertEquals(0, header.eventCount)
-
-        assertTrue(items[1] is SplitAgendaItem.EmptyTodayNotice)
-        val notice = items[1] as SplitAgendaItem.EmptyTodayNotice
-        assertEquals(today, notice.dayCode)
-        assertEquals("Nenhum evento hoje", notice.message)
+        assertTrue(items.isEmpty())
     }
 
     @Test
-    fun `today section emits EmptyTodayNotice when all today events are past`() {
+    fun `today is omitted and window advances when all today events are past`() {
         val today = 20260428
         val tomorrow = 20260429
+        val day2 = 20260430
         val pastEvent = makeEvent(eventId = 1, isPast = true, startDay = today)
         val tomorrowEvent = makeEvent(eventId = 2, isPast = false, startDay = tomorrow)
+        val day2Event = makeEvent(eventId = 3, isPast = false, startDay = day2)
 
         val items = buildSplitUpcomingItems(
             eventsByDay = mapOf(
                 today to listOf(pastEvent),
-                tomorrow to listOf(tomorrowEvent)
+                tomorrow to listOf(tomorrowEvent),
+                day2 to listOf(day2Event)
             ),
             todayDayCode = today,
             nowMs = 1000L,
             maxEventsPerDay = 3
         )
 
-        // Today header + EmptyTodayNotice, followed by Tomorrow header + tomorrowEvent
+        // Today omitted: Tomorrow header + tomorrowEvent, followed by Day+2 header + day2Event
         assertEquals(4, items.size)
         assertTrue(items[0] is SplitAgendaItem.DayHeader)
-        assertEquals(today, (items[0] as SplitAgendaItem.DayHeader).dayCode)
+        assertEquals(tomorrow, (items[0] as SplitAgendaItem.DayHeader).dayCode)
+        assertEquals("Amanhã", (items[0] as SplitAgendaItem.DayHeader).label)
 
-        assertTrue(items[1] is SplitAgendaItem.EmptyTodayNotice)
-        assertEquals(today, (items[1] as SplitAgendaItem.EmptyTodayNotice).dayCode)
+        assertTrue(items[1] is SplitAgendaItem.EventRow)
+        assertEquals(tomorrow, (items[1] as SplitAgendaItem.EventRow).dayCode)
+        assertEquals(2L, (items[1] as SplitAgendaItem.EventRow).event.eventId)
 
         assertTrue(items[2] is SplitAgendaItem.DayHeader)
-        assertEquals(tomorrow, (items[2] as SplitAgendaItem.DayHeader).dayCode)
-        assertEquals("Amanhã", (items[2] as SplitAgendaItem.DayHeader).label)
+        assertEquals(day2, (items[2] as SplitAgendaItem.DayHeader).dayCode)
 
         assertTrue(items[3] is SplitAgendaItem.EventRow)
-        assertEquals(tomorrow, (items[3] as SplitAgendaItem.EventRow).dayCode)
-        assertEquals(2L, (items[3] as SplitAgendaItem.EventRow).event.eventId)
+        assertEquals(day2, (items[3] as SplitAgendaItem.EventRow).dayCode)
+        assertEquals(3L, (items[3] as SplitAgendaItem.EventRow).event.eventId)
     }
 
-    // ==================== 4. Omission of Future Days Without Events ====================
+    // ==================== 4. Dynamic 2-Day Window Scope ====================
 
     @Test
     fun `future days without events are omitted`() {
         val today = 20260428
-        val dayAfterTomorrow = 20260430 // 2 days later, tomorrow (20260429) has no events
+        val tomorrow = 20260429
 
         val todayEvent = makeEvent(eventId = 1, title = "Today 1", isPast = false, startDay = today)
-        val day2Event = makeEvent(eventId = 2, title = "Day 2 Event", isPast = false, startDay = dayAfterTomorrow)
 
         val items = buildSplitUpcomingItems(
             eventsByDay = mapOf(
-                today to listOf(todayEvent),
-                // tomorrow is absent from map
-                dayAfterTomorrow to listOf(day2Event)
+                today to listOf(todayEvent)
+                // tomorrow has no events
             ),
             todayDayCode = today,
             nowMs = 1000L,
@@ -190,21 +182,20 @@ class SplitAgendaGroupingTest {
         )
 
         val headers = items.filterIsInstance<SplitAgendaItem.DayHeader>()
-        assertEquals(2, headers.size)
+        assertEquals(1, headers.size)
         assertEquals(today, headers[0].dayCode)
-        assertEquals(dayAfterTomorrow, headers[1].dayCode)
 
         // Verify tomorrow was completely omitted
-        assertFalse(items.any { (it as? SplitAgendaItem.DayHeader)?.dayCode == 20260429 })
+        assertFalse(items.any { (it as? SplitAgendaItem.DayHeader)?.dayCode == tomorrow })
     }
 
     @Test
-    fun `days outside the 3-day window are ignored`() {
+    fun `when today has events day2 is outside 2-day window and ignored`() {
         val yesterday = 20260427
         val today = 20260428
         val tomorrow = 20260429
         val day2 = 20260430
-        val day3 = 20260501 // 4th day (outside window)
+        val day3 = 20260501
 
         val items = buildSplitUpcomingItems(
             eventsByDay = mapOf(
@@ -219,10 +210,11 @@ class SplitAgendaGroupingTest {
             maxEventsPerDay = 5
         )
 
+        // Dynamic window is [today, tomorrow]. day2 and day3 are excluded.
         val headers = items.filterIsInstance<SplitAgendaItem.DayHeader>().map { it.dayCode }
-        assertEquals(listOf(today, tomorrow, day2), headers)
+        assertEquals(listOf(today, tomorrow), headers)
         val eventIds = items.filterIsInstance<SplitAgendaItem.EventRow>().map { it.event.eventId }
-        assertEquals(listOf(1L, 2L, 3L), eventIds)
+        assertEquals(listOf(1L, 2L), eventIds)
     }
 
     // ==================== 5. Application of maxEventsPerDay Only on Future Days ====================
@@ -260,11 +252,9 @@ class SplitAgendaGroupingTest {
         assertEquals(10L, tomorrowRendered[0].event.eventId)
         assertEquals(11L, tomorrowRendered[1].event.eventId)
 
-        // Day2 must be capped at 2
+        // Day2 is outside the 2-day window [today, tomorrow], so it is not rendered
         val day2Rendered = items.filterIsInstance<SplitAgendaItem.EventRow>().filter { it.dayCode == day2 }
-        assertEquals(2, day2Rendered.size)
-        assertEquals(20L, day2Rendered[0].event.eventId)
-        assertEquals(21L, day2Rendered[1].event.eventId)
+        assertEquals(0, day2Rendered.size)
     }
 
     // ==================== 6. Grouping Pending and Completed Tasks ====================
@@ -319,14 +309,14 @@ class SplitAgendaGroupingTest {
 
     @Test
     fun `header labels format correctly across month and year boundaries`() {
-        // Cross month boundary: April 30 -> May 1 (Tomorrow) -> May 2 (Day+2)
+        // Cross month boundary: April 30 (empty/past) -> May 1 (Tomorrow) -> May 2 (Day+2)
         val todayApr30 = 20260430
         val tomorrowMay1 = 20260501
         val dayMay2 = 20260502
 
         val itemsMonthEnd = buildSplitUpcomingItems(
             eventsByDay = mapOf(
-                todayApr30 to listOf(makeEvent(eventId = 1, startDay = todayApr30)),
+                todayApr30 to listOf(makeEvent(eventId = 1, isPast = true, startDay = todayApr30)),
                 tomorrowMay1 to listOf(makeEvent(eventId = 2, startDay = tomorrowMay1)),
                 dayMay2 to listOf(makeEvent(eventId = 3, startDay = dayMay2))
             ),
@@ -337,11 +327,10 @@ class SplitAgendaGroupingTest {
         )
 
         val headers = itemsMonthEnd.filterIsInstance<SplitAgendaItem.DayHeader>()
-        assertEquals(3, headers.size)
-        assertEquals("Hoje", headers[0].label)
-        assertEquals("Amanhã", headers[1].label)
+        assertEquals(2, headers.size)
+        assertEquals("Amanhã", headers[0].label)
         // 2026-05-02 is Saturday
-        assertEquals("Sat, May 2", headers[2].label)
+        assertEquals("Sat, May 2", headers[1].label)
     }
 
     @Test
@@ -351,22 +340,18 @@ class SplitAgendaGroupingTest {
 
         val items = buildSplitUpcomingItems(
             eventsByDay = mapOf(
-                today to emptyList(),
-                tomorrow to listOf(makeEvent(eventId = 1, startDay = tomorrow))
+                today to listOf(makeEvent(eventId = 1, startDay = today)),
+                tomorrow to listOf(makeEvent(eventId = 2, startDay = tomorrow))
             ),
             todayDayCode = today,
             nowMs = 1000L,
             maxEventsPerDay = 3,
             todayLabel = "Today",
-            tomorrowLabel = "Tomorrow",
-            emptyNoticeMessage = "No events today"
+            tomorrowLabel = "Tomorrow"
         )
 
         val headerToday = items[0] as SplitAgendaItem.DayHeader
         assertEquals("Today", headerToday.label)
-
-        val noticeToday = items[1] as SplitAgendaItem.EmptyTodayNotice
-        assertEquals("No events today", noticeToday.message)
 
         val headerTomorrow = items[2] as SplitAgendaItem.DayHeader
         assertEquals("Tomorrow", headerTomorrow.label)

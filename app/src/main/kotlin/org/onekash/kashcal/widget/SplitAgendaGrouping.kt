@@ -33,6 +33,20 @@ sealed class SplitAgendaItem {
     ) : SplitAgendaItem() {
         override val itemId: Long get() = dayCode.toLong() * 100_000L + 999_999L
     }
+
+    data class AllDayEventStack(
+        val dayCode: Int,
+        val count: Int
+    ) : SplitAgendaItem() {
+        override val itemId: Long get() = dayCode.toLong() * 100_000L + 999_997L
+    }
+
+    data class AllDayTaskStack(
+        val dayCode: Int,
+        val count: Int
+    ) : SplitAgendaItem() {
+        override val itemId: Long get() = dayCode.toLong() * 100_000L + 999_998L
+    }
 }
 
 /**
@@ -85,13 +99,14 @@ internal fun formatSplitAgendaDayHeader(
  * Pure grouping engine for SplitAgendaWidget upcoming events and tasks list.
  *
  * Requirements:
- * - RF-04 / AC-04: Enforces a 3-day window (today, tomorrow, tomorrow+1).
+ * - RF-04 / AC-03: Dynamic 2-day window (Today + Tomorrow if today has future/in-progress events;
+ *   advances automatically to Tomorrow + Day+2 when today has no remaining events).
  *   Filters out past events on today (`isPast == true`), keeping in-progress (`isPast == false`)
  *   and future events.
- * - RF-05 / AC-05: Mandatory "Hoje" section even when empty (emits [SplitAgendaItem.EmptyTodayNotice]).
+ * - RF-05: Today is omitted completely when it has no non-past events.
  *   Future days without events are omitted.
- * - RF-06 / AC-06: Today loads all remaining non-past events (not capped by [maxEventsPerDay]).
- *   Future days (tomorrow and tomorrow+1) cap their events at [maxEventsPerDay].
+ * - RF-06: Today loads all remaining non-past events (not capped by [maxEventsPerDay]).
+ *   Future days (tomorrow and subsequent days) cap their events at [maxEventsPerDay].
  *   Preserves tasks (both pending and completed) wrapped in [SplitAgendaItem.EventRow].
  */
 fun buildSplitUpcomingItems(
@@ -110,54 +125,38 @@ fun buildSplitUpcomingItems(
     val day1 = addDaysToSplitDayCode(todayDayCode, 1)
     val day2 = addDaysToSplitDayCode(todayDayCode, 2)
 
-    // 1. Mandatory "Hoje" section
     val rawTodayEvents = eventsByDay[day0].orEmpty()
     val todayKept = rawTodayEvents.filterNot { it.isPast }
-    val todayHeaderLabel = formatSplitAgendaDayHeader(
-        dayCode = day0,
-        todayDayCode = todayDayCode,
-        todayLabel = todayLabel,
-        tomorrowLabel = tomorrowLabel,
-        locale = locale
-    )
 
-    items.add(
-        SplitAgendaItem.DayHeader(
-            dayCode = day0,
-            label = todayHeaderLabel,
-            eventCount = todayKept.size
-        )
-    )
-
-    if (todayKept.isEmpty()) {
-        items.add(
-            SplitAgendaItem.EmptyTodayNotice(
-                dayCode = day0,
-                message = emptyNoticeMessage
-            )
-        )
+    // Dynamic 2-day window:
+    // If today has non-past events: [Today, Tomorrow]
+    // If today has NO non-past events: [Tomorrow, Day+2]
+    val targetDays = if (todayKept.isNotEmpty()) {
+        listOf(day0, day1)
     } else {
-        todayKept.forEach { event ->
-            items.add(SplitAgendaItem.EventRow(dayCode = day0, event = event))
-        }
+        listOf(day1, day2)
     }
 
-    // 2. Future days within 3-day window: Tomorrow (day1) and Day+2 (day2)
-    val futureDays = listOf(day1, day2)
-    for (dayCode in futureDays) {
-        val rawFutureEvents = eventsByDay[dayCode].orEmpty()
-        val futureKept = rawFutureEvents.filterNot { it.isPast }
+    for (dayCode in targetDays) {
+        val isToday = dayCode == day0
+        val dayKept = if (isToday) {
+            todayKept
+        } else {
+            eventsByDay[dayCode].orEmpty().filterNot { it.isPast }
+        }
 
-        if (futureKept.isEmpty()) {
-            // Future days without events are omitted completely
+        if (dayKept.isEmpty()) {
             continue
         }
 
-        // Apply maxEventsPerDay cap only on future days
-        val limitedEvents = if (maxEventsPerDay > 0) {
-            futureKept.take(maxEventsPerDay)
+        val allDayEvents = dayKept.filter { it.isAllDay && !it.isTask }
+        val allDayTasks = dayKept.filter { it.isAllDay && it.isTask }
+        val timedItems = dayKept.filterNot { it.isAllDay }
+
+        val limitedTimedItems = if (isToday || maxEventsPerDay <= 0) {
+            timedItems
         } else {
-            futureKept
+            timedItems.take(maxEventsPerDay)
         }
 
         val headerLabel = formatSplitAgendaDayHeader(
@@ -172,11 +171,38 @@ fun buildSplitUpcomingItems(
             SplitAgendaItem.DayHeader(
                 dayCode = dayCode,
                 label = headerLabel,
-                eventCount = limitedEvents.size
+                eventCount = allDayEvents.size + allDayTasks.size + limitedTimedItems.size
             )
         )
 
-        limitedEvents.forEach { event ->
+        // 1. All-day calendar events (1st item + stack pill if > 1)
+        if (allDayEvents.isNotEmpty()) {
+            items.add(SplitAgendaItem.EventRow(dayCode = dayCode, event = allDayEvents.first()))
+            if (allDayEvents.size > 1) {
+                items.add(
+                    SplitAgendaItem.AllDayEventStack(
+                        dayCode = dayCode,
+                        count = allDayEvents.size - 1
+                    )
+                )
+            }
+        }
+
+        // 2. All-day tasks (1st item + stack pill if > 1)
+        if (allDayTasks.isNotEmpty()) {
+            items.add(SplitAgendaItem.EventRow(dayCode = dayCode, event = allDayTasks.first()))
+            if (allDayTasks.size > 1) {
+                items.add(
+                    SplitAgendaItem.AllDayTaskStack(
+                        dayCode = dayCode,
+                        count = allDayTasks.size - 1
+                    )
+                )
+            }
+        }
+
+        // 3. Timed events and tasks rendered below stacks
+        limitedTimedItems.forEach { event ->
             items.add(SplitAgendaItem.EventRow(dayCode = dayCode, event = event))
         }
     }

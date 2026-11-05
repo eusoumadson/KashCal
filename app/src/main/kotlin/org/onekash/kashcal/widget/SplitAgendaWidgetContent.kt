@@ -360,6 +360,10 @@ private fun SplitAgendaListColumn(
                             message = item.message
                         )
                     }
+                    is SplitAgendaItem.AllDayEventStack,
+                    is SplitAgendaItem.AllDayTaskStack -> {
+                        // Handled in Phase 2 (T06)
+                    }
                 }
             }
         }
