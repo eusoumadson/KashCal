@@ -66,7 +66,7 @@ Antes de implementar, leia:
 1. `specs/fork-identity-distribution/spec.md` — RF-04 e AC-04
 2. `.github/workflows/release.yml` — estrutura atual de build e assinatura
 
-- [ ] T07 — Adaptar workflow de release do GitHub Actions
+- [x] T07 — Adaptar workflow de release do GitHub Actions
       Arquivos: `.github/workflows/release.yml`
       Mudança: Remover a condição restritiva `if: github.repository == 'KashCal/KashCal'`, renomear o artefato compilado para `AbacateCalendario-${{ steps.version.outputs.version }}-release.apk` e garantir publicação contínua em tags.
       Cobre: RF-04, AC-04
