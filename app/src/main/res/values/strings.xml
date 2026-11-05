@@ -2500,6 +2500,7 @@
     <string name="auto_backup_last_run">Last backup: %1$s</string>
     <string name="auto_backup_sheet_title">Automatic Backup</string>
     <string name="auto_backup_sheet_desc">Periodically export a backup JSON containing all settings and fork configurations to a chosen folder.</string>
+    <string name="auto_backup_fork_features_note">Settings backup includes KashCal options and advanced fork features (Tasks.org, Travel Time, and widgets).</string>
     <string name="auto_backup_folder_label">Backup folder</string>
     <string name="auto_backup_select_folder">Choose folder</string>
     <string name="auto_backup_change_folder">Change folder</string>

@@ -1785,6 +1785,7 @@
     <string name="auto_backup_last_run">Último backup: %1$s</string>
     <string name="auto_backup_sheet_title">Backup Automático</string>
     <string name="auto_backup_sheet_desc">Exporta periodicamente um arquivo JSON contendo todas as configurações do fork para uma pasta escolhida.</string>
+    <string name="auto_backup_fork_features_note">O backup de configurações engloba as opções do KashCal e os recursos avançados do fork (Tasks.org, Travel Time e widgets).</string>
     <string name="auto_backup_folder_label">Pasta de backup</string>
     <string name="auto_backup_select_folder">Escolher pasta</string>
     <string name="auto_backup_change_folder">Alterar pasta</string>

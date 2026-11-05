@@ -124,6 +124,7 @@ class AccountSettingsScreenComposeTest {
         var exportDebugReport = 0
         var exportCalendars = 0
         var calendarBackup = 0
+        var autoBackup = 0
     }
 
     /**
@@ -138,6 +139,8 @@ class AccountSettingsScreenComposeTest {
         backupSubtitle: String? = null,
         backupProblem: Boolean = false,
         calDavAccounts: MutableState<List<CalDavAccountUiModel>> = mutableStateOf(emptyList()),
+        autoBackupEnabled: Boolean = false,
+        autoBackupLastRunMs: Long = 0L,
     ) {
         composeTestRule.setContent {
             KashCalTheme {
@@ -190,6 +193,9 @@ class AccountSettingsScreenComposeTest {
                     onOpenCalendarBackup = { rec.calendarBackup++ },
                     calendarBackupSubtitle = backupSubtitle,
                     calendarBackupProblem = backupProblem,
+                    autoBackupEnabled = autoBackupEnabled,
+                    autoBackupLastRunMs = autoBackupLastRunMs,
+                    onOpenAutoBackup = { rec.autoBackup++ },
                     isSearchActive = searchQuery.isNotEmpty(),
                     searchQuery = searchQuery,
                     versionName = "1.0.0",
@@ -637,6 +643,53 @@ class AccountSettingsScreenComposeTest {
 
     @Test
     fun `a settings search for automatic finds automatic calendar backup`() = assertSearchFindsCalendarBackup("automatic")
+
+    // ==================== Automatic settings backup (FORK:auto-backup) ====================
+
+    @Test
+    fun `automatic settings backup sits in advanced features section`() {
+        render()
+        val adv = top("Advanced features")
+        val autoBackup = top("Automatic settings backup")
+        val eventPrefs = top("Event preferences")
+        assertTrue("after Advanced features header", autoBackup > adv)
+        assertTrue("before Event preferences header", autoBackup < eventPrefs)
+    }
+
+    @Test
+    fun `automatic settings backup opens sheet on tap`() {
+        val rec = Rec()
+        render(rec)
+        composeTestRule.onNodeWithText("Automatic settings backup").performClick()
+        assertEquals(1, rec.autoBackup)
+    }
+
+    @Test
+    fun `backup and restore section contains strictly native options in order`() {
+        render()
+        val tops = listOf(
+            "Backup & restore",
+            "Export calendars",
+            "Automatic calendar backup",
+            "Back up settings",
+            "Import events from file",
+            "Restore settings",
+            "Troubleshooting"
+        ).map { top(it) }
+        assertEquals(tops.sorted(), tops)
+        assertTrue(
+            "Automatic settings backup must precede Backup & restore section",
+            top("Automatic settings backup") < top("Backup & restore")
+        )
+    }
+
+    @Test
+    fun `a settings search for settings backup finds automatic settings backup`() {
+        val rec = Rec()
+        render(rec, searchQuery = "settings backup")
+        composeTestRule.onNodeWithText("Automatic settings backup", substring = true).performClick()
+        assertEquals(1, rec.autoBackup)
+    }
 
     // ==================== Troubleshooting ====================
 

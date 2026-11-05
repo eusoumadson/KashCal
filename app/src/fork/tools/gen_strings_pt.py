@@ -157,6 +157,7 @@ PT = {
 'auto_backup_last_run': 'Último backup: %1$s',
 'auto_backup_sheet_title': 'Backup Automático',
 'auto_backup_sheet_desc': 'Exporta periodicamente um arquivo JSON contendo todas as configurações do fork para uma pasta escolhida.',
+'auto_backup_fork_features_note': 'O backup de configurações engloba as opções do KashCal e os recursos avançados do fork (Tasks.org, Travel Time e widgets).',
 'auto_backup_folder_label': 'Pasta de backup',
 'auto_backup_select_folder': 'Escolher pasta',
 'auto_backup_change_folder': 'Alterar pasta',

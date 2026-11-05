@@ -722,6 +722,35 @@ fun AccountSettingsScreen(
                                 searchQuery = searchQuery
                             )
                         }
+
+                        // FORK:auto-backup
+                        val autoBackupSubtitle = if (autoBackupEnabled) {
+                            if (autoBackupLastRunMs > 0) {
+                                stringResource(
+                                    R.string.auto_backup_last_run,
+                                    DateTimeUtils.formatRelativeTime(autoBackupLastRunMs)
+                                )
+                            } else {
+                                stringResource(R.string.auto_backup_enabled_hint)
+                            }
+                        } else {
+                            stringResource(R.string.auto_backup_disabled_hint)
+                        }
+                        row(
+                            label = stringResource(R.string.auto_backup_label),
+                            subtitle = autoBackupSubtitle,
+                            id = "auto-backup"
+                        ) {
+                            SettingsRow(
+                                icon = Icons.Default.History,
+                                label = stringResource(R.string.auto_backup_label),
+                                subtitle = autoBackupSubtitle,
+                                onClick = onOpenAutoBackup,
+                                showChevron = false,
+                                showDivider = false,
+                                searchQuery = searchQuery
+                            )
+                        }
                     }
 
                     // ==================== EVENT PREFERENCES Section ====================
@@ -928,34 +957,6 @@ fun AccountSettingsScreen(
                                 label = stringResource(R.string.restore_settings_label),
                                 subtitle = stringResource(R.string.restore_settings_subtitle),
                                 onClick = onRestoreSettings,
-                                showChevron = false,
-                                showDivider = false,
-                                searchQuery = searchQuery
-                            )
-                        }
-                        // FORK:auto-backup
-                        val autoBackupSubtitle = if (autoBackupEnabled) {
-                            if (autoBackupLastRunMs > 0) {
-                                stringResource(
-                                    R.string.auto_backup_last_run,
-                                    DateTimeUtils.formatRelativeTime(autoBackupLastRunMs)
-                                )
-                            } else {
-                                stringResource(R.string.auto_backup_enabled_hint)
-                            }
-                        } else {
-                            stringResource(R.string.auto_backup_disabled_hint)
-                        }
-                        row(
-                            label = stringResource(R.string.auto_backup_label),
-                            subtitle = autoBackupSubtitle,
-                            id = "auto-backup"
-                        ) {
-                            SettingsRow(
-                                icon = Icons.Default.History,
-                                label = stringResource(R.string.auto_backup_label),
-                                subtitle = autoBackupSubtitle,
-                                onClick = onOpenAutoBackup,
                                 showChevron = false,
                                 showDivider = false,
                                 searchQuery = searchQuery
