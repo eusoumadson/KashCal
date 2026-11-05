@@ -224,12 +224,14 @@ class SplitAgendaWidgetContentTest {
     fun `split date header formats year in two digits in pt-BR locale`() = runGlanceAppWidgetUnitTest(timeout = 15.seconds) {
         setContext(context)
         val testDate = LocalDate.of(2026, 11, 5)
+        val expectedDayOfWeek = testDate.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale.forLanguageTag("pt-BR")).uppercase()
 
         provideComposable {
             SplitDateHeader(today = testDate, locale = Locale.forLanguageTag("pt-BR"))
         }
 
         onNode(hasTextEqualTo("5")).assertExists()
+        onNode(hasTextEqualTo(expectedDayOfWeek)).assertExists()
         onNode(hasText("'26")).assertExists()
     }
 

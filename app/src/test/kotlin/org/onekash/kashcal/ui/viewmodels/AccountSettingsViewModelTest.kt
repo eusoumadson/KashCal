@@ -80,6 +80,9 @@ import org.onekash.kashcal.ui.shared.EventColorPalette
 import org.onekash.kashcal.ui.shared.maskEmail
 import org.onekash.kashcal.ui.util.UiMessage
 import org.onekash.kashcal.widget.WidgetUpdateManager
+import org.onekash.kashcal.data.tasks_org.TasksOrgAccount // FORK:tasks-org
+import org.onekash.kashcal.data.tasks_org.TasksOrgList // FORK:tasks-org
+import org.onekash.kashcal.domain.tasks.TasksOrgCoordinator // FORK:tasks-org
 import java.util.UUID
 import org.onekash.kashcal.testutil.plainImportFile
 import kotlinx.coroutines.withContext
@@ -310,6 +313,7 @@ class AccountSettingsViewModelTest {
 
     private fun createViewModel(
         savedStateHandle: androidx.lifecycle.SavedStateHandle = androidx.lifecycle.SavedStateHandle(),
+        tasksOrgCoordinator: TasksOrgCoordinator? = null,
     ): AccountSettingsViewModel {
         // Stubs context.getString for the strings tests assert on, so messages are stable under
         // the relaxed mock.
@@ -349,6 +353,7 @@ class AccountSettingsViewModelTest {
             context = stubContext,
             applicationScope = applicationScope,
             savedStateHandle = savedStateHandle,
+            tasksOrgCoordinator = tasksOrgCoordinator,
         )
     }
 
@@ -5152,5 +5157,114 @@ class AccountSettingsViewModelTest {
         appDispatcher.scheduler.advanceUntilIdle()
         advanceUntilIdle()
         assertFalse(rowsOf(viewModel, 7L).single().isBusy)
+    }
+
+    // ==================== FORK:tasks-org VTODO Filtering ====================
+
+    @Test
+    fun `loadDeviceCalendars filters out device calendars matching tasks org lists when tasksOrgEnabled is true`() = runTest {
+        permissionChecker.calendarRead = true
+        coEvery { dataStore.deviceCalendarsEnabled } returns MutableStateFlow(true)
+        coEvery { dataStore.getEnabledDeviceCalendarIds() } returns setOf(1L, 2L, 3L)
+        coEvery { dataStore.getTasksOrgEnabled() } returns true
+
+        val vtodoCal = DeviceCalendar(
+            id = 1L,
+            displayName = "Lembretes Comuns",
+            color = 0,
+            accountName = "Abacate Calendários",
+            accountType = "caldav",
+            visible = true,
+            accessLevel = 700
+        )
+        val normalCal = DeviceCalendar(
+            id = 2L,
+            displayName = "Trabalho",
+            color = 0,
+            accountName = "Abacate Calendários",
+            accountType = "caldav",
+            visible = true,
+            accessLevel = 700
+        )
+        val otherAccountCal = DeviceCalendar(
+            id = 3L,
+            displayName = "Lembretes Comuns",
+            color = 0,
+            accountName = "Google",
+            accountType = "com.google",
+            visible = true,
+            accessLevel = 700
+        )
+        calendarProviderRepository.calendars = listOf(vtodoCal, normalCal, otherAccountCal)
+
+        val coordinator = mockk<TasksOrgCoordinator>(relaxed = true)
+        val enabledFlow = MutableStateFlow(true)
+        every { coordinator.enabled } returns enabledFlow
+        every { coordinator.hiddenListIds } returns MutableStateFlow(emptySet())
+        every { coordinator.tasksInWidgetsEnabled } returns MutableStateFlow(false)
+        every { coordinator.isInstalled() } returns true
+        every { coordinator.hasReadPermission() } returns true
+        every { coordinator.hasWritePermission() } returns true
+        coEvery { coordinator.getAccounts() } returns listOf(
+            TasksOrgAccount(id = 10L, name = "Abacate Calendários", type = "caldav", error = "", repeatsOnServer = false)
+        )
+        coEvery { coordinator.getLists() } returns listOf(
+            TasksOrgList(id = 100L, title = "Lembretes Comuns", color = 0, isReadOnly = false, accountId = 10L)
+        )
+
+        val viewModel = createViewModel(tasksOrgCoordinator = coordinator)
+        advanceUntilIdle()
+
+        val resultIds = viewModel.deviceCalendars.value.map { it.id }
+        assertEquals(listOf(2L, 3L), resultIds)
+    }
+
+    @Test
+    fun `loadDeviceCalendars preserves all calendars when tasksOrgEnabled is false`() = runTest {
+        permissionChecker.calendarRead = true
+        coEvery { dataStore.deviceCalendarsEnabled } returns MutableStateFlow(true)
+        coEvery { dataStore.getEnabledDeviceCalendarIds() } returns setOf(1L, 2L, 3L)
+        coEvery { dataStore.getTasksOrgEnabled() } returns false
+
+        val vtodoCal = DeviceCalendar(
+            id = 1L,
+            displayName = "Lembretes Comuns",
+            color = 0,
+            accountName = "Abacate Calendários",
+            accountType = "caldav",
+            visible = true,
+            accessLevel = 700
+        )
+        val normalCal = DeviceCalendar(
+            id = 2L,
+            displayName = "Trabalho",
+            color = 0,
+            accountName = "Abacate Calendários",
+            accountType = "caldav",
+            visible = true,
+            accessLevel = 700
+        )
+        calendarProviderRepository.calendars = listOf(vtodoCal, normalCal)
+
+        val coordinator = mockk<TasksOrgCoordinator>(relaxed = true)
+        val enabledFlow = MutableStateFlow(false)
+        every { coordinator.enabled } returns enabledFlow
+        every { coordinator.hiddenListIds } returns MutableStateFlow(emptySet())
+        every { coordinator.tasksInWidgetsEnabled } returns MutableStateFlow(false)
+        every { coordinator.isInstalled() } returns true
+        every { coordinator.hasReadPermission() } returns true
+        every { coordinator.hasWritePermission() } returns true
+        coEvery { coordinator.getAccounts() } returns listOf(
+            TasksOrgAccount(id = 10L, name = "Abacate Calendários", type = "caldav", error = "", repeatsOnServer = false)
+        )
+        coEvery { coordinator.getLists() } returns listOf(
+            TasksOrgList(id = 100L, title = "Lembretes Comuns", color = 0, isReadOnly = false, accountId = 10L)
+        )
+
+        val viewModel = createViewModel(tasksOrgCoordinator = coordinator)
+        advanceUntilIdle()
+
+        val resultIds = viewModel.deviceCalendars.value.map { it.id }
+        assertEquals(listOf(1L, 2L), resultIds)
     }
 }

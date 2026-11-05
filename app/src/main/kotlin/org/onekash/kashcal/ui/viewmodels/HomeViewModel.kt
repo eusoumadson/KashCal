@@ -105,6 +105,7 @@ import org.onekash.kashcal.data.tasks_org.TasksOrgTask // FORK:tasks-org
 import org.onekash.kashcal.domain.tasks.TaskCompletionResult // FORK:tasks-org
 import org.onekash.kashcal.domain.tasks.TaskCompletionUndo // FORK:tasks-org
 import org.onekash.kashcal.domain.tasks.TasksOrgCoordinator // FORK:tasks-org
+import org.onekash.kashcal.domain.tasks.TasksOrgVTodoFilter // FORK:tasks-org
 import org.onekash.kashcal.ui.components.hub.normalizeInitials
 import org.onekash.kashcal.ui.components.weekview.WeekViewUtils
 import org.onekash.kashcal.ui.model.CalendarGroup
@@ -1675,9 +1676,12 @@ class HomeViewModel(
                     eventCoordinator.getAllCalendars(),
                     eventCoordinator.getAllAccounts(),
                     dataStore.defaultCalendar,
-                    dataStore.deviceCalendarsEnabled,
-                    dataStore.enabledDeviceCalendarIds
-                ) { calendars, accounts, userPrefDefault, deviceEnabled, enabledIds ->
+                    combine(
+                        dataStore.deviceCalendarsEnabled,
+                        dataStore.enabledDeviceCalendarIds,
+                        tasksOrgCoordinator?.enabled ?: flowOf(false) // FORK:tasks-org
+                    ) { devEnabled, devIds, _ -> devEnabled to devIds }
+                ) { calendars, accounts, userPrefDefault, (deviceEnabled, enabledIds) ->
                     val validatedDefault = when (userPrefDefault) {
                         is DefaultCalendar.Room -> {
                             if (calendars.any { it.id == userPrefDefault.calendarId }) userPrefDefault
@@ -1693,7 +1697,14 @@ class HomeViewModel(
                         icsLabel = context.getString(R.string.subscriptions_title),
                         localizeCalendarName = { it.localizedDisplayName(context.resources) }
                     )
-                    val deviceCalendars = deviceEventReader.getEnabledDeviceCalendars(deviceEnabled, enabledIds)
+                    var deviceCalendars = deviceEventReader.getEnabledDeviceCalendars(deviceEnabled, enabledIds)
+                    // FORK:tasks-org
+                    val coordinator = tasksOrgCoordinator
+                    if (coordinator != null && dataStore.getTasksOrgEnabled() && coordinator.hasReadPermission()) {
+                        val taskAccounts = coordinator.getAccounts()
+                        val taskLists = coordinator.getLists()
+                        deviceCalendars = TasksOrgVTodoFilter.filterDeviceCalendars(deviceCalendars, taskAccounts, taskLists)
+                    }
                     val deviceGroups = CalendarGroup.fromDeviceCalendars(deviceCalendars, writableOnly = true)
                     CalendarsSnapshot(calendars, groups, validatedDefault, deviceGroups)
                 }.collect { snap ->
@@ -1738,7 +1749,14 @@ class HomeViewModel(
                     )
                     val deviceEnabled = dataStore.getDeviceCalendarsEnabled()
                     val enabledIds = dataStore.getEnabledDeviceCalendarIds()
-                    val deviceCalendars = deviceEventReader.getEnabledDeviceCalendars(deviceEnabled, enabledIds)
+                    var deviceCalendars = deviceEventReader.getEnabledDeviceCalendars(deviceEnabled, enabledIds)
+                    // FORK:tasks-org
+                    val coordinator = tasksOrgCoordinator
+                    if (coordinator != null && dataStore.getTasksOrgEnabled() && coordinator.hasReadPermission()) {
+                        val taskAccounts = coordinator.getAccounts()
+                        val taskLists = coordinator.getLists()
+                        deviceCalendars = TasksOrgVTodoFilter.filterDeviceCalendars(deviceCalendars, taskAccounts, taskLists)
+                    }
                     val deviceGroups = CalendarGroup.fromDeviceCalendars(deviceCalendars, writableOnly = true)
                     CalendarsSnapshot(cals, calGroups, validDefault, deviceGroups)
                 }
@@ -1768,11 +1786,19 @@ class HomeViewModel(
         viewModelScope.launch {
             combine(
                 dataStore.deviceCalendarsEnabled,
-                dataStore.enabledDeviceCalendarIds
-            ) { enabled, enabledIds ->
+                dataStore.enabledDeviceCalendarIds,
+                tasksOrgCoordinator?.enabled ?: flowOf(false) // FORK:tasks-org
+            ) { enabled, enabledIds, _ ->
                 Pair(enabled, enabledIds)
             }.collect { (enabled, enabledIds) ->
-                val deviceCalendars = deviceEventReader.getEnabledDeviceCalendars(enabled, enabledIds)
+                var deviceCalendars = deviceEventReader.getEnabledDeviceCalendars(enabled, enabledIds)
+                // FORK:tasks-org
+                val coordinator = tasksOrgCoordinator
+                if (coordinator != null && dataStore.getTasksOrgEnabled() && coordinator.hasReadPermission()) {
+                    val taskAccounts = coordinator.getAccounts()
+                    val taskLists = coordinator.getLists()
+                    deviceCalendars = TasksOrgVTodoFilter.filterDeviceCalendars(deviceCalendars, taskAccounts, taskLists)
+                }
                 _uiState.update {
                     it.copy(
                         deviceCalendarsEnabled = enabled,

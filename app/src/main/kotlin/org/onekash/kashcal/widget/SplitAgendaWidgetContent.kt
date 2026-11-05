@@ -125,14 +125,14 @@ private fun WideSplitLayout(
             // Tapping header goes to today in KashCal
             SplitDateHeader(today = today, locale = locale)
 
-            Spacer(modifier = GlanceModifier.height(4.dp))
+            Spacer(modifier = GlanceModifier.height(2.dp))
             Spacer(
                 modifier = GlanceModifier
                     .fillMaxWidth()
                     .height(1.dp)
                     .background(WidgetTheme.dimmedOnHeaderBackground)
             )
-            Spacer(modifier = GlanceModifier.height(4.dp))
+            Spacer(modifier = GlanceModifier.height(2.dp))
 
             // Day-of-week header letters row
             val orderedDays = DateTimeUtils.getOrderedDaysOfWeek(data.firstDayOfWeek)
@@ -264,7 +264,7 @@ internal fun SplitDateHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(32.dp)
+            .height(40.dp)
             .clickable(
                 actionStartActivity<MainActivity>(
                     parameters = actionParametersOf(

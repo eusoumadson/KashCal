@@ -62,6 +62,7 @@ import org.onekash.kashcal.domain.feeds.ServerCalendarFeeds
 import org.onekash.kashcal.domain.model.AccountProvider
 import org.onekash.kashcal.domain.reader.DeviceEventReader
 import org.onekash.kashcal.domain.reader.SyncLogReader
+import org.onekash.kashcal.domain.tasks.TasksOrgVTodoFilter // FORK:tasks-org
 import org.onekash.kashcal.domain.writer.DeviceEventWriter
 import org.onekash.kashcal.sync.discovery.AccountDiscoveryService
 import org.onekash.kashcal.sync.discovery.DiscoveredCalendar
@@ -931,6 +932,9 @@ class AccountSettingsViewModel @Inject constructor(
             coordinator.enabled.collect { enabled ->
                 _tasksOrgEnabled.value = enabled
                 refreshTasksOrg()
+                // FORK:tasks-org
+                loadDeviceCalendars()
+                loadWritableDeviceCalendars()
             }
         }
         viewModelScope.launch {
@@ -985,7 +989,14 @@ class AccountSettingsViewModel @Inject constructor(
     private suspend fun loadDeviceCalendars() {
         try {
             deviceEventWriter.pruneStaleCalendarIds()
-            val calendars = deviceEventReader.getDeviceCalendars()
+            var calendars = deviceEventReader.getDeviceCalendars()
+            // FORK:tasks-org
+            val coordinator = tasksOrgCoordinator
+            if (coordinator != null && dataStore.getTasksOrgEnabled() && coordinator.hasReadPermission()) {
+                val accounts = coordinator.getAccounts()
+                val lists = coordinator.getLists()
+                calendars = TasksOrgVTodoFilter.filterDeviceCalendars(calendars, accounts, lists)
+            }
             _deviceCalendars.value = calendars
         } catch (e: SecurityException) {
             Log.w(TAG, "Calendar permission revoked", e)
@@ -2618,7 +2629,14 @@ class AccountSettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val groups = if (_hasWriteCalendarPermission.value) {
                 try {
-                    val deviceCalendars = deviceEventReader.getDeviceCalendars()
+                    var deviceCalendars = deviceEventReader.getDeviceCalendars()
+                    // FORK:tasks-org
+                    val coordinator = tasksOrgCoordinator
+                    if (coordinator != null && dataStore.getTasksOrgEnabled() && coordinator.hasReadPermission()) {
+                        val accounts = coordinator.getAccounts()
+                        val lists = coordinator.getLists()
+                        deviceCalendars = TasksOrgVTodoFilter.filterDeviceCalendars(deviceCalendars, accounts, lists)
+                    }
                     CalendarGroup.fromDeviceCalendars(deviceCalendars, writableOnly = true)
                 } catch (e: SecurityException) {
                     Log.w(TAG, "Calendar permission revoked while loading writable calendars", e)
