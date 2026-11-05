@@ -87,14 +87,14 @@ Antes de implementar, leia:
 1. `AGENTS.md` e `docs/agents/architecture.md` — regras de arquitetura e comandos de build/teste
 2. `proposal.md`, `specs/` e `design.md` deste diretório de change — requisitos RIGID, cenários e decisões técnicas
 
-- [ ] T10 — Atualizar recursos de strings e executar gerador de localização
+- [x] T10 — Atualizar recursos de strings e executar gerador de localização
       Arquivos: `app/src/main/res/values/strings.xml`, `app/src/main/res/values-pt/strings.xml`, `app/src/main/res/values-pt-rBR/strings.xml`, `app/src/fork/tools/gen_strings_pt.py`
       Mudança: Adicionar strings necessárias (`label_more_tasks_compact`, `split_agenda_more_all_day_events`, etc.) em `values/strings.xml` e executar `gen_strings_pt.py` para sincronizar os locales em português.
       Cobre: AC-05, AC-07
       Acceptance criteria: Strings adicionadas e sincronizadas sem chaves pendentes em `values-pt` e `values-pt-rBR`.
       Testes: Executar `python3 app/src/fork/tools/gen_strings_pt.py` e verificar integridade dos arquivos XML.
 
-- [ ] T11 — Execução completa dos testes unitários e verificação do build
+- [x] T11 — Execução completa dos testes unitários e verificação do build
       Arquivos: Todos os arquivos do projeto
       Mudança: Executar `./gradlew testDebugUnitTest --no-daemon` e `./gradlew assembleDebug --no-daemon` para certificar ausência de regressões em todo o projeto.
       Cobre: Todos os ACs (AC-01 a AC-08)
