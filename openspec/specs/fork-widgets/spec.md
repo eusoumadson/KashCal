@@ -13,11 +13,11 @@ WHEN a unificação for aplicada, THE SYSTEM SHALL remover completamente o compo
 - **THEN** nenhuma referência a `MonthAgendaWidget` ou `MonthAgendaWidgetReceiver` deve permanecer ativa no código de produção ou no manifesto, evitando duplicação e consumo de recursos em background.
 
 ### Requirement: RF-02 - Coluna Esquerda com Cabeçalho e Grid Mensal (Modo Wide)
-WHILE a largura disponível do widget for maior ou igual a 260dp (`size.width >= 260.dp`), THE SYSTEM SHALL renderizar na coluna interna esquerda um cabeçalho compacto de data em disposição horizontal (verificado em `SplitAgendaWidgetContent.kt:127`) com altura total <= 36dp — posicionando o número do dia à esquerda e dia da semana com mês e ano abreviado (ex: `Nov '26`) à direita — e a grade do mês atual calculada via `MonthGrid.compute`, destacando o dia atual em `WidgetTheme.accentColor`.
+WHILE a largura disponível do widget for maior ou igual a 260dp (`size.width >= 260.dp`, verificado em `SplitAgendaWidgetContent.kt:62`), THE SYSTEM SHALL renderizar na coluna interna esquerda um cabeçalho compacto de data em disposição horizontal (verificado em `SplitAgendaWidgetContent.kt:126`) com altura vertical entre 38dp e 42dp — posicionando o número do dia à esquerda (`fontSize = 24.sp`) e a coluna com dia da semana e mês com ano abreviado em duas linhas à direita (`fontSize = 11.sp`) — garantindo ausência de corte vertical no texto nativo do Glance, e a grade do mês atual calculada via `MonthGrid.compute`, destacando o dia atual em `WidgetTheme.accentColor`.
 
 #### Scenario: Renderização da coluna esquerda no modo wide
 - **WHEN** o widget `SplitAgendaWidget` for colocado na tela inicial em layout amplo (largura >= 260dp)
-- **THEN** a coluna esquerda exibe o cabeçalho compacto ocupando <= 36dp de altura com o ano abreviado (ex: `'26`), conferindo maior espaço vertical à grade mensal de 6 semanas para evitar células achatadas.
+- **THEN** a coluna esquerda exibe o cabeçalho compacto com altura adequada (40dp) sem truncamento visual do número, do dia da semana e do mês/ano, mantendo a grade mensal de 6 semanas logo abaixo totalmente visível e contida no widget.
 
 ### Requirement: RF-03 - Coluna Direita com LazyColumn e Ações de Cabeçalho
 WHILE a largura disponível do widget for maior ou igual a 260dp, THE SYSTEM SHALL renderizar a lista scrollável `LazyColumn` contendo eventos e tarefas iniciando imediatamente no topo da coluna interna direita (verificado em `SplitAgendaWidgetContent.kt:285`), SEM exibir barra superior de cabeçalho (removendo `WidgetRefreshButton`, `WidgetAddButton` e rótulo "Próximo"), aproveitando 100% da altura vertical da coluna para conteúdo da agenda.
