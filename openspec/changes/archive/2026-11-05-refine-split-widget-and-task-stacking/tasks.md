@@ -6,14 +6,14 @@ Antes de implementar, leia:
 1. `AGENTS.md` e `docs/agents/architecture.md` — regras de arquitetura e comandos de build/teste
 2. `proposal.md`, `specs/` e `design.md` deste diretório de change — requisitos RIGID, cenários e decisões técnicas
 
-- [ ] T01 — Implementar janela dinâmica de 2 dias em SplitAgendaGrouping
+- [x] T01 — Implementar janela dinâmica de 2 dias em SplitAgendaGrouping
       Arquivos: `app/src/main/kotlin/org/onekash/kashcal/widget/SplitAgendaGrouping.kt`, `app/src/test/kotlin/org/onekash/kashcal/widget/SplitAgendaLogicTest.kt`
       Mudança: Atualizar `buildSplitUpcomingItems` para emitir seções Hoje + Amanhã quando restam eventos futuros/em andamento hoje, ou avançar automaticamente para Amanhã + D+2 quando hoje estiver sem eventos futuros.
       Cobre: RF-04, AC-03
       Acceptance criteria: `buildSplitUpcomingItems` não emite a seção de hoje se todos os seus eventos já tiverem passado e emite Amanhã e D+2.
       Testes: `app/src/test/kotlin/org/onekash/kashcal/widget/SplitAgendaLogicTest.kt` — Testar avanço automático de janela quando hoje tem apenas eventos passados.
 
-- [ ] T02 — Implementar regras de empilhamento 1 Item + Pilha para dia todo no motor de agrupamento
+- [x] T02 — Implementar regras de empilhamento 1 Item + Pilha para dia todo no motor de agrupamento
       Arquivos: `app/src/main/kotlin/org/onekash/kashcal/widget/SplitAgendaGrouping.kt`, `app/src/test/kotlin/org/onekash/kashcal/widget/SplitAgendaLogicTest.kt`
       Mudança: Separar itens de dia todo em eventos e tarefas; emitir o 1º item e empilhar os excedentes em `SplitAgendaItem.AllDayEventStack` e `SplitAgendaItem.AllDayTaskStack` com contadores de itens restantes.
       Cobre: RF-08, AC-05

@@ -16,6 +16,7 @@ out/
 
 # Local archive (stale planning docs)
 archive/
+!openspec/changes/archive/
 docs/
 
 # Local planning docs (issue triage, sequences — never shipped)
