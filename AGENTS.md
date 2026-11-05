@@ -15,6 +15,8 @@
 
 | Command | Purpose |
 |---|---|
+| `make release` | Run interactive release wizard (bump version, draft changelog, tag and push) |
+| `make dry-run` | Simulate release workflow without touching files or git |
 | `./gradlew assembleDebug --no-daemon` | Assemble debug APK (`./gradlew assembleDebug` with daemon) |
 | `./gradlew testDebugUnitTest --no-daemon` | Run unit tests across `:app`, `:icaldav-core`, `:vcard-core` (~1 min, excludes live integration) |
 | `./gradlew testDebugUnitTest --tests "*NomeDoTest*"` | Run a single unit test class by name pattern |
