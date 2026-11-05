@@ -12,7 +12,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.ViewColumn
 import androidx.compose.material3.Card
@@ -105,13 +104,13 @@ fun ExperimentalWidgetsScreen(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
             Text(
-                "Modelos disponíveis",
+                "Modelo disponível",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 8.dp)
             )
 
-            // Widget 1: Split Agenda Card
+            // Unified Split Agenda Widget Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -137,38 +136,6 @@ fun ExperimentalWidgetsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = stringResource(R.string.split_agenda_widget_description),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            // Widget 2: Month + Agenda Split Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CalendarMonth,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = stringResource(R.string.month_agenda_widget_name),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.month_agenda_widget_description),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -308,7 +308,7 @@ private fun SplitAgendaListColumn(
             maxEventsPerDay = data.maxEventsPerDay,
             todayLabel = context.getString(R.string.label_today),
             tomorrowLabel = context.getString(R.string.label_tomorrow),
-            emptyNoticeMessage = context.getString(R.string.widget_no_events_today),
+            emptyNoticeMessage = context.getString(R.string.split_agenda_no_events_today),
             locale = Locale.getDefault()
         )
     }

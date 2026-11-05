@@ -9,6 +9,7 @@ the English file with the same placeholders.
     python3 app/src/fork/tools/gen_strings_pt.py
 """
 import re
+import sys
 PT = {
 'settings_tasks_org': 'Tarefas do Tasks.org',
 'settings_tasks_org_hint': 'Tarefas com data de vencimento do Tasks.org',
@@ -217,11 +218,12 @@ PT = {
 'travel_provider_local_status_active': 'Sempre ativo',
 'settings_section_advanced_features': 'Recursos avançados',
 'split_agenda_widget_name': 'Agenda Dividida',
-'split_agenda_widget_description': 'Agenda ampla de duas colunas com cabeçalho de data grande e tarefas; coluna única compacta em tamanhos menores',
+'split_agenda_widget_description': 'Agenda ampla de duas colunas com calendário mensal e próximos eventos e tarefas; coluna única compacta em tamanhos menores',
+'split_agenda_no_events_today': 'Nenhum evento hoje',
 'month_agenda_widget_name': 'Mês + Agenda',
 'month_agenda_widget_description': 'Duas colunas com calendário mensal completo à esquerda e eventos e tarefas de hoje à direita',
 'experimental_widgets_settings_title': 'Widgets Experimentais',
-'experimental_widgets_settings_subtitle': 'Modelos de duas colunas: Agenda Dividida e Mês+Agenda',
+'experimental_widgets_settings_subtitle': 'Agenda dividida com calendário mensal e próximos eventos',
 'tasks_org_show_in_widgets': 'Mostrar tarefas nos widgets',
 'tasks_org_show_in_widgets_desc': 'Exibe lembretes e tarefas com caixa de seleção interativa nos widgets da tela inicial',
 'status_more_events_compact': '+%1$d',
@@ -252,12 +254,22 @@ for n in names:
 body = '\n'.join(lines)
 block = ('\n    <!-- FORK:tasks-org Strings of the Tasks.org integration. Generated from the English ones in\n'
          '         values/strings.xml; keep both in step when one of them changes. -->\n' + body + '\n')
-for loc in ('values-pt-rBR', 'values-pt'):
-    p = f'app/src/main/res/{loc}/strings.xml'
-    s = open(p).read()
-    if 'FORK:tasks-org Strings of the Tasks.org' in s:
-        s = re.sub(r'\n    <!-- FORK:tasks-org Strings of the Tasks\.org.*?(?=\n</resources>)', '', s, flags=re.S)
-    i = s.rindex('</resources>')
-    s = s[:i].rstrip('\n') + '\n' + block + '\n' + s[i:]
-    open(p, 'w').write(s)
-print('ok', len(names))
+check_only = '--check' in sys.argv
+if check_only:
+    for loc in ('values-pt-rBR', 'values-pt'):
+        p = f'app/src/main/res/{loc}/strings.xml'
+        s = open(p).read()
+        for n in names:
+            if f'<string name="{n}"' not in s:
+                sys.exit(f"Key {n} missing in {p}. Run without --check to regenerate.")
+    print('ok', len(names), '(verified)')
+else:
+    for loc in ('values-pt-rBR', 'values-pt'):
+        p = f'app/src/main/res/{loc}/strings.xml'
+        s = open(p).read()
+        if 'FORK:tasks-org Strings of the Tasks.org' in s:
+            s = re.sub(r'\n    <!-- FORK:tasks-org Strings of the Tasks\.org.*?(?=\n</resources>)', '', s, flags=re.S)
+        i = s.rindex('</resources>')
+        s = s[:i].rstrip('\n') + '\n' + block + '\n' + s[i:]
+        open(p, 'w').write(s)
+    print('ok', len(names))
