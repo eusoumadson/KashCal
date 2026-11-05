@@ -1,9 +1,9 @@
-# Spec Delta: fork-identity-distribution
+# Fork Identity Distribution Specification
 
 ## Purpose
 Define os requisitos normativos para a consolidação da identidade do aplicativo como Abacate Calendário (rótulo visível "Calendário"), a distribuição direta via APK assinado no GitHub Releases integrado ao Obtainium, a higienização dos canais de loja do upstream e a documentação primária do repositório em Português do Brasil.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: RF-01 - Identidade do Aplicativo e Rótulo Visível no Android
 WHEN o aplicativo for compilado e instalado no sistema operacional Android, THE SYSTEM SHALL exibir o rótulo "Calendário" na gaveta de aplicativos e na tela inicial através do recurso `fork_app_name` (verified at `app/build.gradle.kts:54`), mantendo o isolamento de conta `fork_account_label` (verified at `app/build.gradle.kts:55`) e o `applicationIdSuffix = ".tasks"` para garantir que o aplicativo possa coexistir sem conflitos de autenticador ao lado do KashCal upstream.
