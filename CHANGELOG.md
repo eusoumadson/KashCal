@@ -1,3 +1,18 @@
+## [2026.11.05]
+
+### Identidade Abacate Calendário
+- O aplicativo agora se identifica como Abacate Calendário (rótulo minimalista "Calendário" no lançador do Android).
+- Suporte oficial à distribuição direta via Obtainium e GitHub Releases.
+- Preservado o sufixo de pacote (.tasks) para coexistência com o KashCal upstream.
+
+### Widgets e Empilhamento de Tarefas
+- Split Agenda Widget: janela dinâmica inteligente de 2 dias (avança para Amanhã e D+2 quando os eventos de hoje
+terminam).
+- Altura útil total: remoção da barra superior de ferramentas na coluna de eventos para priorizar os itens na tela
+inicial.
+- Cabeçalho compacto com dia, mês e ano abreviado (ex: Nov '26).
+- Empilhamento de tarefas de dia todo (+X tarefas) no widget, na Agenda, no Planejador e na visão mensal.
+
 ## [2026.11.03]
 
 ### Time zones (#422)
