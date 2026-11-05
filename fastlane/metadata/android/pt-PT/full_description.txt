@@ -1,9 +1,0 @@
-O calendário da família está no iCloud, o trabalho no Google, e o teu Nextcloud zumbe num armário ao lado do router. O KashCal mostra tudo numa só app.
-
-Sem anúncios, sem conta e sem a menor ideia do que fizeste no verão passado!
-
-Planeia a semana numa página, imprime-a para o frigorífico e envia os teus horários livres em vez de jogar ping-pong por e-mail. Subscreve uma vez o calendário escolar e o da recolha do lixo, e deixa de perguntar no grupo.
-
-Código aberto, em 63 idiomas, e feito por pessoas que também se esquecem dos aniversários. Agora a app lembra-se por ti, e só tens de comprar o presente.
-
-https://kashcal.onekash.org

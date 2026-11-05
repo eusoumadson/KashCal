@@ -43,6 +43,7 @@ class LauncherAliasManifestTest {
     @Test
     fun `every alias carries the app shortcuts and keeps the app label`() {
         val appName = context.getString(R.string.fork_app_name) // FORK:tasks-org
+        assertEquals("Calendário", appName)
         LauncherAliases.ALL
             .filter { it != ".MainActivitySupporterCalendar" } // labeled "Calendar" by design
             .forEach { suffix ->

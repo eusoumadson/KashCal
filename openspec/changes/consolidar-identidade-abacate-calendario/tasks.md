@@ -46,14 +46,14 @@ Antes de implementar, leia:
 1. `specs/fork-identity-distribution/spec.md` — RF-03 e AC-03
 2. `design.md` — Decisão D-03 (Limpeza de artefatos de loja)
 
-- [ ] T05 — Reorganizar capturas de tela essenciais para pasta dedicada
+- [x] T05 — Reorganizar capturas de tela essenciais para pasta dedicada
       Arquivos: `images/screenshots/`
       Mudança: Mover/copiar as capturas de tela essenciais da pasta `fastlane/metadata/android/en-US/images/phoneScreenshots/` para `images/screenshots/` para servirem de base visual à documentação.
       Cobre: RF-03, AC-03
       Acceptance criteria: Diretório `images/screenshots/` contém as imagens necessárias para o README.
       Testes: `ls images/screenshots/` — confirma presença dos arquivos de imagem PNG.
 
-- [ ] T06 — Expurgar metadados da Google Play Store da pasta fastlane
+- [x] T06 — Expurgar metadados da Google Play Store da pasta fastlane
       Arquivos: `fastlane/metadata/`
       Mudança: Remover os metadados de loja (textos promocionais, changelogs e descrições específicas de submissão do Google Play) que não são utilizados pelo fork.
       Cobre: RF-03, AC-03
@@ -66,7 +66,7 @@ Antes de implementar, leia:
 1. `specs/fork-identity-distribution/spec.md` — RF-04 e AC-04
 2. `.github/workflows/release.yml` — estrutura atual de build e assinatura
 
-- [ ] T07 — Adaptar workflow de release do GitHub Actions
+- [x] T07 — Adaptar workflow de release do GitHub Actions
       Arquivos: `.github/workflows/release.yml`
       Mudança: Remover a condição restritiva `if: github.repository == 'KashCal/KashCal'`, renomear o artefato compilado para `AbacateCalendario-${{ steps.version.outputs.version }}-release.apk` e garantir publicação contínua em tags.
       Cobre: RF-04, AC-04
@@ -79,14 +79,14 @@ Antes de implementar, leia:
 1. `specs/fork-identity-distribution/spec.md` — RF-05 e AC-05
 2. `AGENTS.md` — seção 3 (Behavioral Guidelines e Mandatory Completion Gate)
 
-- [ ] T08 — Redigir novo README.md primário em Português do Brasil
+- [x] T08 — Redigir novo README.md primário em Português do Brasil
       Arquivos: `README.md`
       Mudança: Substituir o README upstream por documentação completa em Português (PT-BR): identidade Abacate Calendário, badges de Obtainium e GitHub Releases, resumo dos 3 pilares (eventos, tarefas do Tasks.org e alertas de deslocamento Travel Time), guia de instalação e créditos abertos ao upstream KashCal.
       Cobre: RF-05, AC-05
       Acceptance criteria: `README.md` está redigido em Português, inclui link direto do Obtainium e não contém certificados de assinatura alheios nem links da Google Play/F-Droid oficial.
       Testes: Leitura e validação de links Markdown no arquivo `README.md`.
 
-- [ ] T09 — Executar suíte de testes unitários e validação OpenSpec
+- [x] T09 — Executar suíte de testes unitários e validação OpenSpec
       Arquivos: `app/build.gradle.kts`, `app/src/test/`
       Mudança: Executar a suíte de testes unitários do Android para garantir 100% de passagem sem quebras nas sentinelas de graft (`// FORK:*`).
       Cobre: AC-06

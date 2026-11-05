@@ -1,9 +1,0 @@
-Kalender keluarga ada di iCloud, urusan kantor di Google, dan Nextcloud-mu berdengung di lemari sebelah router. KashCal menampilkan semuanya dalam satu aplikasi.
-
-Tanpa iklan, tanpa akun, dan tidak tahu apa yang kamu lakukan musim panas lalu!
-
-Rencanakan minggu ini di satu halaman, cetak untuk ditempel di kulkas, dan kirim jadwal kosongmu daripada main ping-pong lewat email. Berlangganan sekali kalender libur sekolah dan jadwal angkut sampah, lalu berhenti bertanya di grup.
-
-Open source, dalam 63 bahasa, dari orang-orang yang juga suka lupa ulang tahun. Sekarang aplikasinya yang ingat, kamu tinggal beli kado.
-
-https://kashcal.onekash.org

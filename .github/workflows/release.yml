@@ -14,13 +14,6 @@ permissions:
 
 jobs:
   build-release:
-    # Public repo only. The private repo attaches its own locally-built APK when
-    # the release is created, so it neither needs nor wants a CI rebuild (a
-    # private tag push triggers this workflow but the job is skipped here). The
-    # public APK must be built by CI from the public commit hash (reproducibility).
-    # NOTE: if the public repo is ever renamed, update this string or the public
-    # build silently stops (job skipped on every tag, no error).
-    if: github.repository == 'KashCal/KashCal'
     runs-on: ubuntu-latest
 
     steps:
@@ -65,7 +58,7 @@ jobs:
     - name: Rename APK
       run: |
         mv app/build/outputs/apk/release/app-release.apk \
-           app/build/outputs/apk/release/KashCal-${{ steps.version.outputs.version }}-release.apk
+           app/build/outputs/apk/release/AbacateCalendario-${{ steps.version.outputs.version }}-release.apk
 
     - name: Extract release notes from CHANGELOG
       id: notes
@@ -98,7 +91,7 @@ jobs:
         name: ${{ github.ref_name }}
         body_path: ${{ steps.notes.outputs.found == 'true' && 'release_notes.md' || '' }}
         generate_release_notes: ${{ steps.notes.outputs.found != 'true' }}
-        files: app/build/outputs/apk/release/KashCal-${{ steps.version.outputs.version }}-release.apk
+        files: app/build/outputs/apk/release/AbacateCalendario-${{ steps.version.outputs.version }}-release.apk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -106,8 +99,8 @@ jobs:
       if: github.event_name == 'workflow_dispatch'
       uses: actions/upload-artifact@v4
       with:
-        name: KashCal-${{ steps.version.outputs.version }}-release
-        path: app/build/outputs/apk/release/KashCal-${{ steps.version.outputs.version }}-release.apk
+        name: AbacateCalendario-${{ steps.version.outputs.version }}-release
+        path: app/build/outputs/apk/release/AbacateCalendario-${{ steps.version.outputs.version }}-release.apk
 
     - name: Cleanup keystore
       if: always()

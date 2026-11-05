@@ -51,9 +51,9 @@ android {
         // FORK:tasks-org Installs next to the original KashCal instead of replacing it. The account
         // types, label and launcher shortcuts derive from this; see FORK_INTEGRATION.md section 8.
         applicationIdSuffix = ".tasks"
-        resValue("string", "fork_app_name", "KashCal Tasks")
-        resValue("string", "fork_account_label", "KashCal Tasks")
-        resValue("string", "fork_contacts_account_label", "KashCal Tasks Contacts")
+        resValue("string", "fork_app_name", "Calendário")
+        resValue("string", "fork_account_label", "Calendário")
+        resValue("string", "fork_contacts_account_label", "Calendário Contatos")
         resValue("string", "fork_account_type", "$applicationId$applicationIdSuffix")
         resValue("string", "fork_contacts_account_type", "$applicationId$applicationIdSuffix.contacts")
         minSdk = 31

@@ -1,9 +1,0 @@
-Perheen kalenteri asuu iCloudissa, työt Googlessa ja Nextcloudisi hurisee kaapissa reitittimen vieressä. KashCal näyttää kaiken yhdessä sovelluksessa.
-
-Ei mainoksia, ei tiliä eikä aavistustakaan, mitä teit viime kesänä!
-
-Suunnittele viikko yhdelle sivulle, tulosta se jääkaapin oveen ja lähetä vapaat aikasi sähköpostipingpongin sijaan. Tilaa koulun lomat ja jätehuollon tyhjennyspäivät kerran, äläkä enää kysy ryhmächatissa.
-
-Avoin lähdekoodi, 63 kieltä, ja tekijöinä ihmiset, jotka myös unohtavat syntymäpäiviä. Nyt sovellus muistaa ne, ja sinun tarvitsee vain ostaa lahja.
-
-https://kashcal.onekash.org

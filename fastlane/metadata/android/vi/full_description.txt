@@ -1,9 +1,0 @@
-Lịch gia đình nằm trên iCloud, công việc trên Google, còn Nextcloud của bạn thì rì rì trong tủ cạnh router. KashCal hiển thị tất cả trong một ứng dụng.
-
-Không quảng cáo, không cần tài khoản và chẳng biết bạn đã làm gì mùa hè năm ngoái!
-
-Lên kế hoạch cả tuần trên một trang, in ra dán tủ lạnh và gửi giờ rảnh của bạn thay vì đánh bóng bàn qua email. Đăng ký một lần lịch nghỉ của trường và lịch thu gom rác, rồi thôi hỏi trong nhóm chat.
-
-Mã nguồn mở, có 63 ngôn ngữ, do những người cũng hay quên sinh nhật làm ra. Giờ ứng dụng nhớ giúp bạn, bạn chỉ cần mua quà.
-
-https://kashcal.onekash.org

@@ -1,52 +1,44 @@
 <div align="center">
 
-<img src="images/kashcal-app.png" width="120" alt="KashCal">
+<img src="images/kashcal-app.png" width="120" alt="Abacate Calendário">
 
-# KashCal™
+# Abacate Calendário
 
-**All your calendars in one private app on Android.**
+**Central privada de produtividade no Android: Eventos, Tarefas e Deslocamento em harmonia.**
 
-[<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="80">](https://play.google.com/store/apps/details?id=org.onekash.kashcal)
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="80">](https://f-droid.org/packages/org.onekash.kashcal)
+*No sistema Android, instalado e identificado com o rótulo minimalista **Calendário**.*
 
-<sub>Also on [IzzyOnDroid](https://apt.izzysoft.de/fdroid/index/apk/org.onekash.kashcal), [Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22:%22org.onekash.kashcal%22,%22url%22:%22https://github.com/KashCal/KashCal%22,%22author%22:%22KashCal%22,%22name%22:%22KashCal%22,%22additionalSettings%22:%22%7B%5C%22about%5C%22:%5C%22All%20your%20calendars%20in%20one%20private%20app%5C%22,%5C%22appAuthor%5C%22:%5C%22KashCal%5C%22%7D%22%7D), or [GitHub Releases](https://github.com/KashCal/KashCal/releases).</sub>
+[![Obtainium](https://img.shields.io/badge/Obtainium-Instalar%20com%201%20Toque-2E7D32?style=for-the-badge&logo=android&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22:%22org.onekash.kashcal.tasks%22,%22url%22:%22https://github.com/eusoumadson/abacate-calendario%22,%22author%22:%22eusoumadson%22,%22name%22:%22Abacate%20Calend%C3%A1rio%22%7D)
+[![GitHub Releases](https://img.shields.io/github/v/release/eusoumadson/abacate-calendario?logo=github&label=GitHub%20Releases&style=for-the-badge)](https://github.com/eusoumadson/abacate-calendario/releases)
+[![Licença Apache 2.0](https://img.shields.io/badge/Licen%C3%A7a-Apache%202.0-blue.svg?style=for-the-badge)](LICENSE)
 
-[<img src="https://img.shields.io/github/v/release/KashCal/KashCal?logo=github&label=GitHub&style=for-the-badge" height="36">](https://github.com/KashCal/KashCal/releases)
-[<img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge" height="36">](LICENSE)
-[<img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?style=for-the-badge&logo=github" height="36">](https://github.com/sponsors/one-kash)
-[<img src="https://img.shields.io/badge/Ask-DeepWiki-007ec6?style=for-the-badge" alt="Ask DeepWiki" height="36">](https://deepwiki.com/KashCal/KashCal)
-
-> **Official Repository:** This is the only official KashCal™ source. Only download from [Google Play](https://play.google.com/store/apps/details?id=org.onekash.kashcal), [F-Droid](https://f-droid.org/packages/org.onekash.kashcal), [IzzyOnDroid](https://apt.izzysoft.de/fdroid/index/apk/org.onekash.kashcal), [GitHub Releases](https://github.com/KashCal/KashCal/releases), or via [Obtainium](https://obtainium.imranr.dev/). Beware of copies distributing APKs from other sources.
-
-**APK Signing Certificate (SHA-256):**
-`B0:47:6C:12:88:28:BE:04:7B:64:FE:43:F7:9B:1D:5F:2C:34:60:B0:72:6F:B3:99:33:B1:16:20:D8:95:46:22`
-<br>This certificate signs the GitHub Release, IzzyOnDroid, and Obtainium APKs. Verify them with [AppVerifier](https://github.com/soupslurpr/AppVerifier) or Obtainium. F-Droid builds carry F-Droid's own signing key and Google Play builds carry Google Play's app signing key, so their certificates differ.
+<sub>Distribuição livre e direta via [Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22:%22org.onekash.kashcal.tasks%22,%22url%22:%22https://github.com/eusoumadson/abacate-calendario%22,%22author%22:%22eusoumadson%22,%22name%22:%22Abacate%20Calend%C3%A1rio%22%7D) ou [GitHub Releases](https://github.com/eusoumadson/abacate-calendario/releases).</sub>
 
 ---
 
 <table>
 <tr>
-<td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/01-family-week.png" width="180"></td>
-<td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/02-all-calendars.png" width="180"></td>
-<td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/03-quick-add.png" width="180"></td>
-<td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/04-views.png" width="180"></td>
+<td><img src="images/screenshots/01-family-week.png" width="180" alt="Visão Semanal"></td>
+<td><img src="images/screenshots/02-all-calendars.png" width="180" alt="Todos os Calendários"></td>
+<td><img src="images/screenshots/03-quick-add.png" width="180" alt="Adição Rápida"></td>
+<td><img src="images/screenshots/04-views.png" width="180" alt="Múltiplas Visões"></td>
 </tr>
 <tr>
-<td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/05-print.png" width="180"></td>
-<td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/06-availability.png" width="180"></td>
-<td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/07-insights.png" width="180"></td>
-<td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/08-open-source.png" width="180"></td>
+<td><img src="images/screenshots/05-print.png" width="180" alt="Impressão"></td>
+<td><img src="images/screenshots/06-availability.png" width="180" alt="Disponibilidade"></td>
+<td><img src="images/screenshots/07-insights.png" width="180" alt="Estatísticas"></td>
+<td><img src="images/screenshots/08-open-source.png" width="180" alt="Código Aberto"></td>
 </tr>
 <tr>
-<td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/09-invites.png" width="180"></td>
-<td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/10-feeds.png" width="180"></td>
-<td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/11-birthdays.png" width="180"></td>
-<td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/12-accent.png" width="180"></td>
+<td><img src="images/screenshots/09-invites.png" width="180" alt="Convites"></td>
+<td><img src="images/screenshots/10-feeds.png" width="180" alt="Feeds e Feriados"></td>
+<td><img src="images/screenshots/11-birthdays.png" width="180" alt="Aniversários"></td>
+<td><img src="images/screenshots/12-accent.png" width="180" alt="Cores e Temas"></td>
 </tr>
 <tr>
-<td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/13-offline.png" width="180"></td>
-<td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/14-app-lock.png" width="180"></td>
-<td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/15-languages.png" width="180"></td>
+<td><img src="images/screenshots/13-offline.png" width="180" alt="Modo Offline"></td>
+<td><img src="images/screenshots/14-app-lock.png" width="180" alt="Bloqueio por Biometria"></td>
+<td><img src="images/screenshots/15-languages.png" width="180" alt="Idiomas"></td>
 </tr>
 </table>
 
@@ -54,120 +46,127 @@
 
 </div>
 
-## Your calendars are everywhere
+## Apresentação
 
-Family stuff on iCloud. Holidays from some website. Birthdays buried in your contacts. Work on Nextcloud. KashCal brings them together on your Android. No account required, no analytics, no telemetry.
+O **Abacate Calendário** é uma central pessoal e privativa de produtividade para Android, inspirada na filosofia de integração transparente do ecossistema Apple Calendar. Em seu lançador de aplicativos, o app exibe o nome direto e minimalista **Calendário**.
 
-## Your schedule, together
-
-- **iCloud**: Switched to Android but your family is still on Apple? Sync with iCloud calendars directly.
-- **CalDAV**: Nextcloud, Radicale, Baïkal, Stalwart, Purelymail, Fastmail, Zoho, SOGo, and more. Native sync, no middleware.
-- **Device calendar**: See and edit events from your phone's built-in calendar alongside everything else.
-- **Holidays & schedules**: Subscribe to any ICS calendar. Holidays, school schedules, sports seasons.
-- **Contacts**: Two-way CardDAV contact sync, including photos.
-- **Birthdays and anniversaries**: Turn them on and KashCal builds calendars from your contacts.
-- **Local**: Don't need sync? Works fully offline out of the box.
-
-Material You with dynamic theming. Home screen widgets. Full-text search across all events. Per-event timezone for travel.
-
-## Private by default
-
-No analytics, no tracking, no KashCal account required. Your data stays on the phone unless you set up sync.
-
-- **Fort Knox Mode**: other apps have no access to your events
-- **Encrypted credentials** via Android Keystore (AES-256-GCM)
-- **HTTPS by default**: an account uses plain http only if you enter an http:// address, and an https account never falls back to http
-- **No WebViews**: native UI only
-- **Minimal permissions**: only what's necessary
-- **Fully auditable**: open source codebase
-
-## Community
-
-Join the [KashCal Signal group](https://signal.group/#CjQKIF2jZGgR164Zbe7xJ_auez3LCoza7he6hqtjNP0QtFHtEhBK1z09jMpsCSa8hbFhxdq9) for discussion and chat with other users. Or scan the QR code:
-
-<img src="images/KashCalSignalGroupQr.png" width="180" alt="KashCal Signal group QR code">
-
-## Community-Made Add-ons
-
-Community-made add-ons that enhance KashCal features.
-
-| Add-on | Description | Author |
-|--------|-------------|--------|
-| [long-reminder-sounds](https://github.com/SchrodingersCpp/long-reminder-sounds) | Notification sound files that keep alerting at intervals until you dismiss them, which gives repeat-until-dismissed reminders ([#178](https://github.com/KashCal/KashCal/issues/178)) | [@SchrodingersCpp](https://github.com/SchrodingersCpp) |
-
-Built something that pairs with KashCal? [Open an issue](https://github.com/KashCal/KashCal/issues) to have it listed here.
-
-## Tested CalDAV Providers
-
-| Provider | Status | Tested By |
-|----------|--------|-----------|
-| iCloud | ✓ | [@one-kash](https://github.com/one-kash) |
-| Nextcloud | ✓ | [@one-kash](https://github.com/one-kash) [@dev-inside](https://github.com/dev-inside) |
-| Baïkal | ✓ | [@one-kash](https://github.com/one-kash) |
-| Baïkal (Digest Auth) | ✓ | [@englut](https://github.com/englut) |
-| Radicale | ✓ | [@one-kash](https://github.com/one-kash) |
-| mailbox.org | ✓ | [@h1nnak](https://github.com/h1nnak) |
-| Infomaniak | ✓ | [@dirko-madrileno](https://github.com/dirko-madrileno) |
-| Stalwart | ✓ | [@OneCreek](https://github.com/OneCreek) |
-| Fastmail | ✓ | [@mittensicle](https://github.com/mittensicle) |
-| [Davis](https://github.com/tchapi/davis) | ✓ | [@Ivan-Roger](https://github.com/Ivan-Roger) |
-| [Purelymail](https://purelymail.com/) | ✓ | [@babyhuehnchen](https://github.com/babyhuehnchen) |
-| [Posteo](https://posteo.de/) | ✓ | [@4nndee](https://github.com/4nndee) |
-| Zoho | ✓ | [@jopacy](https://github.com/jopacy) |
-| [SOGo](https://github.com/Alinto/sogo) | ✓ | [@mdonz](https://github.com/mdonz) |
-
-Found a CalDAV server that doesn't work? [Let us know](https://github.com/KashCal/KashCal/issues)!
-
-## Device Calendar
-
-KashCal reads and edits your phone's built-in system calendar, so any app that syncs there works too: Google Calendar, Outlook (with Android calendar sync on), or an end-to-end-encrypted service like [SilentSuite](https://github.com/silent-suite/silentsuite). Their events show up in KashCal, and you can create, edit, and delete them. KashCal writes to the device calendar, and each app syncs the changes back to its own server.
-
-SilentSuite two-way sync was tested by [@silent-suite](https://github.com/silent-suite). Using another app that syncs to your device calendar? [Let us know](https://github.com/KashCal/KashCal/issues)!
+O aplicativo unifica três dimensões essenciais do seu dia a dia em uma interface elegante desenvolvida em Material 3: seus eventos de calendário, seus afazeres do Tasks.org e alertas inteligentes de deslocamento em tempo real (Travel Time). Tudo isso sem anúncios, sem telemetria, sem contas proprietárias obrigatórias e com criptografia de ponta a ponta.
 
 ---
 
-<details>
-<summary><strong>For Developers</strong></summary>
+## Os Três Pilares
 
-### Tech Stack
+### 1. Calendários & Sincronização Privada (CalDAV / iCloud / Local)
+- **Sincronização Nativa com iCloud**: Gerencie seus calendários e contatos do iCloud diretamente no Android, ideal para famílias com dispositivos mistos.
+- **Suporte Abrangente a CalDAV**: Conexão nativa com Nextcloud, Radicale, Baïkal, Stalwart, Fastmail, Zoho, SOGo, Mailbox.org, Purelymail e servidores personalizados. Sem intermediários ou servidores proxy externos.
+- **Calendário Nativo do Dispositivo**: Visualize e edite compromissos sincronizados por outros aplicativos no Android (Google Calendar, Microsoft Outlook corporativo, SilentSuite criptografado).
+- **Contatos CardDAV & Aniversários**: Sincronização bidirecional de contatos com fotos e geração dinâmica de calendários de aniversários e comemorações.
+- **Feeds e Assinaturas ICS**: Assine feriados nacionais, calendários escolares e calendários esportivos em formato iCalendar padrão.
+- **100% Funcional Offline**: Não requer conexão nem conta de terceiros para ser utilizado como calendário pessoal autônomo.
 
-| Category | Technology |
-|----------|------------|
-| CalDAV/ICS | `icaldav-core` (in-tree, wraps ical4j 4.3.0) |
-| CardDAV/contacts | `vcard-core` (in-tree, wraps ez-vcard 0.12.2) |
-| UI | Jetpack Compose, Material 3 |
+### 2. Integração Transparente com Tasks.org
+- **Visão Unificada de Produtividade**: Compromissos com hora marcada e afazeres coexistem na mesma linha do tempo, inspirando-se no comportamento fluido do Apple Calendar.
+- **Fonte Única da Verdade**: Integração direta via `ContentProvider` oficial do [Tasks.org](https://github.com/tasks/tasks). O Abacate Calendário nunca persiste ou duplica suas tarefas no banco de dados Room interno, preservando a integridade absoluta dos seus afazeres.
+- **Ações Imediatas**: Conclua tarefas diretamente pela visão de agenda ou pelo widget da tela inicial com um simples toque na caixa de seleção.
+- **Controle Flexível**: Ative ou desative a integração com o Tasks.org nas configurações do aplicativo a qualquer momento.
+
+### 3. Alertas Inteligentes de Deslocamento (Travel Time)
+- **Estimativa de Trânsito em Tempo Real**: Cálculo de tempo de percurso até o local do seu compromisso utilizando motores abertos de navegação (OpenStreetMap / OSRM e GraphHopper).
+- **Notificações "Hora de Sair"**: Receba avisos proativos calculados com antecedência para que você nunca se atrase para compromissos presenciais.
+- **Múltiplos Modos de Transporte**: Calcule rotas e previsões de chegada para viagens de carro, transporte público, bicicleta ou a pé.
+
+---
+
+## Widgets Modernos para a Tela Inicial
+
+- **Split Agenda Widget (Duas Colunas)**: Desenvolvido com Jetpack Glance, exibe seus eventos na coluna esquerda e seus afazeres do Tasks.org na coluna direita de forma equilibrada.
+- **Destaque Diário Contínuo**: A seção **Hoje** é mantida visível com destaque imediato, mesmo quando não houver compromissos agendados.
+- **Condensação Inteligente**: Para dias com volume intenso, tarefas e eventos de dia todo excedentes são resumidos em cartões compactos de contagem para manter sua tela inicial sempre limpa e organizada.
+- **Material You Dinâmico**: Adaptação perfeita às cores do papel de parede do sistema e suporte total a temas claro e escuro.
+
+---
+
+## Privacidade e Segurança por Padrão
+
+- **Sem Telemetria**: Sem rastreadores, sem bibliotecas analíticas e sem coleta de comportamento.
+- **Modo Fort Knox**: Os dados dos seus eventos permanecem confinados ao aplicativo, inacessíveis a outros aplicativos do sistema.
+- **Criptografia via Android Keystore**: Credenciais e senhas de contas são salvas com chave mestra no hardware do dispositivo utilizando cifragem AES-256-GCM.
+- **HTTPS Estrito**: Conexões diretas e criptografadas com seus servidores, sem intermediários.
+- **Bloqueio por Biometria**: Proteja o acesso ao aplicativo exigindo autenticação biométrica (impressão digital ou facial) ou PIN.
+
+---
+
+## Instalação e Atualização
+
+### Método Recomendado: Obtainium
+
+O [Obtainium](https://github.com/ImranR98/Obtainium) permite que você instale o aplicativo e receba atualizações automáticas diretamente dos releases deste repositório no GitHub, sem depender de lojas proprietárias ou intermediários comerciais.
+
+1. Instale o aplicativo Obtainium no seu Android.
+2. Toque no link direto abaixo para importar a configuração de 1-toque:
+
+   👉 **[Adicionar Abacate Calendário no Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22:%22org.onekash.kashcal.tasks%22,%22url%22:%22https://github.com/eusoumadson/abacate-calendario%22,%22author%22:%22eusoumadson%22,%22name%22:%22Abacate%20Calend%C3%A1rio%22%7D)**
+
+*(Ou, no Obtainium, clique em "Add App" e cole a URL deste repositório: `https://github.com/eusoumadson/abacate-calendario`)*.
+
+### Download Direto de APK
+
+Você também pode baixar manualmente o pacote APK assinado mais recente acessando a página de [GitHub Releases](https://github.com/eusoumadson/abacate-calendario/releases).
+
+> **Coexistência Lado a Lado:** O Abacate Calendário adota o identificador de pacote com sufixo `.tasks` (`org.onekash.kashcal.tasks`), permitindo que você o instale e utilize simultaneamente ao KashCal upstream no mesmo dispositivo, sem sobreposição de contas ou de dados.
+
+---
+
+## Créditos e Atribuição Upstream
+
+O Abacate Calendário é um fork livre mantido com carinho por [@eusoumadson](https://github.com/eusoumadson) dentro do ecossistema pessoal *abacatelab*.
+
+Expressamos nossa enorme admiração e reconhecimento aos seguintes projetos que tornaram este trabalho possível:
+
+- **[KashCal](https://github.com/KashCal/KashCal)**: Criado com maestria pela equipe KashCal / [@one-kash](https://github.com/one-kash). O KashCal estabeleceu a arquitetura sólida de sincronização CalDAV/CardDAV, o motor de expansão de recorrências RFC 5545 (`icaldav-core`), e a experiência refinada em Jetpack Compose que serve como fundação indispensável deste aplicativo.
+- **[Tasks.org](https://github.com/tasks/tasks)**: Desenvolvido por Alex Baker ([@abaker](https://github.com/abaker)), sendo a melhor e mais respeitada plataforma de gestão de tarefas de código aberto no ecossistema Android.
+
+---
+
+## Para Desenvolvedores
+
+### Tecnologias Utilizadas
+
+| Componente | Tecnologia |
+|---|---|
+| Interface de Usuário | Jetpack Compose, Material 3, Material You |
 | Widgets | Jetpack Glance |
-| Database | Room + FTS4 full-text search |
-| Security | Android Keystore (AES-256-GCM) |
-| DI | Hilt |
-| Async | Kotlin Coroutines + Flow |
-| Background | WorkManager |
-| Network | OkHttp |
+| CalDAV / iCalendar | `icaldav-core` (módulo in-tree, ical4j) |
+| CardDAV / vCard | `vcard-core` (módulo in-tree, ez-vcard) |
+| Banco de Dados | Room + FTS4 |
+| Injeção de Dependências | Hilt |
+| Assincronismo | Kotlin Coroutines + StateFlow |
+| Tarefas em Segundo Plano | WorkManager |
+| Rede HTTP | OkHttp |
+| Segurança | Android Keystore (AES-256-GCM) |
 
-### Building from Source
+### Compilação a partir do Código Fonte
+
+Requisitos:
+- Android SDK 37 (compilação e destino)
+- JDK 21
+- Gradle 9.8.2
 
 ```bash
-git clone https://github.com/KashCal/KashCal.git
-cd KashCal
-./gradlew assembleDebug
+git clone https://github.com/eusoumadson/abacate-calendario.git
+cd abacate-calendario
+./gradlew assembleDebug --no-daemon
+./gradlew testDebugUnitTest --no-daemon
 ```
 
-### Requirements
-- Android Studio (latest stable)
-- JDK 21
-- Android SDK 37 (compile and target)
-- Runs on Android 12 (API 31) and up
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-</details>
+Para detalhes sobre diretrizes de contribuição, consulte [CONTRIBUTING.md](CONTRIBUTING.md). Para convenções de arquitetura, padrões de projeto e testes, consulte [AGENTS.md](AGENTS.md) e as notas de paridade do motor RRULE em [docs/RRULE_ENGINE_PARITY.md](docs/RRULE_ENGINE_PARITY.md).
 
 ---
 
 <div align="center">
 
-**[Website](https://kashcal.onekash.org)** · **[FAQ](https://github.com/KashCal/KashCal/wiki/FAQ)** · **[Issues](https://github.com/KashCal/KashCal/issues)** · **[Releases](https://github.com/KashCal/KashCal/releases)**
+**[GitHub Releases](https://github.com/eusoumadson/abacate-calendario/releases)** · **[Issues](https://github.com/eusoumadson/abacate-calendario/issues)** · **[Upstream KashCal](https://github.com/KashCal/KashCal)**
 
-Apache License 2.0 (see [LICENSE](LICENSE)) · Licensing KashCal: [LICENSING.md](LICENSING.md)
+Licença Apache 2.0 (veja [LICENSE](LICENSE) e [LICENSING.md](LICENSING.md))
 
 </div>
