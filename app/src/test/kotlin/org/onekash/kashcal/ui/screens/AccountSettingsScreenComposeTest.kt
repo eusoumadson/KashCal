@@ -700,7 +700,7 @@ class AccountSettingsScreenComposeTest {
     fun `troubleshooting section follows backup and restore and holds three rows in order`() {
         render()
         val tops = listOf(
-            "Backup & restore", "Troubleshooting", "Sync history", "Force full sync", "Export debug report", "KashCal v1.0.0",
+            "Backup & restore", "Troubleshooting", "Sync history", "Force full sync", "Export debug report", "Abacate Calendário 🥑 v1.0.0",
         ).map { top(it) }
         assertEquals(tops.sorted(), tops)
         composeTestRule.onNodeWithText("Crash, sync and setup details to send with a bug report").assertExists()
@@ -830,7 +830,7 @@ class AccountSettingsScreenComposeTest {
             "Debug report",
             "Why the app closed recently",
             "Crashes, freezes, low memory",
-            "KashCal's own messages, including crash details",
+            "Abacate Calendário's own messages, including crash details",
             "Recent syncs, up to 48 hours back",
             "Edits not yet sent to your server",
             "App and Android version, permissions, battery settings, account types",
@@ -879,16 +879,16 @@ class AccountSettingsScreenComposeTest {
     @Test
     fun `long press on the version footer acts as a tap`() {
         render()
-        composeTestRule.onNodeWithText("KashCal v1.0.0").performTouchInput { longClick() }
+        composeTestRule.onNodeWithText("Abacate Calendário 🥑 v1.0.0").performTouchInput { longClick() }
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Built with Love").assertExists()
+        composeTestRule.onNodeWithText("github.com/eusoumadson/abacate-calendario").assertExists()
     }
 
     @Test
     fun `tap on the version footer opens app info`() {
         render()
-        composeTestRule.onNodeWithText("KashCal v1.0.0").performClick()
-        composeTestRule.onNodeWithText("Built with Love").assertExists()
+        composeTestRule.onNodeWithText("Abacate Calendário 🥑 v1.0.0").performClick()
+        composeTestRule.onNodeWithText("github.com/eusoumadson/abacate-calendario").assertExists()
     }
 
     // ==================== Calendar notifications ====================

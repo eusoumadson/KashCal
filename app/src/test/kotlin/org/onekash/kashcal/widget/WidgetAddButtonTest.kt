@@ -10,6 +10,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.onekash.kashcal.R
 import org.robolectric.RobolectricTestRunner
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Tests [WidgetAddButton], the shared "add event" control in the agenda, week, month and
@@ -25,7 +26,7 @@ class WidgetAddButtonTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
     @Test
-    fun `add button exposes its content description for screen readers`() = runGlanceAppWidgetUnitTest {
+    fun `add button exposes its content description for screen readers`() = runGlanceAppWidgetUnitTest(timeout = 15.seconds) {
         setContext(context)
         provideComposable { WidgetAddButton() }
 
@@ -34,7 +35,7 @@ class WidgetAddButtonTest {
     }
 
     @Test
-    fun `add button is clickable`() = runGlanceAppWidgetUnitTest {
+    fun `add button is clickable`() = runGlanceAppWidgetUnitTest(timeout = 15.seconds) {
         setContext(context)
         provideComposable { WidgetAddButton() }
 

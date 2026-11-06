@@ -14,6 +14,9 @@ import android.util.Log
  */
 object ExternalLinks {
 
+    const val FORK_SOURCE = "https://github.com/eusoumadson/abacate-calendario"
+    const val FORK_ISSUES = "https://github.com/eusoumadson/abacate-calendario/issues"
+
     const val HOME = "https://kashcal.onekash.org/"
     const val DONATE = "https://kashcal.onekash.org/donate/"
     const val PRIVACY = "https://kashcal.onekash.org/docs/privacy/overview"

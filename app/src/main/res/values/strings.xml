@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Brand name: keep "KashCal" in every locale except zh-rCN (开序历) and zh-rTW (開序曆) -->
-    <string name="app_name">KashCal</string>
+    <string name="app_name">Calendário</string>
 
     <!-- ==================== Widget ==================== -->
     <!-- Widget names/descriptions shown in Android's widget picker -->
@@ -266,7 +266,7 @@
     <string name="settings_theme_light_desc">Always light</string>
     <string name="settings_theme_dark_desc">Always dark</string>
     <string name="settings_accent_color">Accent color</string>
-    <string name="settings_accent_color_brand">KashCal Teal</string>
+    <string name="settings_accent_color_brand">Abacate Calendário Teal</string>
     <string name="settings_accent_color_dynamic">Automatic</string>
     <string name="settings_accent_color_dynamic_desc">Follow your device\'s Material You colors</string>
     <string name="settings_widgets_section">Widgets</string>
@@ -326,7 +326,7 @@
     <string name="debug_report_item_exits_detail">Crashes, freezes, low memory</string>
     <string name="debug_report_item_log">App log</string>
     <!-- Keep "KashCal" untranslated -->
-    <string name="debug_report_item_log_detail">KashCal\'s own messages, including crash details</string>
+    <string name="debug_report_item_log_detail">Abacate Calendário\'s own messages, including crash details</string>
     <string name="debug_report_item_sync_detail">Recent syncs, up to 48 hours back</string>
     <string name="debug_report_item_pending">Waiting changes</string>
     <string name="debug_report_item_pending_detail">Edits not yet sent to your server</string>
@@ -342,7 +342,7 @@
     <!-- Settings toggle. Write the app name as this locale writes it elsewhere. -->
     <string name="app_lock_label">App lock</string>
     <!-- Tooltip explaining the App lock toggle -->
-    <string name="settings_app_lock_info">Require device authentication to open KashCal.</string>
+    <string name="settings_app_lock_info">Require device authentication to open Abacate Calendário.</string>
     <!-- Branded lock screen (veil) shown over the app while locked. -->
     <string name="app_lock_veil_locked">Locked</string>
     <string name="app_lock_veil_unlock">Unlock</string>
@@ -354,19 +354,19 @@
     <!-- Shown when the device has no hardware/software capable of authenticating. -->
     <string name="app_lock_unsupported_message">This device can\'t use App lock.</string>
     <!-- Inline confirmation after enabling the lock. Write the app name as this locale writes it elsewhere. -->
-    <string name="app_lock_enabled_message">App lock on. KashCal will ask you to authenticate next time you open it.</string>
+    <string name="app_lock_enabled_message">App lock on. Abacate Calendário will ask you to authenticate next time you open it.</string>
     <!-- System biometric prompt title shown when turning the lock OFF (required by the OS). Short; no app name. -->
     <string name="app_lock_disable_prompt_title">Unlock to turn off App lock</string>
 
     <!-- ==================== Backup &amp; Restore Settings ==================== -->
     <!-- Row labels in the Backup &amp; Restore section. Keep "KashCal" and "JSON" untranslated. -->
     <string name="backup_settings_label">Back up settings</string>
-    <string name="backup_settings_subtitle">Save KashCal configuration to a JSON file</string>
+    <string name="backup_settings_subtitle">Save Abacate Calendário configuration to a JSON file</string>
     <string name="restore_settings_label">Restore settings</string>
-    <string name="restore_settings_subtitle">Restore KashCal configuration from a backup file</string>
+    <string name="restore_settings_subtitle">Restore Abacate Calendário configuration from a backup file</string>
     <!-- Restore confirmation dialog. %1$s = app version, %2$s = ISO-8601 timestamp. Write the app name as this locale writes it elsewhere. -->
     <string name="restore_confirm_title">Restore backup?</string>
-    <string name="restore_confirm_from">Backup from KashCal %1$s, %2$s</string>
+    <string name="restore_confirm_from">Backup from Abacate Calendário %1$s, %2$s</string>
     <!-- Shown in the confirm dialog when the backup has no subscriptions. -->
     <string name="restore_confirm_message_prefs_only">This will import your preferences.</string>
     <string name="action_restore">Restore</string>
@@ -378,8 +378,8 @@
     <string name="restore_success_device_calendars_note">Select your device calendars again if you use that feature.</string>
     <!-- Restore error dialog variants. Keep "KashCal" and "JSON" untranslated. -->
     <string name="restore_error_title">Restore failed</string>
-    <string name="restore_error_version_too_new">This backup was created with a newer version of KashCal. Please update KashCal and try again.</string>
-    <string name="restore_error_malformed_json">This file is not a valid KashCal backup.</string>
+    <string name="restore_error_version_too_new">This backup was created with a newer version of Abacate Calendário. Please update Abacate Calendário and try again.</string>
+    <string name="restore_error_malformed_json">This file is not a valid Abacate Calendário backup.</string>
     <string name="restore_error_invalid_value">This backup file contains invalid data and cannot be restored.</string>
     <string name="restore_error_apply_failure">Something went wrong while applying the backup. No changes were saved.</string>
     <!-- Backup/restore error snackbars shown from the Activity. -->
@@ -439,7 +439,7 @@
     <!-- Footer. Keep the heart emoji and "Austin". -->
     <string name="about_built_in_austin">Built with ❤️ in Austin</string>
     <!-- Footer, under the line above: the installed version, e.g. "Version 2026.10.30-2" -->
-    <string name="about_version">Version %1$s</string>
+    <string name="about_version">Abacate Calendário 🥑 v%1$s</string>
 
     <!-- ==================== What\'s New ==================== -->
     <!-- Top-right button on the post-update pager; closes it without reading the rest. -->
@@ -477,7 +477,7 @@
     <!-- Page heading for the launcher icon that shows the day of the month. -->
     <string name="whats_new_v772_icon_title">Your icon knows the date</string>
     <!-- Page body. "Today's date" is the icon option's name: use the same words as app_icon_todays_date. "KashCal" is a brand name; keep untranslated. -->
-    <string name="whats_new_v772_icon_body">Pick the Today\'s date icon and KashCal shows the day of the month on your home screen. It turns over on its own each night.</string>
+    <string name="whats_new_v772_icon_body">Pick the Today\'s date icon and Abacate Calendário shows the day of the month on your home screen. It turns over on its own each night.</string>
     <!-- Page heading for the Recent changes list. -->
     <string name="whats_new_v772_changes_title">See what changed</string>
     <!-- Page body. "Recent changes" is the list's name: use the same words as recent_changes_title. Keep "iCloud" and "CalDAV" untranslated. -->
@@ -492,7 +492,7 @@
     <!-- Page heading for the automatic calendar backup: it runs by itself once set up. A playful line; keep the idea, not the literal words. -->
     <string name="whats_new_v803_backup_title">Backups you can forget about</string>
     <!-- Page body. "offline calendars" uses the same words as offline_calendars_row_label. "KashCal" is a brand name; keep untranslated. -->
-    <string name="whats_new_v803_backup_body">Pick a folder once, and KashCal keeps a fresh copy of your offline calendars there.</string>
+    <string name="whats_new_v803_backup_body">Pick a folder once, and Abacate Calendário keeps a fresh copy of your offline calendars there.</string>
     <!-- Page heading for printing the week shown on screen. A playful line; keep the idea (your week, printed out), not the literal words. -->
     <string name="whats_new_v803_print_title">Your week, on paper</string>
     <!-- Page body. The second sentence is a joke about sticking the printout on a fridge door; keep it light and natural, adapt it rather than translate it word for word. -->
@@ -560,7 +560,7 @@
     <!-- City name: Austin, Texas. Keep "Austin" untranslated. Translate "in" only. -->
     <string name="status_in_austin">in Austin</string>
     <!-- %1$s = version number. Keep "KashCal" and "v" untranslated. -->
-    <string name="status_version">KashCal v%1$s</string>
+    <string name="status_version">Abacate Calendário 🥑 v%1$s</string>
 
     <!-- ==================== Success Messages ==================== -->
     <string name="success_sync_complete">Sync complete</string>
@@ -621,12 +621,12 @@
     <!-- Appended to a connection failure (arg %1$s is the underlying error) when local-network access may be blocked on Android 17+. -->
     <string name="caldav_error_with_lan_hint">%1$s\n\nIf this is a server on your local network, allow local network access to connect.</string>
     <!-- Shown inline in sign-in, Discover calendars and password change when KashCal refused a connection: the server redirected to plain http on another host, an https account was pointed at plain http, or the server kept redirecting. The password was not sent. -->
-    <string name="caldav_error_connection_refused_insecure">The server redirected the connection somewhere KashCal won\'t follow (an unencrypted address, or a redirect loop), so KashCal stopped before sending your password. Check the server address.</string>
+    <string name="caldav_error_connection_refused_insecure">The server redirected the connection somewhere Abacate Calendário won\'t follow (an unencrypted address, or a redirect loop), so Abacate Calendário stopped before sending your password. Check the server address.</string>
     <string name="caldav_error_sign_in_again_mismatch">This is a different account. Sign in with the username and server this account uses.</string>
 
     <!-- Local-network permission banner in CalDAV sign-in (Android 17+) -->
     <string name="local_network_banner_title">Local network access needed</string>
-    <string name="local_network_banner_body">This server looks like it\'s on your local network. Allow local network access so KashCal can connect to it.</string>
+    <string name="local_network_banner_body">This server looks like it\'s on your local network. Allow local network access so Abacate Calendário can connect to it.</string>
     <string name="local_network_banner_allow">Allow access</string>
     <string name="local_network_banner_dismiss">Not now</string>
 
@@ -636,7 +636,7 @@
 
     <!-- App permissions sheet: row names and "why we ask" tooltip text, one pair per runtime permission -->
     <string name="permission_name_notifications">Notifications</string>
-    <string name="permission_why_notifications">So KashCal can remind you about your events. Without it, reminders stay silent.</string>
+    <string name="permission_why_notifications">So Abacate Calendário can remind you about your events. Without it, reminders stay silent.</string>
     <string name="permission_name_contacts">Contacts</string>
     <string name="permission_why_contacts">Suggests guests as you add people to an event, and shows contact birthdays. Your contacts stay on your device.</string>
     <string name="permission_name_calendars">Calendars</string>
@@ -672,9 +672,9 @@
 
     <!-- Permission Errors — keep "KashCal" untranslated -->
     <string name="error_permission_notification_title">Enable Notifications?</string>
-    <string name="error_permission_notification">KashCal needs notification permission to remind you about upcoming events.</string>
+    <string name="error_permission_notification">Abacate Calendário needs notification permission to remind you about upcoming events.</string>
     <string name="error_permission_alarm_title">Enable Exact Alarms?</string>
-    <string name="error_permission_alarm">KashCal needs exact alarm permission for precise reminders.</string>
+    <string name="error_permission_alarm">Abacate Calendário needs exact alarm permission for precise reminders.</string>
     <string name="error_permission_storage">Storage permission required for import/export.</string>
 
     <!-- Device Calendar Errors -->
@@ -725,7 +725,7 @@
     <string name="time_entry_dialog_title">Enter time</string>
     <string name="time_entry_tap_to_edit">Tap to edit</string>
     <!-- %1$s = version name -->
-    <string name="cd_version_info">KashCal version %1$s</string>
+    <string name="cd_version_info">Abacate Calendário version %1$s</string>
     <!-- Accessibility label for the info (ⓘ) button next to a setting. %1$s = setting name -->
     <string name="cd_about_setting">About %1$s</string>
     <!-- %1$s = color name (e.g., "Red", "Blue") -->
@@ -835,7 +835,7 @@
     <string name="help_app_password_step_5">5. Click Generate and copy here</string>
 
     <!-- ==================== Notification Permission Dialog ==================== -->
-    <string name="dialog_notification_permission_message">KashCal needs notification permission to remind you about upcoming events.</string>
+    <string name="dialog_notification_permission_message">Abacate Calendário needs notification permission to remind you about upcoming events.</string>
     <string name="dialog_notification_permission_settings_hint">You can change this later in Settings.</string>
 
     <!-- ==================== Accounts Screen ==================== -->
@@ -966,7 +966,7 @@
     <string name="account_detail_discover_calendars">Discover New Calendars</string>
     <string name="account_detail_change_password">Change Password</string>
     <string name="account_detail_sign_in_again">Sign In Again</string>
-    <string name="account_detail_sign_in_again_subtitle">KashCal no longer has this account\'s password. Sign in to sync again. Your calendars and events stay.</string>
+    <string name="account_detail_sign_in_again_subtitle">Abacate Calendário no longer has this account\'s password. Sign in to sync again. Your calendars and events stay.</string>
     <string name="account_detail_sign_out">Sign Out</string>
     <string name="account_detail_never_synced">Never synced</string>
     <string name="account_detail_last_success">Last success: %1$s</string>
@@ -1023,7 +1023,7 @@
     <!-- Title of the notice shown when KashCal can read Tasks.org tasks but not complete them. -->
     <string name="tasks_org_read_only_access">Tasks can\'t be marked done</string>
     <!-- Body of that notice; tapping it asks for the Tasks.org write permission. -->
-    <string name="tasks_org_grant_write">Tap to let KashCal complete tasks in Tasks.org</string>
+    <string name="tasks_org_grant_write">Tap to let Abacate Calendário complete tasks in Tasks.org</string>
     <!-- Content description of the button that reloads the Tasks.org lists. -->
     <string name="cd_refresh_tasks_org_lists">Refresh task lists</string>
     <!-- Shown in place of the switch when the Tasks.org app isn't installed. -->
@@ -1141,7 +1141,7 @@
     <string name="calendar_backup_folder">Folder</string>
     <string name="calendar_backup_change">Change</string>
     <string name="calendar_backup_frequency">Frequency</string>
-    <string name="calendar_backup_frequency_info">Backups can run late: Android holds back background work when the phone is idle or KashCal hasn\'t been opened for a while.</string>
+    <string name="calendar_backup_frequency_info">Backups can run late: Android holds back background work when the phone is idle or Abacate Calendário hasn\'t been opened for a while.</string>
     <string name="calendar_backup_copies">Copies to keep</string>
     <string name="calendar_backup_copies_explained">Each backup keeps the previous file as a dated copy. When there are more than this number, the oldest are deleted. The newest file always has the calendar\'s name.</string>
     <string name="calendar_backup_copies_fewer">Keep fewer copies</string>
@@ -1169,18 +1169,18 @@
     </plurals>
     <string name="calendar_backup_now">Back up now</string>
     <string name="calendar_backup_running">Backing up…</string>
-    <string name="calendar_backup_footer_overwrites">KashCal overwrites these files at each backup, so changes made to them in other apps don\'t last. To restore a calendar, use Import events from file.</string>
+    <string name="calendar_backup_footer_overwrites">Abacate Calendário overwrites these files at each backup, so changes made to them in other apps don\'t last. To restore a calendar, use Import events from file.</string>
     <string name="calendar_backup_off_files_stay">Existing files stay in %1$s.</string>
     <string name="calendar_backup_folder_unreachable">Can\'t reach %1$s. It may have been moved, deleted or disconnected.</string>
     <string name="calendar_backup_error_unsupported">Can\'t save files in %1$s. Choose another folder.</string>
     <string name="calendar_backup_choose_again">Choose again</string>
-    <string name="calendar_backup_pick_refused">KashCal can\'t use that folder. Choose another one.</string>
-    <string name="calendar_backup_pick_cannot_create">KashCal can\'t create files in that folder. Choose another one.</string>
+    <string name="calendar_backup_pick_refused">Abacate Calendário can\'t use that folder. Choose another one.</string>
+    <string name="calendar_backup_pick_cannot_create">Abacate Calendário can\'t create files in that folder. Choose another one.</string>
     <string name="calendar_backup_failed_title">Calendar backup failed</string>
     <string name="calendar_backup_folder_unnamed">the backup folder</string>
     <string name="calendar_backup_alert_unreachable">Can\'t reach %1$s. Tap to choose it again.</string>
     <string name="calendar_backup_alert_unsupported">Can\'t save files in %1$s. Tap to choose another folder.</string>
-    <string name="calendar_backup_alert_file_retry">Couldn\'t save %1$s. KashCal will try again at the next backup.</string>
+    <string name="calendar_backup_alert_file_retry">Couldn\'t save %1$s. Abacate Calendário will try again at the next backup.</string>
     <string name="calendar_backup_every_hour">Every hour</string>
     <string name="calendar_backup_every_day">Every day</string>
     <!-- Used for counts other than exactly 1; "Every hour" covers 1. -->
@@ -1200,11 +1200,11 @@
     <string name="calendar_backup_interval_too_short">Choose at least 1 hour.</string>
     <string name="calendar_backup_interval_too_long">Choose 30 days or less.</string>
     <plurals name="calendar_backup_alert_files_retry">
-        <item quantity="one">Couldn\'t save %d calendar. KashCal will try again at the next backup.</item>
-        <item quantity="other">Couldn\'t save %d calendars. KashCal will try again at the next backup.</item>
+        <item quantity="one">Couldn\'t save %d calendar. Abacate Calendário will try again at the next backup.</item>
+        <item quantity="other">Couldn\'t save %d calendars. Abacate Calendário will try again at the next backup.</item>
     </plurals>
-    <string name="calendar_backup_notifications_app_off">Notifications are off for KashCal, so it can\'t notify you if a backup fails.</string>
-    <string name="calendar_backup_notifications_channel_off">Backup notifications are off, so KashCal can\'t notify you if a backup fails.</string>
+    <string name="calendar_backup_notifications_app_off">Notifications are off for Abacate Calendário, so it can\'t notify you if a backup fails.</string>
+    <string name="calendar_backup_notifications_channel_off">Backup notifications are off, so Abacate Calendário can\'t notify you if a backup fails.</string>
     <string name="calendar_backup_open_settings">Open settings</string>
     <string name="calendar_backup_not_now">Not now</string>
     <plurals name="calendar_backup_row_calendars_failed">
@@ -1271,7 +1271,7 @@
     <!-- Second line of a calendar row in the Calendar notifications sheet: the calendar is hidden from the calendar views (hiding doesn't change its notifications) -->
     <string name="calendar_notifications_hidden">Hidden</string>
     <!-- Banner at the top of the Calendar notifications sheet when KashCal's notifications are turned off in Android's system settings; its button opens those settings -->
-    <string name="calendar_notifications_app_off">Notifications are off for KashCal in system settings, so no calendar can notify you.</string>
+    <string name="calendar_notifications_app_off">Notifications are off for Abacate Calendário in system settings, so no calendar can notify you.</string>
     <!-- Banner at the top of the Calendar notifications sheet when only the Event Reminders notification channel is turned off in Android's system settings; its button opens that channel's settings -->
     <string name="calendar_notifications_reminders_off">Event reminders are off in system settings, so no reminders can show.</string>
     <!-- Read by TalkBack after a calendar's name in the drawer when that calendar's notifications are muted -->
@@ -1365,7 +1365,7 @@
     <!-- Label of the switch that turns device calendars on or off -->
     <string name="device_calendars_show_switch">Show device calendars</string>
     <!-- Note above the switch on the Device calendars screen while KashCal can't read the phone's calendars (never asked or refused); its button reuses action_allow. Kept short on purpose: the intro just above says what the screen shows. Write the app name as this locale writes it elsewhere. -->
-    <string name="device_calendars_access_off">Calendar access is off for KashCal.</string>
+    <string name="device_calendars_access_off">Calendar access is off for Abacate Calendário.</string>
     <!-- Shown under the switch while it is on and no calendar is picked yet -->
     <string name="device_calendars_pick_hint">Pick calendars to show.</string>
     <!-- Shown when the phone returned no calendars: the app looked and found none -->
@@ -2326,7 +2326,7 @@
     <!-- Empty-state message shown when no qualifying free block was found -->
     <string name="share_availability_empty">No free blocks of at least an hour in the selected range.</string>
     <!-- Footer line appended to share text from event share, device event share, and availability share. Write the app name as this locale writes it elsewhere. -->
-    <string name="share_from_kashcal_footer">Shared from KashCal</string>
+    <string name="share_from_kashcal_footer">Shared from Abacate Calendário</string>
     <!-- Title shown in the Android share chooser -->
     <string name="share_availability_chooser_title">Share availability</string>
     <!-- Snackbar shown if no app is available to receive the shared text -->
@@ -2356,7 +2356,7 @@
     <!-- Send button label in the share-as-card sheet -->
     <string name="share_as_card_send">Send</string>
     <!-- Attribution at the bottom-right of the rendered share card. Write the app name as this locale writes it elsewhere. -->
-    <string name="share_as_card_attribution">Made with KashCal</string>
+    <string name="share_as_card_attribution">Made with Abacate Calendário</string>
     <!-- All-day label shown on the share card when the event has no specific time -->
     <string name="share_as_card_all_day">All day</string>
     <!-- System chooser title shown when the user taps Send on a share card -->
@@ -2387,7 +2387,7 @@
     <string name="task_repeat_from_due">Due date</string>
     <string name="task_repeat_from_completion">Completion date</string>
     <string name="task_repeat_needs_due">A repeating task needs a due date, so today was set.</string>
-    <string name="task_editor_side_effects_note">Changing the due date can also move the start date or adjust the repeat rule. Tasks.org decides, and KashCal tells you if the rule changed.</string>
+    <string name="task_editor_side_effects_note">Changing the due date can also move the start date or adjust the repeat rule. Tasks.org decides, and Abacate Calendário tells you if the rule changed.</string>
     <string name="snackbar_task_saved_rule_adjusted">Task saved. Tasks.org adjusted the repeat rule.</string>
     <string name="task_editor_new_tag_hint">New tag</string>
     <string name="task_editor_add_tag">Add</string>
@@ -2419,7 +2419,7 @@
     <string name="task_priority_dot_medium">Medium priority</string>
     <string name="task_priority_dot_low">Low priority</string>
 
-    <string name="tasks_org_version_too_old">Tasks.org %1$s is older than %2$s, the first version with the API KashCal uses. Update Tasks.org.</string>
+    <string name="tasks_org_version_too_old">Tasks.org %1$s is older than %2$s, the first version with the API Abacate Calendário uses. Update Tasks.org.</string>
     <string name="tasks_org_version_label">Tasks.org %1$s</string>
     <string name="tasks_org_account_attention">%1$s needs attention in Tasks.org (%2$s).</string>
     <string name="tasks_org_manage_lists">Manage lists</string>
@@ -2504,7 +2504,7 @@
     <string name="auto_backup_last_run">Last backup: %1$s</string>
     <string name="auto_backup_sheet_title">Automatic Backup</string>
     <string name="auto_backup_sheet_desc">Periodically export a backup JSON containing all settings and fork configurations to a chosen folder.</string>
-    <string name="auto_backup_fork_features_note">Settings backup includes KashCal options and advanced fork features (Tasks.org, Travel Time, and widgets).</string>
+    <string name="auto_backup_fork_features_note">Settings backup includes Abacate Calendário options and advanced fork features (Tasks.org, Travel Time, and widgets).</string>
     <string name="auto_backup_folder_label">Backup folder</string>
     <string name="auto_backup_select_folder">Choose folder</string>
     <string name="auto_backup_change_folder">Change folder</string>
@@ -2560,4 +2560,15 @@
     <string name="print_doc_numbers_note">Numbers match the details, which list every event in full.</string>
     <!-- Printed under the week grid: %1$s is the time zone name, e.g. "Eastern Time" -->
     <string name="print_doc_times_in">Times shown in %1$s</string>
+
+    <!-- AboutSheet & AppInfoSheet fork identity -->
+    <string name="about_app_title">Abacate Calendário 🥑</string>
+    <string name="about_section_project">Project</string>
+    <string name="about_fork_source_title">Source code &amp; releases</string>
+    <string name="about_fork_source_detail">GitHub (eusoumadson)</string>
+    <string name="about_fork_issues_title">Report issue or suggestion</string>
+    <string name="about_fork_issues_detail">GitHub Issues</string>
+    <string name="about_section_upstream">Upstream KashCal</string>
+    <string name="app_info_subtitle">Privacy, productivity, and your calendars.</string>
+    <string name="app_info_upstream_credits">Based on KashCal</string>
 </resources>
