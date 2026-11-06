@@ -1,3 +1,14 @@
+## [2026.11.06]
+
+### All Day Stacking Views
+- **Visão Agenda (`AgendaListModel.kt`, `HomeScreen.kt`)**: Estende `AgendaDayGroup` e `buildAgendaListModel` para agrupar eventos de dia todo excedentes (`> 1`) em `overflowEvents` (mantendo o 1º evento visível em `items` e criando um card expansível `AgendaEventStackCard`), preservando o cálculo exato de `headerIndexByDayCode` para rolagem da barra semanal, em paridade com `overflowTasks` (`AgendaTaskStackCard`).
+- **Visão Mês (`DayEventsPage` em `HomeScreen.kt`)**: Aplica a regra de colapse inline na lista diária abaixo do calendário mensal tanto para eventos de dia todo (`> 1` -> 1º evento + card expansível `+X eventos`) quanto para tarefas de dia todo (`> 1` -> 1ª tarefa + card expansível `+X tarefas`), exibindo o item único diretamente quando `== 1`.
+- **Drawer / Bottom Sheet de Dia (`DayEventsSheet.kt`)**: Adiciona o colapse inline de eventos de dia todo (`> 1` -> 1º evento + card expansível `+X eventos`) ao lado do colapse já existente de tarefas de dia todo (`+X tarefas`).
+- **Visão Planejador (`PlannerView.kt`)**: Em `PlannerDayBody`, consolida eventos de dia todo de 1 único dia (`startDay == endDay`) quando `> 1` em um único `PlannerEventSummaryRibbon` (exibindo o evento normalmente quando `== 1`), liberando linhas da célula para eventos com horário e abrindo o `DayEventsSheet` ao tocar.
+- **Visões Dia, 3 Dias e Semana (`AllDayStripLayout.kt`, `WeekViewContent.kt`, `OverlapListSheet.kt`)**: Na faixa de dia todo de cada coluna, mantém `AllDaySpan` para eventos multi-dia e consolida eventos de dia todo de 1 único dia (`> 1`) em 1 chip de agrupamento de eventos e tarefas de dia todo (`> 1`) em 1 chip de agrupamento de tarefas (exibindo o item individual quando `== 1`). Tocar em um chip de agrupamento abre o sheet exibindo apenas os itens daquele agrupamento, com suporte a `TaskCard` / `OnTaskCheckedChange` para tarefas e abertura do `QuickViewSheet` correspondente.
+- **Visão Mês Completo (`MonthFullSpanLayout.kt`, `FullHeightMonthGrid.kt`)**: Em `computeMonthFullWeekRender` e `FullHeightMonthGrid`, mantendo barras contínuas para eventos multi-dia, consolida `> 1` eventos de dia todo de 1 único dia em 1 slot de resumo de eventos e `> 1` tarefas de dia todo em 1 slot de resumo de tarefas por célula (exibindo o snippet individual quando `== 1`). Tocar na célula abre o `DayEventsSheet` com todos os registros do dia aplicando o colapse inline.
+- **Recursos e Documentação de Fork**: Adiciona strings localizadas em `values/strings.xml`, `values-pt/strings.xml` e `values-pt-rBR/strings.xml` e atualiza `docs/fork/FORK_INTEGRATION.md`.
+
 ## [2026.11.05.1]
 
 ### Refine Split Widget Layout
