@@ -233,7 +233,7 @@ class DeviceCalendarsScreenTest {
     }
 
     private companion object {
-        const val ACCESS_NOTE = "Calendar access is off for KashCal."
+        const val ACCESS_NOTE = "Calendar access is off for Abacate Calendário."
         const val ALLOW = "Allow"
         const val INTRO = "Show calendars from Google, Outlook, and sync apps on this device."
     }

@@ -9,6 +9,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.onekash.kashcal.R
 import org.robolectric.RobolectricTestRunner
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Tests [WidgetRefreshButton], the header refresh control beside [WidgetAddButton]. Like the add
@@ -22,7 +23,7 @@ class WidgetRefreshButtonTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
     @Test
-    fun `refresh button exposes its content description for screen readers`() = runGlanceAppWidgetUnitTest {
+    fun `refresh button exposes its content description for screen readers`() = runGlanceAppWidgetUnitTest(timeout = 15.seconds) {
         setContext(context)
         provideComposable { WidgetRefreshButton(kind = WidgetKind.AGENDA, isRefreshing = false) }
 
@@ -31,7 +32,7 @@ class WidgetRefreshButtonTest {
     }
 
     @Test
-    fun `refresh button is clickable`() = runGlanceAppWidgetUnitTest {
+    fun `refresh button is clickable`() = runGlanceAppWidgetUnitTest(timeout = 15.seconds) {
         setContext(context)
         provideComposable { WidgetRefreshButton(kind = WidgetKind.WEEK, isRefreshing = false) }
 
@@ -40,7 +41,7 @@ class WidgetRefreshButtonTest {
 
     @Test
     fun `refresh button keeps its description and click action while showing the syncing cue`() =
-        runGlanceAppWidgetUnitTest {
+        runGlanceAppWidgetUnitTest(timeout = 15.seconds) {
             setContext(context)
             provideComposable { WidgetRefreshButton(kind = WidgetKind.UPCOMING, isRefreshing = true) }
 

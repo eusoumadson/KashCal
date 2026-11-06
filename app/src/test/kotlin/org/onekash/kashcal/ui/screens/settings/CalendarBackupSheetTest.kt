@@ -282,13 +282,13 @@ class CalendarBackupSheetTest {
     @Test
     fun `a refused pick says so`() {
         render(pickError = FolderFailure.NO_ACCESS)
-        text("KashCal can't use that folder. Choose another one.").assertExists()
+        text("Abacate Calendário can't use that folder. Choose another one.").assertExists()
     }
 
     @Test
     fun `a folder that can't hold new files is refused with its reason`() {
         render(pickError = FolderFailure.UNSUPPORTED)
-        text("KashCal can't create files in that folder. Choose another one.").assertExists()
+        text("Abacate Calendário can't create files in that folder. Choose another one.").assertExists()
     }
 
     @Test
@@ -304,7 +304,7 @@ class CalendarBackupSheetTest {
     @Test
     fun `with KashCal notifications off the hint opens app settings or goes with Not now`() {
         val calls = render(model(hint = BackupNotificationState.APP_OFF))
-        text("Notifications are off for KashCal, so it can't notify you if a backup fails.").assertExists()
+        text("Notifications are off for Abacate Calendário, so it can't notify you if a backup fails.").assertExists()
         text("Open settings").performClick()
         text("Not now").performClick()
         assertEquals(listOf<String?>(null), calls.notificationSettings)
@@ -314,7 +314,7 @@ class CalendarBackupSheetTest {
     @Test
     fun `with the backup channel off the hint opens that channel`() {
         val calls = render(model(hint = BackupNotificationState.CHANNEL_OFF))
-        text("Backup notifications are off, so KashCal can't notify you if a backup fails.").assertExists()
+        text("Backup notifications are off, so Abacate Calendário can't notify you if a backup fails.").assertExists()
         text("Open settings").performClick()
         assertEquals(listOf<String?>(CalendarBackupNotifications.CHANNEL_ID), calls.notificationSettings)
     }
@@ -370,7 +370,7 @@ class CalendarBackupSheetTest {
     }
 
     private companion object {
-        const val FOOTER = "KashCal overwrites these files at each backup, so changes made to them in other " +
+        const val FOOTER = "Abacate Calendário overwrites these files at each backup, so changes made to them in other " +
             "apps don't last. To restore a calendar, use Import events from file."
     }
 }

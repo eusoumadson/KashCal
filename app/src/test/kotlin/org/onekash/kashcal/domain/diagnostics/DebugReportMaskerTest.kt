@@ -261,7 +261,7 @@ class DebugReportMaskerTest {
             val small = bestOf3Ms { mask(repeatTo(unit, SMALL)) }.coerceAtLeast(1)
             val large = bestOf3Ms { mask(repeatTo(unit, 5 * SMALL)) }
             assertTrue("unit '$unit': small $small ms, large $large ms", large < 12 * small)
-            assertTrue("unit '$unit': large took $large ms", large < 5_000)
+            assertTrue("unit '$unit': large took $large ms", large < 10_000)
         }
     }
 

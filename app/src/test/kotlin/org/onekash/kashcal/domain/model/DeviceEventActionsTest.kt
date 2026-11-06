@@ -174,12 +174,12 @@ class DeviceEventActionsTest {
             timePattern = "h:mm a",
             allDayLabel = "All day",
             locationPrefix = "Location: ",
-            footer = "Shared from KashCal"
+            footer = "Shared from Abacate Calendário"
         )
 
         assertTrue("Should contain title", text.contains("Team Meeting"))
         assertTrue("Should contain location", text.contains("Location: Conference Room A"))
-        assertTrue("Should contain footer", text.contains("Shared from KashCal"))
+        assertTrue("Should contain footer", text.contains("Shared from Abacate Calendário"))
     }
 
     @Test
@@ -190,7 +190,7 @@ class DeviceEventActionsTest {
             timePattern = "h:mm a",
             allDayLabel = "All day",
             locationPrefix = "Location: ",
-            footer = "Shared from KashCal"
+            footer = "Shared from Abacate Calendário"
         )
 
         assertTrue("Should contain 'All day'", text.contains("All day"))
@@ -204,7 +204,7 @@ class DeviceEventActionsTest {
             timePattern = "h:mm a",
             allDayLabel = "All day",
             locationPrefix = "Location: ",
-            footer = "Shared from KashCal"
+            footer = "Shared from Abacate Calendário"
         )
 
         assertFalse("Should not contain Location line", text.contains("Location:"))
@@ -226,7 +226,7 @@ class DeviceEventActionsTest {
             timePattern = "h:mm a",
             allDayLabel = "All day",
             locationPrefix = "Location: ",
-            footer = "Shared from KashCal"
+            footer = "Shared from Abacate Calendário"
         )
 
         val lines = text.lines()
@@ -256,7 +256,7 @@ class DeviceEventActionsTest {
             timePattern = "h:mm a",
             allDayLabel = "All day",
             locationPrefix = "Location: ",
-            footer = "Shared from KashCal"
+            footer = "Shared from Abacate Calendário"
         )
 
         val lines = text.lines()
@@ -287,7 +287,7 @@ class DeviceEventActionsTest {
             timePattern = "h:mm a",
             allDayLabel = "All day",
             locationPrefix = "Location: ",
-            footer = "Shared from KashCal"
+            footer = "Shared from Abacate Calendário"
         )
 
         val lines = text.lines()

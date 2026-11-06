@@ -282,7 +282,7 @@ class CalendarNotificationsSheetTest {
     fun `the blocked banner shows its action and leaves the switches usable`() {
         show(blockedBy = ChangeNotificationsStep.RequestPermission)
 
-        composeTestRule.onNodeWithText("KashCal needs notification permission to remind you about upcoming events.")
+        composeTestRule.onNodeWithText("Abacate Calendário needs notification permission to remind you about upcoming events.")
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("Enable").performClick()
         assertEquals(1, fixCalls)
@@ -296,11 +296,11 @@ class CalendarNotificationsSheetTest {
         show(blockedBy = ChangeNotificationsStep.OpenAppSettings)
 
         composeTestRule.onNodeWithText(
-            "Notifications are off for KashCal in system settings, so no calendar can notify you."
+            "Notifications are off for Abacate Calendário in system settings, so no calendar can notify you."
         ).assertIsDisplayed()
         assertEquals(
             0,
-            composeTestRule.onAllNodesWithText("KashCal needs notification permission to remind you about upcoming events.")
+            composeTestRule.onAllNodesWithText("Abacate Calendário needs notification permission to remind you about upcoming events.")
                 .fetchSemanticsNodes().size
         )
         composeTestRule.onNodeWithText("Open Settings").performClick()

@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -39,9 +40,10 @@ import org.onekash.kashcal.ui.components.kash.KashPose
 import org.onekash.kashcal.util.ExternalLinks
 
 /**
- * Shows About KashCal at full height: Kash with an armful of calendars, the app name and what it
- * is, rows that open the help pages, the source code and the donate page, and a footer with the
- * installed [versionName]. Swiping it down, tapping outside it or Back calls [onDismiss].
+ * Shows About Abacate Calendário at full height: Kash with an armful of calendars, the app name and
+ * what it is, rows that open project source and issues, rows for upstream KashCal (help, original
+ * source and donate), and a footer with credits and the installed [versionName]. Swiping it down,
+ * tapping outside it or Back calls [onDismiss].
  *
  * [onOpenLink] opens a link with [ExternalLinks.openUrl] unless a caller passes its own, and
  * returns false when no app opens it; a line under the rows then says so until a link opens. The
@@ -94,22 +96,60 @@ fun AboutSheet(
                 }
             },
         ) {
-            KashArt(KashPose.ARMFUL, Modifier.size(160.dp))
-            Spacer(modifier = Modifier.height(8.dp))
+            KashArt(KashPose.ARMFUL, Modifier.size(120.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = stringResource(R.string.app_name),
+                text = stringResource(R.string.about_app_title),
                 style = MaterialTheme.typography.headlineSmall,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.semantics { heading() },
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = stringResource(R.string.about_tagline),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            // FORK:fork-identity Project section
+            Text(
+                text = stringResource(R.string.about_section_project),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            RisingRows(
+                rows = listOf(
+                    row(
+                        Icons.Default.Code,
+                        R.string.about_fork_source_title,
+                        R.string.about_fork_source_detail,
+                        ExternalLinks.FORK_SOURCE,
+                    ),
+                    row(
+                        Icons.Outlined.Info,
+                        R.string.about_fork_issues_title,
+                        R.string.about_fork_issues_detail,
+                        ExternalLinks.FORK_ISSUES,
+                    ),
+                ),
+                motionEnabled = motionEnabled,
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            // FORK:fork-identity Upstream section
+            Text(
+                text = stringResource(R.string.about_section_upstream),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+            )
+            Spacer(modifier = Modifier.height(2.dp))
             RisingRows(
                 rows = listOf(
                     row(

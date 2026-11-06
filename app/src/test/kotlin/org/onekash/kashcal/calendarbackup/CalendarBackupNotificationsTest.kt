@@ -75,9 +75,9 @@ class CalendarBackupNotificationsTest {
             "Can't save files in Drive. Tap to choose another folder.",
             text(BackupAlert.FolderUnsupported("Drive")),
         )
-        assertEquals("Couldn't save Trips.ics. KashCal will try again at the next backup.", text(BackupAlert.CalendarsFailed(listOf("Trips.ics"))))
+        assertEquals("Couldn't save Trips.ics. Abacate Calendário will try again at the next backup.", text(BackupAlert.CalendarsFailed(listOf("Trips.ics"))))
         assertEquals(
-            "Couldn't save 2 calendars. KashCal will try again at the next backup.",
+            "Couldn't save 2 calendars. Abacate Calendário will try again at the next backup.",
             text(BackupAlert.CalendarsFailed(listOf("Trips.ics", "Work.ics"))),
         )
         assertEquals(

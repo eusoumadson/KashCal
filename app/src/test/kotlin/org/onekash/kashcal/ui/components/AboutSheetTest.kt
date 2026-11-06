@@ -55,8 +55,14 @@ class AboutSheetTest {
     fun `the sheet names the app, says what it is and shows the version`() {
         show()
 
-        composeTestRule.onNode(hasText("KashCal") and isHeading()).assertExists()
+        composeTestRule.onNode(hasText("Abacate Calendário 🥑") and isHeading()).assertExists()
         composeTestRule.onNodeWithText("All your calendars in one private app.").assertExists()
+        composeTestRule.onNodeWithText("Project").assertExists()
+        composeTestRule.onNodeWithText("Source code & releases").assertExists()
+        composeTestRule.onNodeWithText("GitHub (eusoumadson)").assertExists()
+        composeTestRule.onNodeWithText("Report issue or suggestion").assertExists()
+        composeTestRule.onNodeWithText("GitHub Issues").assertExists()
+        composeTestRule.onNodeWithText("Upstream KashCal").assertExists()
         composeTestRule.onNodeWithText("Help and guides").assertExists()
         composeTestRule.onNodeWithText("Setup, sync and questions").assertExists()
         composeTestRule.onNodeWithText("Source code").assertExists()
@@ -64,18 +70,29 @@ class AboutSheetTest {
         composeTestRule.onNodeWithText("Support KashCal").assertExists()
         composeTestRule.onNodeWithText("Thank you to everyone who already does").assertExists()
         composeTestRule.onNodeWithText("Built with ❤️ in Austin").assertExists()
-        composeTestRule.onNodeWithText("Version 2026.10.30-2").assertExists()
+        composeTestRule.onNodeWithText("Abacate Calendário 🥑 v2026.10.30-2").assertExists()
     }
 
     @Test
     fun `each row opens its page once, in order`() {
         show()
 
-        composeTestRule.onNodeWithText("Help and guides").performClick()
-        composeTestRule.onNodeWithText("Source code").performClick()
-        composeTestRule.onNodeWithText("Support KashCal").performClick()
+        composeTestRule.onNodeWithText("Source code & releases").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Report issue or suggestion").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Help and guides").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Source code").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Support KashCal").performScrollTo().performClick()
 
-        assertEquals(listOf(ExternalLinks.HELP, ExternalLinks.SOURCE, ExternalLinks.DONATE), opened)
+        assertEquals(
+            listOf(
+                ExternalLinks.FORK_SOURCE,
+                ExternalLinks.FORK_ISSUES,
+                ExternalLinks.HELP,
+                ExternalLinks.SOURCE,
+                ExternalLinks.DONATE,
+            ),
+            opened,
+        )
     }
 
     @Test
@@ -83,6 +100,8 @@ class AboutSheetTest {
         show()
 
         for ((title, detail) in listOf(
+            "Source code & releases" to "GitHub (eusoumadson)",
+            "Report issue or suggestion" to "GitHub Issues",
             "Help and guides" to "Setup, sync and questions",
             "Source code" to "Apache 2.0, on GitHub",
             "Support KashCal" to "Thank you to everyone who already does",
@@ -104,7 +123,7 @@ class AboutSheetTest {
         // The live region is there before anything fails, so TalkBack announces the change.
         composeTestRule.onNode(liveRegion).assertExists()
 
-        composeTestRule.onNodeWithText("Source code").performClick()
+        composeTestRule.onNodeWithText("Source code & releases").performClick()
         composeTestRule.onNode(liveRegion and hasText("No app can open this link.")).assertExists()
 
         linkOpens = true
@@ -117,7 +136,8 @@ class AboutSheetTest {
         show(motionEnabled = false)
 
         composeTestRule.onNodeWithText("All your calendars in one private app.").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Support KashCal").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Source code & releases").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Support KashCal").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -125,9 +145,9 @@ class AboutSheetTest {
     fun `on a short screen the rows scroll and the footer stays shown`() {
         show(motionEnabled = false)
 
-        composeTestRule.onNodeWithText("Version 2026.10.30-2").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Abacate Calendário 🥑 v2026.10.30-2").assertIsDisplayed()
         composeTestRule.onNodeWithText("Support KashCal").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Version 2026.10.30-2").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Abacate Calendário 🥑 v2026.10.30-2").assertIsDisplayed()
     }
 
     @Test

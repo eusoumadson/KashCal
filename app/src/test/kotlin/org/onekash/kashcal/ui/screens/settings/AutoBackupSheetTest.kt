@@ -81,7 +81,7 @@ class AutoBackupSheetTest {
         render()
         composeTestRule.onNodeWithText("Automatic Backup").assertIsDisplayed()
         composeTestRule.onNodeWithText("Periodically export a backup JSON containing all settings and fork configurations to a chosen folder.").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Settings backup includes KashCal options and advanced fork features (Tasks.org, Travel Time, and widgets).").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Settings backup includes Abacate Calendário options and advanced fork features (Tasks.org, Travel Time, and widgets).").assertIsDisplayed()
     }
 
     @Test

@@ -245,8 +245,8 @@ class PrintWeekViewModelTest {
         vm.print(); advanceUntilIdle()
 
         val request = vm.nextEvent() as PrintEvent.Request
-        assertEquals("KashCal – Week of Oct 25", request.jobName)
-        assertTrue(request.html.contains("<title>KashCal – Week of Oct 25</title>"))
+        assertEquals("Calendário – Week of Oct 25", request.jobName)
+        assertTrue(request.html.contains("<title>Calendário – Week of Oct 25</title>"))
         assertTrue(request.html.contains(">Work</span>"))
         assertTrue(request.html.contains(">Kids school</span>"))
         assertFalse(request.html.contains(">Private</span>"))
@@ -323,7 +323,7 @@ class PrintWeekViewModelTest {
         assertNull(vm.nextEvent())
         vm.print(); advanceUntilIdle()
         val request = vm.nextEvent() as PrintEvent.Request
-        assertEquals("KashCal – Week of Nov 1", request.jobName)
+        assertEquals("Calendário – Week of Nov 1", request.jobName)
     }
 
     @Test
