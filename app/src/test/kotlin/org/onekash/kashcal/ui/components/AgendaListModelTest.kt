@@ -24,14 +24,24 @@ class AgendaListModelTest {
         startTs: Long,
         startDay: Int,
         endDay: Int = startDay,
-        title: String = "Event"
+        title: String = "Event",
+        isAllDay: Boolean = false
     ): DisplayEvent.Room {
         val id = nextId++
         // A timed event's days come from its instants, so place [startTs] (an offset that orders
         // events within a day) on [startDay] in UTC and end it on [endDay].
         val start = utcMidnight(startDay) + startTs
         val end = if (endDay > startDay) utcMidnight(endDay) + startTs else start + 3_600_000L
-        val event = Event(id = id, uid = "uid-$id", calendarId = 1L, title = title, startTs = start, endTs = end, dtstamp = start)
+        val event = Event(
+            id = id,
+            uid = "uid-$id",
+            calendarId = 1L,
+            title = title,
+            startTs = start,
+            endTs = end,
+            dtstamp = start,
+            isAllDay = isAllDay
+        )
         val occ = Occurrence(eventId = id, calendarId = 1L, startTs = start, endTs = end, startDay = startDay, endDay = endDay)
         val cal = Calendar(id = 1L, accountId = 1L, caldavUrl = "https://example.com/cal/", displayName = "Cal", color = 0xFF0000.toInt())
         return DisplayEvent.Room(event, occ, cal, zone = ZoneOffset.UTC)
@@ -227,5 +237,81 @@ class AgendaListModelTest {
         val group = model.groups[0]
         assertEquals(5, group.items.size)
         assertTrue(group.overflowTasks.isEmpty())
+    }
+
+    @Test
+    fun `day with 3 all-day events, 4 all-day tasks and 2 meetings stacks both and offsets header index correctly`() {
+        val allDayEvents = (1..3).map {
+            roomEvent(0L, 20260718, title = "AllDay Event $it", isAllDay = true)
+        }
+        val allDayTasks = (1..4).map {
+            taskEvent(it.toLong(), 20260718, isAllDay = true, title = "Task $it")
+        }
+        val meeting1 = roomEvent(3_600_000L, 20260718, title = "Meeting 1", isAllDay = false)
+        val meeting2 = roomEvent(7_200_000L, 20260718, title = "Meeting 2", isAllDay = false)
+        val nextDayEvent = roomEvent(1_000L, 20260719, title = "Tomorrow Event")
+
+        val model = buildAgendaListModel(
+            allDayEvents + allDayTasks + listOf(meeting1, meeting2, nextDayEvent),
+            todayDayCode = 20260718
+        )
+
+        assertEquals(2, model.groups.size)
+        val group1 = model.groups[0]
+        // 1st all-day event + 1st task + 2 meetings = 4 items in group1.items
+        assertEquals(4, group1.items.size)
+        val initialTitles = group1.items.map {
+            if (it.displayEvent is DisplayEvent.Task) it.displayEvent.task.title else it.displayEvent.title
+        }
+        assertEquals(listOf("AllDay Event 1", "Task 1", "Meeting 1", "Meeting 2"), initialTitles)
+        assertEquals(2, group1.overflowEvents.size)
+        assertEquals(listOf("AllDay Event 2", "AllDay Event 3"), group1.overflowEvents.map { it.displayEvent.title })
+        assertEquals(3, group1.overflowTasks.size)
+        assertEquals(listOf("Task 2", "Task 3", "Task 4"), group1.overflowTasks.map { (it.displayEvent as DisplayEvent.Task).task.title })
+
+        // Flat layout indices:
+        // Group 1 header = 0
+        // Group 1 elements: 1 header + 4 items + 1 overflowEvents card + 1 overflowTasks card = 7
+        // Group 2 header = 7
+        assertEquals(0, model.headerIndexByDayCode[20260718])
+        assertEquals(7, model.headerIndexByDayCode[20260719])
+    }
+
+    @Test
+    fun `single all-day event produces no overflow`() {
+        val singleAllDayEvent = roomEvent(0L, 20260718, title = "Single AllDay", isAllDay = true)
+        val meeting = roomEvent(3_600_000L, 20260718, title = "Meeting", isAllDay = false)
+
+        val model = buildAgendaListModel(listOf(singleAllDayEvent, meeting), todayDayCode = 20260718)
+
+        assertEquals(1, model.groups.size)
+        val group = model.groups[0]
+        assertEquals(2, group.items.size)
+        assertTrue(group.overflowEvents.isEmpty())
+        assertTrue(group.overflowTasks.isEmpty())
+        assertEquals(0, model.headerIndexByDayCode[20260718])
+    }
+
+    @Test
+    fun `all-day events stacking functions without tasks when tasksOrgEnabled is false`() {
+        // Without tasks (e.g. tasksOrgEnabled = false): only all-day events are supplied
+        val allDayEvents = (1..3).map {
+            roomEvent(0L, 20260718, title = "Event $it", isAllDay = true)
+        }
+        val nextDayEvent = roomEvent(1_000L, 20260719, title = "Next Day")
+
+        val model = buildAgendaListModel(allDayEvents + listOf(nextDayEvent), todayDayCode = 20260718)
+
+        assertEquals(2, model.groups.size)
+        val group1 = model.groups[0]
+        assertEquals(1, group1.items.size)
+        assertEquals("Event 1", group1.items[0].displayEvent.title)
+        assertEquals(2, group1.overflowEvents.size)
+        assertEquals(listOf("Event 2", "Event 3"), group1.overflowEvents.map { it.displayEvent.title })
+        assertTrue(group1.overflowTasks.isEmpty())
+
+        // 1 header + 1 item + 1 overflowEvents card = 3
+        assertEquals(0, model.headerIndexByDayCode[20260718])
+        assertEquals(3, model.headerIndexByDayCode[20260719])
     }
 }

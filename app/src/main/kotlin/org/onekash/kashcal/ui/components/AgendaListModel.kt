@@ -19,7 +19,8 @@ internal data class AgendaDisplayItem(
 internal data class AgendaDayGroup(
     val dayCode: Int,
     val items: List<AgendaDisplayItem>,
-    val overflowTasks: List<AgendaDisplayItem> = emptyList() // FORK:tasks-org
+    val overflowTasks: List<AgendaDisplayItem> = emptyList(), // FORK:tasks-org
+    val overflowEvents: List<AgendaDisplayItem> = emptyList() // FORK:tasks-org
 )
 
 /**
@@ -75,28 +76,37 @@ internal fun buildAgendaListModel(
     val groups = expandedItems
         .groupBy { it.displayDay }
         .map { (dayCode, dayItems) ->
-            // FORK:tasks-org — group all-day tasks exceeding 1 into overflow
+            // FORK:tasks-org — group all-day events and tasks exceeding 1 into overflow
+            val allDayEvents = dayItems.filter { it.displayEvent !is DisplayEvent.Task && it.displayEvent.isAllDay }
             val allDayTasks = dayItems.filter { it.displayEvent is DisplayEvent.Task && it.displayEvent.isAllDay }
-            if (allDayTasks.size > 1) {
-                val firstTask = allDayTasks.first()
-                val initialItems = dayItems.filter { item ->
-                    val isAllDayTask = item.displayEvent is DisplayEvent.Task && item.displayEvent.isAllDay
-                    !isAllDayTask || item === firstTask
-                }
-                val overflow = allDayTasks.drop(1)
-                AgendaDayGroup(dayCode, initialItems, overflow)
-            } else {
-                AgendaDayGroup(dayCode, dayItems, emptyList())
+
+            val firstEvent = allDayEvents.firstOrNull()
+            val firstTask = allDayTasks.firstOrNull()
+
+            val overflowEvents = if (allDayEvents.size > 1) allDayEvents.drop(1) else emptyList()
+            val overflowTasks = if (allDayTasks.size > 1) allDayTasks.drop(1) else emptyList()
+
+            val initialItems = dayItems.filter { item ->
+                val isAllDayEvent = item.displayEvent !is DisplayEvent.Task && item.displayEvent.isAllDay
+                val isAllDayTask = item.displayEvent is DisplayEvent.Task && item.displayEvent.isAllDay
+                (!isAllDayEvent || item === firstEvent) && (!isAllDayTask || item === firstTask)
             }
+
+            AgendaDayGroup(
+                dayCode = dayCode,
+                items = initialItems,
+                overflowTasks = overflowTasks,
+                overflowEvents = overflowEvents
+            )
         }
         .sortedBy { it.dayCode }
 
-    // Flat index of each header: sum of (1 header + N cards + 1 overflow card if present) for preceding groups.
+    // Flat index of each header: sum of (1 header + N cards + 1 overflow card per non-empty overflow stack) for preceding groups.
     val headerIndexByDayCode = LinkedHashMap<Int, Int>()
     var index = 0
     for (group in groups) {
         headerIndexByDayCode[group.dayCode] = index
-        val overflowCardCount = if (group.overflowTasks.isNotEmpty()) 1 else 0
+        val overflowCardCount = (if (group.overflowEvents.isNotEmpty()) 1 else 0) + (if (group.overflowTasks.isNotEmpty()) 1 else 0)
         index += 1 + group.items.size + overflowCardCount
     }
 

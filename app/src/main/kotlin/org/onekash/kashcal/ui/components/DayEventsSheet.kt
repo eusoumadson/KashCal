@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -81,20 +82,23 @@ internal fun DayEventsSheet(
     val dateLabel = SimpleDateFormat(DateTimeUtils.localizedPattern("yEEEEMMMMd"), locale)
         .format(Date(dateMs))
 
-    // FORK:tasks-org — group overflow all-day tasks into compact expandable card
-    val (allDayTasks, otherEvents) = remember(events) {
+    // FORK:tasks-org — group overflow all-day events and tasks into compact expandable cards
+    val (allDayEvents, allDayTasks, otherEvents) = remember(events) {
+        val allday = mutableListOf<DisplayEvent>()
         val tasks = mutableListOf<DisplayEvent.Task>()
         val others = mutableListOf<DisplayEvent>()
         events.forEach { event ->
-            if (event is DisplayEvent.Task && event.isAllDay) {
-                tasks.add(event)
-            } else {
-                others.add(event)
+            when {
+                event is DisplayEvent.Task && event.isAllDay -> tasks.add(event)
+                event !is DisplayEvent.Task && event.isAllDay -> allday.add(event)
+                else -> others.add(event)
             }
         }
-        tasks to others
+        Triple(allday, tasks, others)
     }
+    val hasEventOverflow = allDayEvents.size > 1
     val hasTaskOverflow = allDayTasks.size > 1
+    var isEventsExpanded by remember { mutableStateOf(false) }
     var isTasksExpanded by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
@@ -168,17 +172,26 @@ internal fun DayEventsSheet(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.weight(1f, fill = false)
                 ) {
-                    if (hasTaskOverflow) {
-                        val firstTask = allDayTasks.first()
-                        val firstTaskIndex = events.indexOfFirst { it === firstTask }
-                        val beforeAndFirst = if (firstTaskIndex >= 0) events.subList(0, firstTaskIndex + 1) else emptyList()
-                        val afterItems = if (firstTaskIndex >= 0) {
-                            events.subList(firstTaskIndex + 1, events.size).filter { it !in allDayTasks }
-                        } else {
-                            events.filter { it !in allDayTasks }
-                        }
+                    val overflowEvents = if (hasEventOverflow) allDayEvents.drop(1).toSet() else emptySet()
+                    val overflowTasks = if (hasTaskOverflow) allDayTasks.drop(1).toSet() else emptySet()
+                    val mainEvents = events.filter { it !in overflowEvents && it !in overflowTasks }
 
-                        items(beforeAndFirst, key = { event ->
+                    val firstEvent = allDayEvents.firstOrNull()
+                    val firstTask = allDayTasks.firstOrNull()
+
+                    val eventIndex = if (hasEventOverflow && firstEvent != null) {
+                        mainEvents.indexOfFirst { it === firstEvent }
+                    } else {
+                        -1
+                    }
+                    val taskIndex = if (hasTaskOverflow && firstTask != null) {
+                        mainEvents.indexOfFirst { it === firstTask }
+                    } else {
+                        -1
+                    }
+
+                    fun emitSlice(slice: List<DisplayEvent>) {
+                        items(slice, key = { event ->
                             when (event) {
                                 is DisplayEvent.Room -> "room-${event.event.id}-${event.occurrence.startTs}"
                                 is DisplayEvent.Device -> "device-${event.instance.instanceId}-${event.startTs}"
@@ -187,7 +200,68 @@ internal fun DayEventsSheet(
                         }) { displayEvent ->
                             RenderEventCard(displayEvent)
                         }
+                    }
 
+                    fun emitEventStackItem() {
+                        item(key = "day_sheet_event_stack") {
+                            val count = allDayEvents.size - 1
+                            val label = stringResource(R.string.split_agenda_more_all_day_events, count)
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Surface(
+                                    onClick = { isEventsExpanded = !isEventsExpanded },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    tonalElevation = 1.dp
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.DateRange,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp),
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                            Text(
+                                                text = label,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = if (isEventsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                            contentDescription = if (isEventsExpanded) stringResource(R.string.cd_collapse) else null,
+                                            modifier = Modifier.size(20.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                AnimatedVisibility(
+                                    visible = isEventsExpanded,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        allDayEvents.drop(1).forEach { event ->
+                                            RenderEventCard(event)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    fun emitTaskStackItem() {
                         item(key = "day_sheet_task_stack") {
                             val count = allDayTasks.size - 1
                             val label = stringResource(R.string.label_more_tasks_compact, count)
@@ -244,27 +318,44 @@ internal fun DayEventsSheet(
                                 }
                             }
                         }
+                    }
 
-                        if (afterItems.isNotEmpty()) {
-                            items(afterItems, key = { event ->
-                                when (event) {
-                                    is DisplayEvent.Room -> "room-${event.event.id}-${event.occurrence.startTs}"
-                                    is DisplayEvent.Device -> "device-${event.instance.instanceId}-${event.startTs}"
-                                    is DisplayEvent.Task -> event.stableKey
+                    when {
+                        eventIndex >= 0 && taskIndex >= 0 -> {
+                            if (eventIndex < taskIndex) {
+                                emitSlice(mainEvents.subList(0, eventIndex + 1))
+                                emitEventStackItem()
+                                emitSlice(mainEvents.subList(eventIndex + 1, taskIndex + 1))
+                                emitTaskStackItem()
+                                if (taskIndex + 1 < mainEvents.size) {
+                                    emitSlice(mainEvents.subList(taskIndex + 1, mainEvents.size))
                                 }
-                            }) { displayEvent ->
-                                RenderEventCard(displayEvent)
+                            } else {
+                                emitSlice(mainEvents.subList(0, taskIndex + 1))
+                                emitTaskStackItem()
+                                emitSlice(mainEvents.subList(taskIndex + 1, eventIndex + 1))
+                                emitEventStackItem()
+                                if (eventIndex + 1 < mainEvents.size) {
+                                    emitSlice(mainEvents.subList(eventIndex + 1, mainEvents.size))
+                                }
                             }
                         }
-                    } else {
-                        items(events, key = { event ->
-                            when (event) {
-                                is DisplayEvent.Room -> "room-${event.event.id}-${event.occurrence.startTs}"
-                                is DisplayEvent.Device -> "device-${event.instance.instanceId}-${event.startTs}"
-                                is DisplayEvent.Task -> event.stableKey
+                        eventIndex >= 0 -> {
+                            emitSlice(mainEvents.subList(0, eventIndex + 1))
+                            emitEventStackItem()
+                            if (eventIndex + 1 < mainEvents.size) {
+                                emitSlice(mainEvents.subList(eventIndex + 1, mainEvents.size))
                             }
-                        }) { displayEvent ->
-                            RenderEventCard(displayEvent)
+                        }
+                        taskIndex >= 0 -> {
+                            emitSlice(mainEvents.subList(0, taskIndex + 1))
+                            emitTaskStackItem()
+                            if (taskIndex + 1 < mainEvents.size) {
+                                emitSlice(mainEvents.subList(taskIndex + 1, mainEvents.size))
+                            }
+                        }
+                        else -> {
+                            emitSlice(mainEvents)
                         }
                     }
                 }
