@@ -199,10 +199,10 @@ class SplitAgendaWidgetContentTest {
         onAllNodes(hasText(upcomingTitle)).assertCountEquals(0)
     }
 
-    // ==================== T05: Compact Date Header with 2-digit Year ====================
+    // ==================== T01: Refactored SplitDateHeader with Full Names and 4-digit Year ====================
 
     @Test
-    fun `split date header formats day number weekday and abbreviated month with two-digit year`() = runGlanceAppWidgetUnitTest(timeout = 15.seconds) {
+    fun `split date header formats day number weekday and full month with four-digit year`() = runGlanceAppWidgetUnitTest(timeout = 15.seconds) {
         setContext(context)
         val testDate = LocalDate.of(2026, 11, 5) // November 5, 2026 is Thursday
 
@@ -211,20 +211,16 @@ class SplitAgendaWidgetContentTest {
         }
 
         onNode(hasTextEqualTo("5")).assertExists()
-        onNode(hasTextEqualTo("THU")).assertExists()
-        onNode(hasTextEqualTo("Nov '26")).assertExists()
-
-        val expectedParams = actionParametersOf(
-            ActionParameters.Key<String>(EXTRA_ACTION) to ACTION_GO_TO_TODAY
-        )
-        onNode(hasStartActivityClickAction<MainActivity>(expectedParams)).assertExists()
+        onNode(hasTextEqualTo("THURSDAY")).assertExists()
+        onNode(hasTextEqualTo("November 2026")).assertExists()
+        onNode(hasClickAction()).assertDoesNotExist()
     }
 
     @Test
-    fun `split date header formats year in two digits in pt-BR locale`() = runGlanceAppWidgetUnitTest(timeout = 15.seconds) {
+    fun `split date header formats full month and year in pt-BR locale`() = runGlanceAppWidgetUnitTest(timeout = 15.seconds) {
         setContext(context)
         val testDate = LocalDate.of(2026, 11, 5)
-        val expectedDayOfWeek = testDate.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale.forLanguageTag("pt-BR")).uppercase()
+        val expectedDayOfWeek = testDate.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, Locale.forLanguageTag("pt-BR")).uppercase()
 
         provideComposable {
             SplitDateHeader(today = testDate, locale = Locale.forLanguageTag("pt-BR"))
@@ -232,11 +228,11 @@ class SplitAgendaWidgetContentTest {
 
         onNode(hasTextEqualTo("5")).assertExists()
         onNode(hasTextEqualTo(expectedDayOfWeek)).assertExists()
-        onNode(hasText("'26")).assertExists()
+        onNode(hasTextEqualTo("Novembro 2026")).assertExists()
     }
 
     @Test
-    fun `wide split layout displays compact date header with two-digit year`() = runGlanceAppWidgetUnitTest(timeout = 15.seconds) {
+    fun `wide split layout displays date header with four-digit year`() = runGlanceAppWidgetUnitTest(timeout = 15.seconds) {
         setContext(context)
         setAppWidgetSize(DpSize(400.dp, 600.dp))
         val testDate = LocalDate.of(2026, 11, 5)
@@ -248,9 +244,51 @@ class SplitAgendaWidgetContentTest {
             SplitAgendaWidgetContent(data = data)
         }
 
-        // Header has "5" and calendar grid day 5 also has "5"
-        onAllNodes(hasTextEqualTo("5")).assertCountEquals(2)
-        onNode(hasText("'26")).assertExists()
+        // Header has "5", calendar grid Nov 5 has "5", and adjacent month Dec 5 has "5"
+        onAllNodes(hasTextEqualTo("5")).assertCountEquals(3)
+        onNode(hasText("2026")).assertExists()
+    }
+
+    // ==================== T02: 6 Complete Weeks with Adjacent Month Days ====================
+
+    @Test
+    fun `wide split layout displays out-date and in-date adjacent month days filling all 6 weeks`() = runGlanceAppWidgetUnitTest(timeout = 15.seconds) {
+        setContext(context)
+        setAppWidgetSize(DpSize(400.dp, 600.dp))
+        val testDate = LocalDate.of(2026, 11, 5)
+        val data = makeSplitAgendaData(today = testDate)
+
+        provideComposable {
+            SplitAgendaWidgetContent(data = data)
+        }
+
+        // Verify that cells with OutDate (such as those in the 6th week) display their day numbers
+        val lastWeek = data.monthGrid.weeks.last()
+        val outDateCells = lastWeek.filter { it.position == MonthGrid.DayPosition.OutDate }
+        assert(outDateCells.isNotEmpty())
+
+        for (cell in outDateCells) {
+            onAllNodes(hasTextEqualTo("${cell.dayOfMonth}"))[0].assertExists()
+        }
+    }
+
+    // ==================== T03: Lateral Padding and Left Column Click Wrapper ====================
+
+    @Test
+    fun `wide split layout left column wraps content with click action to open today`() = runGlanceAppWidgetUnitTest(timeout = 15.seconds) {
+        setContext(context)
+        setAppWidgetSize(DpSize(400.dp, 600.dp))
+        val testDate = LocalDate.of(2026, 11, 5)
+        val data = makeSplitAgendaData(today = testDate)
+
+        provideComposable {
+            SplitAgendaWidgetContent(data = data)
+        }
+
+        val expectedParams = actionParametersOf(
+            ActionParameters.Key<String>(EXTRA_ACTION) to ACTION_GO_TO_TODAY
+        )
+        onNode(hasStartActivityClickAction<MainActivity>(expectedParams)).assertExists()
     }
 
     // ==================== T06: Stacking Pills and Convention Navigation ====================
