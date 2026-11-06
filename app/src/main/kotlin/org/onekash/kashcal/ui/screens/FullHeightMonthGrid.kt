@@ -348,6 +348,7 @@ private fun SlotRow(
                             isPast = isPast(content.displayEvent),
                         )
                     }
+                    // FORK:tasks-org — render consolidated overflow count in the cell slot
                     val hidden = hiddenCounts?.get(col) ?: 0
                     if (hidden > 0) {
                         CellSlot(hidden = hidden, modifier = Modifier.weight(1f), content = snippet)
@@ -357,6 +358,7 @@ private fun SlotRow(
                     col++
                 }
                 SlotContent.Empty -> {
+                    // FORK:tasks-org — render consolidated overflow count in the cell slot
                     val hidden = hiddenCounts?.get(col) ?: 0
                     if (hidden > 0) {
                         CellSlot(hidden = hidden, modifier = Modifier.weight(1f)) {}

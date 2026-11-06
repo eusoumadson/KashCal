@@ -17,7 +17,10 @@ out/
 # Local archive (stale planning docs)
 archive/
 !openspec/changes/archive/
-docs/
+docs/*
+!docs/fork/
+!docs/fork/**
+!docs/RRULE_ENGINE_PARITY.md
 
 # Local planning docs (issue triage, sequences — never shipped)
 .local-docs/

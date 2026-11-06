@@ -457,11 +457,11 @@ class MonthFullSpanLayoutTest {
         val allDayFree = roomEvent(id = 2, startDay = 20260310, endDay = 20260310, isAllDay = true, transp = "TRANSPARENT", occStartTs = 1_730_000_001_000L)
         val allDayBusy = roomEvent(id = 3, startDay = 20260310, endDay = 20260310, isAllDay = true, transp = "OPAQUE", occStartTs = 1_730_000_002_000L)
         val render = computeMonthFullWeekRender(weekSunToSat, mapOf(20260310 to listOf(timedAt9, allDayFree, allDayBusy)), rows = 6)
-        // Expected slot order at col 2: all-day busy, all-day free, timed (busy beats free, both
-        // beat timed, ties by startTs).
+        // Expected slot order at col 2: all-day busy (winning the single all-day slot), timed (in slot 1);
+        // all-day free is counted in hiddenCounts.
         assertEquals(allDayBusy, (render.slots[0][2] as SlotContent.CellEvent).displayEvent)
-        assertEquals(allDayFree, (render.slots[1][2] as SlotContent.CellEvent).displayEvent)
-        assertEquals(timedAt9, (render.slots[2][2] as SlotContent.CellEvent).displayEvent)
+        assertEquals(timedAt9, (render.slots[1][2] as SlotContent.CellEvent).displayEvent)
+        assertEquals(1, render.hiddenCounts[2])
     }
 
     @Test
@@ -751,10 +751,22 @@ class MonthFullSpanLayoutTest {
         val busy = roomEvent(id = 3, startDay = 20260310, endDay = 20260310, isAllDay = true, transp = "OPAQUE", occStartTs = ts)
         val map = mapOf(20260310 to listOf<DisplayEvent>(timed, free, busy))
         val render = computeMonthFullWeekRender(weekSunToSat, map, rows = 6)
-        // Order in slots 0..2 at col 2 (Tue): busy, free, timed.
+        // Order at col 2 (Tue): busy wins consolidated all-day slot, timed takes slot 1; free is hidden.
         assertEquals(busy, (render.slots[0][2] as SlotContent.CellEvent).displayEvent)
-        assertEquals(free, (render.slots[1][2] as SlotContent.CellEvent).displayEvent)
-        assertEquals(timed, (render.slots[2][2] as SlotContent.CellEvent).displayEvent)
+        assertEquals(timed, (render.slots[1][2] as SlotContent.CellEvent).displayEvent)
+        assertEquals(1, render.hiddenCounts[2])
+    }
+
+    @Test
+    fun `cell event sort - all-day free beats timed`() {
+        val ts = 1_730_000_000_000L
+        val timed = roomEvent(id = 1, startDay = 20260310, endDay = 20260310, isAllDay = false, occStartTs = ts)
+        val free = roomEvent(id = 2, startDay = 20260310, endDay = 20260310, isAllDay = true, transp = "TRANSPARENT", occStartTs = ts)
+        val map = mapOf(20260310 to listOf<DisplayEvent>(timed, free))
+        val render = computeMonthFullWeekRender(weekSunToSat, map, rows = 6)
+        assertEquals(free, (render.slots[0][2] as SlotContent.CellEvent).displayEvent)
+        assertEquals(timed, (render.slots[1][2] as SlotContent.CellEvent).displayEvent)
+        assertEquals(0, render.hiddenCounts[2])
     }
 
     @Test
@@ -1025,6 +1037,56 @@ class MonthFullSpanLayoutTest {
         assertEquals(task, (render.slots[0][2] as SlotContent.CellEvent).displayEvent)
         assertEquals(meeting1, (render.slots[1][2] as SlotContent.CellEvent).displayEvent)
         assertEquals(meeting2, (render.slots[2][2] as SlotContent.CellEvent).displayEvent)
+        assertEquals(0, render.hiddenCounts[2])
+    }
+
+    @Test
+    fun `multiple 1-day all-day events and multiple all-day tasks are consolidated preserving slots for timed events`() {
+        val tueDayCode = weekSunToSat[2]
+        val events = (1..3).map { roomEvent(it.toLong(), tueDayCode, tueDayCode, isAllDay = true, occStartTs = it * 1000L) }
+        val tasks = (10..13).map { taskAllDay(it.toLong(), tueDayCode, "Task $it") }
+        val meeting1 = roomEvent(101L, tueDayCode, tueDayCode, isAllDay = false, occStartTs = 50_000L)
+        val meeting2 = roomEvent(102L, tueDayCode, tueDayCode, isAllDay = false, occStartTs = 60_000L)
+
+        val byDay = mapOf(tueDayCode to (events + tasks + listOf(meeting1, meeting2)))
+        val render = computeMonthFullWeekRender(weekSunToSat, byDay, rows = 4)
+
+        // Slot 0: First 1-day all-day event
+        val slot0 = render.slots[0][2]
+        assertTrue(slot0 is SlotContent.CellEvent)
+        assertEquals(events[0], (slot0 as SlotContent.CellEvent).displayEvent)
+
+        // Slot 1: First all-day task
+        val slot1 = render.slots[1][2]
+        assertTrue(slot1 is SlotContent.CellEvent)
+        assertEquals(tasks[0], (slot1 as SlotContent.CellEvent).displayEvent)
+
+        // Slots 2 and 3: Timed meetings
+        val slot2 = render.slots[2][2]
+        assertTrue(slot2 is SlotContent.CellEvent)
+        assertEquals(meeting1, (slot2 as SlotContent.CellEvent).displayEvent)
+
+        val slot3 = render.slots[3][2]
+        assertTrue(slot3 is SlotContent.CellEvent)
+        assertEquals(meeting2, (slot3 as SlotContent.CellEvent).displayEvent)
+
+        // (3 - 1) surplus events + (4 - 1) surplus tasks = 2 + 3 = 5 reported in hidden count
+        assertEquals(5, render.hiddenCounts[2])
+    }
+
+    @Test
+    fun `single 1-day all-day event and single all-day task with timed event fit without artificial hidden count`() {
+        val tueDayCode = weekSunToSat[2]
+        val allDayEvent = roomEvent(1L, tueDayCode, tueDayCode, isAllDay = true, occStartTs = 1000L)
+        val task = taskAllDay(10L, tueDayCode, "Task 1")
+        val meeting = roomEvent(101L, tueDayCode, tueDayCode, isAllDay = false, occStartTs = 50_000L)
+
+        val byDay = mapOf(tueDayCode to listOf(allDayEvent, task, meeting))
+        val render = computeMonthFullWeekRender(weekSunToSat, byDay, rows = 3)
+
+        assertEquals(allDayEvent, (render.slots[0][2] as SlotContent.CellEvent).displayEvent)
+        assertEquals(task, (render.slots[1][2] as SlotContent.CellEvent).displayEvent)
+        assertEquals(meeting, (render.slots[2][2] as SlotContent.CellEvent).displayEvent)
         assertEquals(0, render.hiddenCounts[2])
     }
 }

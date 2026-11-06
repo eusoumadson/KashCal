@@ -874,6 +874,7 @@ fun HomeScreen(
                                                     }
                                                 }
                                             },
+                                            onTaskCheckedChange = onTaskCheckedChange, // FORK:tasks-org
                                             onEmptyTap = { date, hour, minute ->
                                                 val calendar = JavaCalendar.getInstance().apply {
                                                     set(date.year, date.monthValue - 1, date.dayOfMonth, hour, minute, 0)

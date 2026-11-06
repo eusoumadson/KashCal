@@ -431,7 +431,7 @@ class PlannerViewTest {
     }
 
     private fun ribbons(count: Int) = (0 until count).map { i ->
-        PlannerTestEvents.roomAllDay(200L + i, thu, zone).let { it.copy(event = it.event.copy(title = "Ribbon $i")) }
+        PlannerTestEvents.roomAllDay(200L + i, thu, zone, days = 2).let { it.copy(event = it.event.copy(title = "Ribbon $i")) }
     }
 
     @Test
@@ -898,6 +898,33 @@ class PlannerViewTest {
 
         // 3. Clicking the summary ribbon triggers day click to show all day events
         rule.onNode(hasTestTag("planner_task_summary") and inBox(monDayCode)).performClick()
+        assertEquals(1, calls.dayClicks.size)
+    }
+
+    @Test
+    fun `multiple 1-day all-day events are consolidated into planner_event_summary preserving single task and timed events`() {
+        val event1 = PlannerTestEvents.roomAllDay(1L, mon, zone).let { it.copy(event = it.event.copy(title = "All-day 1")) }
+        val event2 = PlannerTestEvents.roomAllDay(2L, mon, zone).let { it.copy(event = it.event.copy(title = "All-day 2")) }
+        val event3 = PlannerTestEvents.roomAllDay(3L, mon, zone).let { it.copy(event = it.event.copy(title = "All-day 3")) }
+        val task = taskAllDay(10L, mon, "Single Task")
+        val meeting1 = timed(101L, mon, 9, "Daily Sync")
+        val meeting2 = timed(102L, mon, 14, "Planning Call")
+        val calls = show(stateOf(event1, event2, event3, task, meeting1, meeting2))
+
+        val monDayCode = PlannerTestEvents.dayCode(mon)
+        // 1. Event summary ribbon is rendered with tag planner_event_summary
+        rule.onNode(hasTestTag("planner_event_summary") and inBox(monDayCode)).assertExists()
+
+        // 2. Single task is rendered as normal ribbon (not task summary)
+        rule.onNode(hasTestTag("planner_task_summary") and inBox(monDayCode)).assertDoesNotExist()
+        rule.onNode(hasText("Single Task", substring = true) and inBox(monDayCode)).assertExists()
+
+        // 3. Both timed meetings are placed and visible in the box
+        rule.onNode(hasText("Daily Sync") and inBox(monDayCode)).assertExists()
+        rule.onNode(hasText("Planning Call") and inBox(monDayCode)).assertExists()
+
+        // 4. Clicking the event summary ribbon triggers day click to show day events
+        rule.onNode(hasTestTag("planner_event_summary") and inBox(monDayCode)).performClick()
         assertEquals(1, calls.dayClicks.size)
     }
 }
