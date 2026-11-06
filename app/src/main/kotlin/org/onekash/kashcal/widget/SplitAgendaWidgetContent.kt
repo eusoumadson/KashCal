@@ -115,14 +115,21 @@ private fun WideSplitLayout(
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left Column: Compact Date Header + 6-week Month Calendar Grid
+        // Left Column: Date Header + 6-week Month Calendar Grid
+        // Wrapped with clickable to open KashCal on today (RF-09, AC-05)
         Column(
             modifier = GlanceModifier
                 .defaultWeight()
                 .fillMaxHeight()
-                .padding(start = 4.dp, top = 2.dp, end = 6.dp, bottom = 4.dp)
+                .clickable(
+                    actionStartActivity<MainActivity>(
+                        parameters = actionParametersOf(
+                            ActionParameters.Key<String>(EXTRA_ACTION) to ACTION_GO_TO_TODAY
+                        )
+                    )
+                )
+                .padding(end = 8.dp)
         ) {
-            // Tapping header goes to today in KashCal
             SplitDateHeader(today = today, locale = locale)
 
             Spacer(modifier = GlanceModifier.height(2.dp))
@@ -219,6 +226,15 @@ private fun WideSplitLayout(
                                             }
                                         }
                                     }
+                                } else {
+                                    Text(
+                                        text = "${cell.dayOfMonth}",
+                                        style = TextStyle(
+                                            color = WidgetTheme.adjacentMonthText(),
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Normal
+                                        )
+                                    )
                                 }
                             }
                         }
@@ -243,7 +259,7 @@ private fun WideSplitLayout(
             modifier = GlanceModifier
                 .defaultWeight()
                 .fillMaxHeight()
-                .padding(start = 6.dp, top = 2.dp, end = 4.dp, bottom = 4.dp)
+                .padding(start = 8.dp, top = 2.dp, end = 4.dp, bottom = 4.dp)
         )
     }
 }
@@ -254,45 +270,37 @@ internal fun SplitDateHeader(
     locale: Locale = Locale.getDefault(),
     modifier: GlanceModifier = GlanceModifier
 ) {
-    val dayOfWeekShort = today.dayOfWeek.getDisplayName(JavaTextStyle.SHORT, locale).uppercase()
+    val dayOfWeekFull = today.dayOfWeek.getDisplayName(JavaTextStyle.FULL, locale).uppercase()
     val dayNumber = today.dayOfMonth.toString()
-    val shortMonth = today.month.getDisplayName(JavaTextStyle.SHORT, locale)
+    val fullMonth = today.month.getDisplayName(JavaTextStyle.FULL, locale)
         .replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
-    val shortYear = String.format(Locale.ROOT, "'%02d", today.year % 100)
-    val monthAndYear = "$shortMonth $shortYear"
+    val monthAndYear = "$fullMonth ${today.year}"
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(40.dp)
-            .clickable(
-                actionStartActivity<MainActivity>(
-                    parameters = actionParametersOf(
-                        ActionParameters.Key<String>(EXTRA_ACTION) to ACTION_GO_TO_TODAY
-                    )
-                )
-            ),
+            .height(48.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = dayNumber,
             style = TextStyle(
                 color = WidgetTheme.primaryText,
-                fontSize = 24.sp,
+                fontSize = 28.sp,
                 fontWeight = FontWeight.Bold
             ),
             maxLines = 1
         )
-        Spacer(modifier = GlanceModifier.width(6.dp))
+        Spacer(modifier = GlanceModifier.width(8.dp))
         Column(
             modifier = GlanceModifier.defaultWeight(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = dayOfWeekShort,
+                text = dayOfWeekFull,
                 style = TextStyle(
                     color = WidgetTheme.accentColor,
-                    fontSize = 11.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 ),
                 maxLines = 1
@@ -301,7 +309,7 @@ internal fun SplitDateHeader(
                 text = monthAndYear,
                 style = TextStyle(
                     color = WidgetTheme.secondaryText,
-                    fontSize = 11.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 ),
                 maxLines = 1
