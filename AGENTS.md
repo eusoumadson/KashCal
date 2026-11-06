@@ -15,43 +15,46 @@
 
 | Command | Purpose |
 |---|---|
-| `make release` | Run interactive release wizard (bump version, draft changelog, tag and push) |
-| `make dry-run` | Simulate release workflow without touching files or git |
-| `./gradlew assembleDebug --no-daemon` | Assemble debug APK (`./gradlew assembleDebug` with daemon) |
-| `./gradlew testDebugUnitTest --no-daemon` | Run unit tests across `:app`, `:icaldav-core`, `:vcard-core` (~1 min, excludes live integration) |
+| `./gradlew assembleDebug --no-daemon` | Assemble debug APK (`.github/workflows/build.yml`) |
+| `./gradlew assembleRelease --no-daemon` | Assemble release APK (`.github/workflows/release.yml`) |
+| `./gradlew installDebug` | Build and install debug APK on connected device (`Makefile`) |
+| `python3 app/src/fork/tools/release.py` | Run interactive release wizard (`Makefile`: `make release`) |
+| `python3 app/src/fork/tools/release.py --dry-run` | Simulate release workflow without modifying files or git (`Makefile`: `make dry-run`) |
+| `./gradlew testDebugUnitTest --no-daemon` | Run unit tests across `:app`, `:icaldav-core`, `:vcard-core` (`Makefile`: `make test`, `.github/workflows/build.yml`) |
 | `./gradlew testDebugUnitTest --tests "*NomeDoTest*"` | Run a single unit test class by name pattern |
-| `./gradlew lintDebug --no-daemon` | Run Android Lint on debug variant (`./gradlew lint` for full lint task) |
-| `./gradlew koverHtmlReport` | Generate Kotlinx Kover HTML coverage report |
-| `./gradlew testDebugUnitTest -Pintegration` | Run live CalDAV server integration tests (~13 min; run only when explicitly requested) |
-| `openspec list --specs` | List active OpenSpec specifications (`travel-time-alerts`, `tasks-org-integration`, `auto-backup`) |
+| `./gradlew cleanTestDebugUnitTest testDebugUnitTest --tests "*Screenshot*" -Proborazzi.test.verify=true --no-build-cache --no-daemon` | Verify Roborazzi visual regression screenshots (`.github/workflows/build.yml`) |
+| `./gradlew testDebugUnitTest -Pintegration` | Run live CalDAV server integration tests (`app/build.gradle.kts`; run only when explicitly requested) |
+| `./gradlew lintDebug --no-daemon` | Run Android Lint on debug variant (`.github/workflows/build.yml`) |
+| `./gradlew koverHtmlReport` | Generate Kotlinx Kover 0.9.9 HTML coverage report (`app/build.gradle.kts`) |
+| `openspec list --specs` | List active OpenSpec capability specifications |
 | `openspec show <spec-id>` | Display an OpenSpec specification |
-| `openspec validate --specs` | Validate conformance of active OpenSpec specifications (`opsh validate --specs` / `opsh validate <change-id>`) |
+| `openspec validate --specs` | Validate conformance of active OpenSpec specifications |
 
 ## 2. Code Style & Project Conventions
 
 See [docs/agents/coding_guidelines.md](docs/agents/coding_guidelines.md) for full details.
 
-- **Static Analysis**: Enforced via Android Lint (`app/build.gradle.kts`, `android.lint` lines 188–203), Jetpack Compose stability configuration (`stability_config.conf`), and GitHub CodeQL (`.github/workflows/codeql.yml`).
-- **Architecture Layering**: Enforce strict unidirectional flow: UI (Compose + ViewModels) → Domain (`EventCoordinator`, `EventReader`, `EventWriter`) → Data (Room, CalDAV, DataStore). ViewModels never access Room DAOs directly.
+- **Static Analysis**: Enforced via Android Lint (`app/build.gradle.kts` lines 188–206: promotes `ContentDescription` and `ClickableViewAccessibility` to error; disables `NullSafeMutableLiveData`, `ImpliedQuantity`, `PluralsCandidate`, `MissingTranslation`), Compose Compiler stability checks (`stability_config.conf`, wired in `app/build.gradle.kts` lines 14–23), and GitHub CodeQL (`.github/workflows/codeql.yml`, `.github/codeql/codeql-config.yml`).
+- **Architecture Layering**: Enforce unidirectional flow: UI (Compose + ViewModels) → Domain (`EventCoordinator`, `DisplayEventRepository`, `EventWriter`, `TasksOrgCoordinator`) → Data (Room, CalDAV/CardDAV, DataStore, ContentProviders). ViewModels never access Room DAOs directly.
 - **Sync Queue**: Route every sync mutation through the `PendingOperation` queue (`PendingOperationsDao`). Never fire-and-forget sync mutations.
 - **Recurrence Identity**: Recurring exception events share the master event `UID` and distinguish themselves via `RECURRENCE-ID`.
 - **Tasks.org Non-Persistence**: Read and mutate Tasks.org items directly through `ContentProvider` (`AndroidTasksOrgRepository`) and expose them as `DisplayEvent.Task`. Never persist Tasks.org tasks in Room.
 - **Fork Toggle & Graft Points**: Gate all Tasks.org behavior behind the "Integração com Tasks.org ativada" toggle so disabling it preserves upstream behavior. Keep core graft points minimal (`// FORK:tasks-org`, `// FORK:travel-time`) and update `docs/fork/FORK_INTEGRATION.md` whenever modifying core files.
-- **String Resources & Localization**: Never hardcode user-facing strings. Upstream edits only `values/strings.xml`; in this fork, update `values/strings.xml`, `values-pt/strings.xml`, and `values-pt-rBR/strings.xml` together (`app/src/fork/tools/gen_strings_pt.py`). Do not hand-edit other locale directories.
+- **String Resources & Localization**: Never hardcode user-facing strings. Update `values/strings.xml`, `values-pt/strings.xml`, and `values-pt-rBR/strings.xml` together (`app/src/fork/tools/gen_strings_pt.py`). Do not hand-edit other locale directories.
 - **UI Feedback**: Prefer inline banners over blocking dialogs; use confirmation dialogs only for destructive actions.
 - **Comments & KDoc**: Document only non-obvious invariants, consequences, and RFC 5545/5546/6350 rules. Describe current rules rather than history, and update or delete comments when code changes.
-- **Testing & Commits**: Write tests first for new behavior. Format commit messages using Conventional Commits: `feat(scope): imperative summary` (≤72 chars; allowed types: `feat`, `fix`, `docs`, `refactor`, `test`, `build`, `perf`, `chore`).
-- **OpenSpec Workflow**: Active specs reside in `openspec/specs/` (`travel-time-alerts`, `tasks-org-integration`, `auto-backup`); archived changes reside in `openspec/changes/archive/` (`2026-10-31-tasks-org-fork/`, `2026-10-31-travel-time-alerts/`, `2026-11-02-roadmap-epics-1-to-5/`). Start new changes via `/opsh:propose` or `openspec/changes/<name>/`.
+- **Testing & Commits**: Write tests first for new behavior (JUnit 4 + Robolectric + Roborazzi in `:app`, JUnit Jupiter 6.1.3 in `:icaldav-core` and `:vcard-core`). Format commit messages using Conventional Commits: `feat(scope): imperative summary` (≤72 chars; allowed types: `feat`, `fix`, `docs`, `refactor`, `test`, `build`, `perf`, `chore`).
+- **OpenSpec Workflow**: Active capability specs reside in `openspec/specs/` (`auto-backup`, `documentation-hygiene`, `fork-identity-distribution`, `fork-widgets`, `release-automation`, `tasks-org-integration`, `travel-time-alerts`, `upstream-sync-parity`); changes reside in `openspec/changes/`.
 
 ## 3. Agent Communication & Behavioral Guidelines
 
-- Run `./gradlew testDebugUnitTest` (and `./gradlew lint` when touching UI or resources) as the mandatory completion gate before finishing any task.
+- Run `./gradlew testDebugUnitTest --no-daemon` (and `./gradlew lintDebug --no-daemon` when touching UI or resources) as the mandatory completion gate before finishing any task.
 - Fix production code when tests fail rather than altering assertions, unless the test specification itself is defective.
-- Stage and commit only files belonging to the current task (`origin` = upstream `KashCal/KashCal`, `fork` = `eusoumadson/KashCal`, branch = `main`), as the working tree often contains in-progress user changes.
+- Stage and commit only files belonging to the current task, as the working tree may contain in-progress user changes.
 
 ### Never in this repository
 
-- Never read, print, or commit `local.properties`, signing keys, or keystores (`KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`).
+- Never read, print, or commit `local.properties`, signing keys, or keystores (`KEYSTORE_BASE64`, `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, `GITHUB_TOKEN`).
 - Never log account credentials, sync tokens, or passwords.
 - Never run `git push`, force-push, `git rebase`, or `git reset` without explicit user permission, or commit unrelated working-tree changes.
 - Never touch generated or IDE directories (`build/`, `.gradle/`, `.kotlin/`, `.idea/`).
@@ -60,8 +63,8 @@ See [docs/agents/coding_guidelines.md](docs/agents/coding_guidelines.md) for ful
 
 ## 4. Setup, Troubleshooting and Tips
 
-- **Prerequisites**: JDK 21 (Temurin 21 in `.github/workflows/build.yml`), Android SDK (`compileSdk 37`, `minSdk 31`, `targetSdk 37`), Gradle 9.8.2 (`gradle/wrapper/gradle-wrapper.properties`), Kotlin 2.3.21, and Node.js ≥ 20 for the `openspec` CLI.
-- **Modules**: `:app` (Android app), `:icaldav-core` (pure-JVM RFC 5545 iCalendar/RRULE library on `ical4j`), `:vcard-core` (pure-JVM RFC 2426/6350 vCard library on `ez-vcard`).
+- **Prerequisites**: JDK 21 (Temurin 21 in `.github/workflows/build.yml`), Android SDK (`compileSdk 37`, `minSdk 31`, `targetSdk 37`), Gradle 9.8.2 (`gradle/wrapper/gradle-wrapper.properties`), AGP 9.4.0, Kotlin 2.3.21 (`gradle/libs.versions.toml`), Node.js 20.20.0 (`.nvmrc`) for the `openspec` CLI, and Python 3 for `app/src/fork/tools/`.
+- **Modules**: `:app` (Android app `org.onekash.kashcal.tasks`), `:icaldav-core` (pure-JVM RFC 5545 iCalendar/RRULE/iTIP library on `ical4j` 4.3.0), `:vcard-core` (pure-JVM RFC 2426/6350 vCard library on `ez-vcard` 0.12.2).
 
 ```sh
 export PATH="$HOME/.nvm/versions/node/v20.20.0/bin:$PATH"
@@ -71,17 +74,19 @@ export PATH="$HOME/.nvm/versions/node/v20.20.0/bin:$PATH"
 
 | Symptom | Check |
 |---|---|
-| `openspec` CLI fails on host default Node 14 | Activate Node ≥ 20 via `.nvmrc` (`nvm use 20` or prepend `$HOME/.nvm/versions/node/v20.20.0/bin` to `PATH`) |
-| Test suite runs ~13 min or fails on remote CalDAV servers | Omit `-Pintegration`; live server env vars (`ICLOUD_*`, `NEXTCLOUD_*`, `RADICALE_*`, `BAIKAL_*`, `SOGO_*`, `STALWART_*`, `CYRUS_*`, `XANDIKOS_*`, `MAILBOX_*`) apply only to explicit integration runs |
+| `openspec` CLI fails on host default Node | Activate Node 20.20.0 via `.nvmrc` (`nvm use 20` or prepend `$HOME/.nvm/versions/node/v20.20.0/bin` to `PATH`) |
+| Test suite runs ~13 min or attempts live CalDAV connections | Omit `-Pintegration`; live server env vars (`ICLOUD_*`, `NEXTCLOUD_*`, `RADICALE_*`, `BAIKAL_*`, `SOGO_*`, `STALWART_*`, `CYRUS_*`, `XANDIKOS_*`, `MAILBOX_*`) apply only to explicit integration runs |
 | Missing Portuguese strings in fork UI | Update `values/strings.xml`, `values-pt/strings.xml`, and `values-pt-rBR/strings.xml` together (`app/src/fork/tools/gen_strings_pt.py`) |
+| Android Lint fails on Compose or XML UI changes | Provide `contentDescription` and accessibility handling (`ContentDescription` and `ClickableViewAccessibility` are promoted to error in `app/build.gradle.kts`) |
 
 ## 5. References
 
 | Doc | Purpose |
 |---|---|
-| [README.md](README.md) | Project overview, supported CalDAV providers, and APK verification |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Upstream contributor workflow and build instructions |
+| [README.md](README.md) | Project overview (Abacate Calendário), pillars, installation, and privacy architecture |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contributor workflow and build instructions |
 | [CHANGELOG.md](CHANGELOG.md) | Release version history |
+| [SECURITY.md](SECURITY.md) | Security policy and vulnerability reporting |
 | [docs/fork/FORK_FEATURES.md](docs/fork/FORK_FEATURES.md) | Fork feature documentation (Tasks.org integration, Travel Time alerts, Auto-backup) |
 | [docs/fork/FORK_INTEGRATION.md](docs/fork/FORK_INTEGRATION.md) | Unified map of `// FORK:tasks-org` and `// FORK:travel-time` graft points in core |
 | [docs/testing/TRAVEL_TIME_DEVICE_TEST.md](docs/testing/TRAVEL_TIME_DEVICE_TEST.md) | Manual physical-device test script for Travel Time departure alerts |
