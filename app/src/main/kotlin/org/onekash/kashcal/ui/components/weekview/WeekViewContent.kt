@@ -50,7 +50,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.ui.graphics.toArgb
+import org.onekash.kashcal.domain.model.DEFAULT_TASK_LIST_COLOR
+import org.onekash.kashcal.ui.components.OnTaskCheckedChange
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -173,6 +178,7 @@ fun WeekViewContent(
     onAllDayRowsToggle: () -> Unit = {},
     onDatePickerRequest: () -> Unit,
     onEventClick: (DisplayEvent) -> Unit,
+    onTaskCheckedChange: OnTaskCheckedChange? = null, // FORK:tasks-org
     onEmptyTap: (LocalDate, Int, Int) -> Unit = { _, _, _ -> },
     onScrollPositionChange: (Int) -> Unit,
     onScrollMinutesChange: (Int) -> Unit = {},
@@ -339,6 +345,7 @@ fun WeekViewContent(
                 timePattern = timePattern,
                 maxVisibleOverlap = maxVisibleOverlap,
                 onEventClick = onEventClick,
+                onTaskCheckedChange = onTaskCheckedChange, // FORK:tasks-org
                 onOverflowClick = { events -> overflowEvents = events },
                 onEmptyTap = onEmptyTap,
                 onScrollPositionChange = onScrollPositionChange,
@@ -361,7 +368,8 @@ fun WeekViewContent(
             timePattern = timePattern,
             nowMs = now(),
             onDismiss = { overflowEvents = null },
-            onEventClick = onEventClick
+            onEventClick = onEventClick,
+            onTaskCheckedChange = onTaskCheckedChange // FORK:tasks-org
         )
     }
 }
@@ -395,6 +403,7 @@ private fun UnifiedTimeGrid(
     timePattern: String = "h:mma",
     maxVisibleOverlap: Int = WeekViewUtils.MAX_VISIBLE_OVERLAP,
     onEventClick: (DisplayEvent) -> Unit,
+    onTaskCheckedChange: OnTaskCheckedChange? = null, // FORK:tasks-org
     onOverflowClick: (List<DisplayEvent>) -> Unit,
     onEmptyTap: (LocalDate, Int, Int) -> Unit = { _, _, _ -> },
     onScrollPositionChange: (Int) -> Unit = {},
@@ -594,6 +603,7 @@ private fun UnifiedTimeGrid(
             timePattern = timePattern,
             now = now,
             onEventClick = onEventClick,
+            onTaskCheckedChange = onTaskCheckedChange, // FORK:tasks-org
             onOverflowClick = onOverflowClick,
             dayAreaModifier = stretchLayer,
         )
@@ -1131,6 +1141,7 @@ private fun AllDayEventsPagerRow(
     timePattern: String = "h:mma",
     now: () -> Long,
     onEventClick: (DisplayEvent) -> Unit,
+    onTaskCheckedChange: OnTaskCheckedChange? = null, // FORK:tasks-org
     onOverflowClick: (List<DisplayEvent>) -> Unit,
     modifier: Modifier = Modifier,
     /** Applied to the day area right of the gutter, for the grid's sideways pinch stretch. */
@@ -1312,6 +1323,35 @@ private fun AllDayEventsPagerRow(
                                     )
                                     col++
                                 }
+                                // FORK:tasks-org — group summaries for single-day all-day events and tasks
+                                is AllDaySlot.EventGroupSummary -> {
+                                    val firstEvent = slot.events.first()
+                                    val color = if (firstEvent.calendarColor != 0) Color(firstEvent.calendarColor) else MaterialTheme.colorScheme.primary
+                                    AllDayGroupChip(
+                                        label = stringResource(R.string.label_more_all_day_events_compact, slot.events.size),
+                                        icon = Icons.Default.DateRange,
+                                        tintColor = color,
+                                        onClick = { onOverflowClick(slot.events) },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(horizontal = 2.dp)
+                                    )
+                                    col++
+                                }
+                                is AllDaySlot.TaskGroupSummary -> {
+                                    val firstTask = slot.tasks.first()
+                                    val color = if (firstTask.calendarColor != 0) Color(firstTask.calendarColor) else Color(DEFAULT_TASK_LIST_COLOR)
+                                    AllDayGroupChip(
+                                        label = stringResource(R.string.label_more_tasks_compact, slot.tasks.size),
+                                        icon = Icons.Default.Check,
+                                        tintColor = color,
+                                        onClick = { onOverflowClick(slot.tasks) },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(horizontal = 2.dp)
+                                    )
+                                    col++
+                                }
                                 AllDaySlot.Empty -> {
                                     Box(modifier = Modifier.weight(1f).padding(horizontal = 2.dp))
                                     col++
@@ -1357,6 +1397,49 @@ private fun AllDayEventsPagerRow(
                     }
                 }
             }
+        }
+    }
+}
+
+// FORK:tasks-org — compact group chip for consolidated all-day items in week/day strip
+@Composable
+private fun AllDayGroupChip(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    tintColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val fill = tintColor.copy(alpha = 0.2f)
+    val shape = RoundedCornerShape(4.dp)
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(20.dp)
+            .clip(shape)
+            .background(fill)
+            .border(1.dp, tintColor, shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(10.dp),
+                tint = tintColor,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

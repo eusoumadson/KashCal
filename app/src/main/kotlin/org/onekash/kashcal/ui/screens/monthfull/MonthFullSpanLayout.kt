@@ -204,17 +204,23 @@ fun computeMonthFullWeekRender(
                 compareBy<DisplayEvent> { eventOrderRank(it) }.thenBy { it.startTs }
             )
 
-        // FORK:tasks-org — consolidate multiple all-day tasks to at most 1 slot per day
+        // FORK:tasks-org — consolidate multiple 1-day all-day events and all-day tasks to at most 1 slot each per day
+        val allDayEvents = cellEvents.filter { it !is DisplayEvent.Task && it.isAllDay }
         val allDayTasks = cellEvents.filter { it is DisplayEvent.Task && it.isAllDay }
-        val candidateEvents = if (allDayTasks.size > 1) {
-            val firstTask = allDayTasks.first()
-            cellEvents.filter { event ->
-                val isAllDayTask = event is DisplayEvent.Task && event.isAllDay
-                !isAllDayTask || event === firstTask
+
+        val firstAllDayEvent = allDayEvents.firstOrNull()
+        val firstAllDayTask = allDayTasks.firstOrNull()
+
+        val candidateEvents = cellEvents.filter { event ->
+            val isAllDayEvent = event !is DisplayEvent.Task && event.isAllDay
+            val isAllDayTask = event is DisplayEvent.Task && event.isAllDay
+            when {
+                isAllDayEvent && allDayEvents.size > 1 -> event === firstAllDayEvent
+                isAllDayTask && allDayTasks.size > 1 -> event === firstAllDayTask
+                else -> true
             }
-        } else {
-            cellEvents
         }
+        val extraEventHidden = if (allDayEvents.size > 1) allDayEvents.size - 1 else 0
         val extraTaskHidden = if (allDayTasks.size > 1) allDayTasks.size - 1 else 0
 
         val freeSlots = (0 until numSlots).filter { grid[it][col] === SlotContent.Empty }
@@ -222,7 +228,7 @@ fun computeMonthFullWeekRender(
         for (i in 0 until shown) {
             grid[freeSlots[i]][col] = SlotContent.CellEvent(candidateEvents[i])
         }
-        hidden[col] += (candidateEvents.size - shown) + extraTaskHidden
+        hidden[col] += (candidateEvents.size - shown) + extraEventHidden + extraTaskHidden
     }
 
     return WeekSlotRender(

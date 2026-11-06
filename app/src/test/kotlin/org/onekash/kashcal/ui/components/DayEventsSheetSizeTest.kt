@@ -27,6 +27,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.onekash.kashcal.data.db.entity.Event
+import org.onekash.kashcal.data.tasks_org.TasksOrgTask
 import org.onekash.kashcal.domain.model.DisplayEvent
 import org.onekash.kashcal.domain.planner.PlannerTestEvents
 import org.onekash.kashcal.domain.planner.PlannerTestEvents.at
@@ -34,6 +35,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.util.Locale
 import java.util.TimeZone
 
@@ -213,5 +215,98 @@ class DayEventsSheetSizeTest {
         val calls = render(persistentListOf(device))
         composeTestRule.onNode(hasText(device.title, substring = true)).performClick()
         assertEquals(listOf(device), calls.device)
+    }
+
+    private fun task(id: Long, title: String): DisplayEvent.Task {
+        val dayCode = PlannerTestEvents.dayCode(day)
+        val ms = PlannerTestEvents.utcMidnight(day)
+        val task = TasksOrgTask(
+            id = id,
+            title = title,
+            notes = "",
+            dueTs = ms,
+            isAllDay = true,
+            startTs = ms,
+            endTs = ms,
+            startDay = dayCode,
+            endDay = dayCode,
+            completedAt = null,
+            recurrence = null,
+            listId = 1L,
+            listTitle = "List",
+            listColor = 0xFF2196F3.toInt(),
+            isReadOnly = false
+        )
+        return DisplayEvent.Task(task, ZoneOffset.UTC)
+    }
+
+    private fun allDayEvent(id: Long, title: String): DisplayEvent.Room =
+        PlannerTestEvents.roomAllDay(id = id, date = day, zone = zone, status = "CONFIRMED").let {
+            val event = it.event.copy(title = title)
+            DisplayEvent.Room(event, it.occurrence, it.calendar, zone = zone)
+        }
+
+    @Test
+    fun `multiple all-day events and multiple all-day tasks are stacked into independent expandable cards`() {
+        val allDay1 = allDayEvent(1L, "AllDay 1")
+        val allDay2 = allDayEvent(2L, "AllDay 2")
+        val allDay3 = allDayEvent(3L, "AllDay 3")
+        val task1 = task(10L, "Task 1")
+        val task2 = task(20L, "Task 2")
+        val meeting = event(0) // Timed meeting
+
+        render(listOf(allDay1, allDay2, allDay3, task1, task2, meeting))
+
+        // Initial state: 1st all-day event + card, 1st task + card, and meeting are displayed
+        composeTestRule.onNodeWithText("AllDay 1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("+2 events").assertIsDisplayed()
+        composeTestRule.onNodeWithText("AllDay 2").assertIsNotDisplayed()
+        composeTestRule.onNodeWithText("AllDay 3").assertIsNotDisplayed()
+
+        composeTestRule.onNode(hasText("Task 1", substring = true)).assertIsDisplayed()
+        composeTestRule.onNodeWithText("+1 tasks").assertIsDisplayed()
+        composeTestRule.onNode(hasText("Task 2", substring = true)).assertIsNotDisplayed()
+
+        composeTestRule.onNodeWithText("Event 0").assertIsDisplayed()
+
+        // Expand events stack only
+        composeTestRule.onNodeWithText("+2 events").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("AllDay 2").assertIsDisplayed()
+        composeTestRule.onNodeWithText("AllDay 3").assertIsDisplayed()
+        // Tasks stack should still remain collapsed
+        composeTestRule.onNode(hasText("Task 2", substring = true)).assertIsNotDisplayed()
+
+        // Expand tasks stack as well (scroll to node in case LazyColumn scrolled)
+        composeTestRule.onNode(hasScrollAction()).performScrollToNode(hasText("+1 tasks"))
+        composeTestRule.onNodeWithText("+1 tasks").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNode(hasScrollAction()).performScrollToNode(hasText("Task 2", substring = true))
+        composeTestRule.onNode(hasText("Task 2", substring = true)).assertIsDisplayed()
+
+        // Collapse events stack again
+        composeTestRule.onNode(hasScrollAction()).performScrollToNode(hasText("+2 events"))
+        composeTestRule.onNodeWithText("+2 events").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("AllDay 2").assertIsNotDisplayed()
+        composeTestRule.onNodeWithText("AllDay 3").assertIsNotDisplayed()
+        // Tasks stack should remain expanded
+        composeTestRule.onNode(hasScrollAction()).performScrollToNode(hasText("Task 2", substring = true))
+        composeTestRule.onNode(hasText("Task 2", substring = true)).assertIsDisplayed()
+    }
+
+    @Test
+    fun `single all-day event and single all-day task are displayed directly without stack cards`() {
+        val allDay1 = allDayEvent(1L, "Single AllDay")
+        val task1 = task(10L, "Single Task")
+
+        render(listOf(allDay1, task1))
+
+        composeTestRule.onNodeWithText("Single AllDay").assertIsDisplayed()
+        composeTestRule.onNode(hasText("Single Task", substring = true)).assertIsDisplayed()
+        composeTestRule.onNode(hasText("+", substring = true)).assertDoesNotExist()
     }
 }

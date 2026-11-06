@@ -27,6 +27,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -420,17 +421,27 @@ private fun PlannerDayBody(
             onClick = { onDayClick(dayMs()) },
         )
     }
-    // FORK:tasks-org — consolidate multiple all-day tasks into a single summary ribbon
-    val (allDayTasks, allDayEvents) = remember(strip) {
+    // FORK:tasks-org — consolidate multiple 1-day all-day events and all-day tasks into summary ribbons
+    val (multiDayEvents, singleDayEvents, allDayTasks) = remember(strip) {
+        val multiDay = mutableListOf<DisplayEvent>()
+        val singleDay = mutableListOf<DisplayEvent>()
         val tasks = mutableListOf<DisplayEvent.Task>()
-        val events = mutableListOf<DisplayEvent>()
         strip.forEach {
-            if (it is DisplayEvent.Task) tasks.add(it) else events.add(it)
+            if (it is DisplayEvent.Task) {
+                tasks.add(it)
+            } else if (it.startDay != it.endDay) {
+                multiDay.add(it)
+            } else {
+                singleDay.add(it)
+            }
         }
-        tasks to events
+        Triple(multiDay, singleDay, tasks)
     }
+    val hasSingleDayEventSummary = singleDayEvents.size > 1
     val hasTaskSummary = allDayTasks.size > 1
-    val ribbonCount = if (hasTaskSummary) allDayEvents.size + 1 else strip.size
+    val singleDayEventRibbonCount = if (hasSingleDayEventSummary) 1 else singleDayEvents.size
+    val taskRibbonCount = if (hasTaskSummary) 1 else allDayTasks.size
+    val ribbonCount = multiDayEvents.size + singleDayEventRibbonCount + taskRibbonCount
 
     Box(modifier = Modifier.fillMaxSize()) {
         when {
@@ -488,21 +499,29 @@ private fun PlannerDayBody(
                 },
             ) { index ->
                 // An index past the lists draws nothing ([PlannerFitColumn]).
-                if (hasTaskSummary) {
-                    if (index < allDayEvents.size) {
-                        PlannerRibbon(allDayEvents[index], dayCode, showEventEmojis, nowMs, todayDayCode) { onDayClick(dayMs()) }
-                    } else if (index == allDayEvents.size) {
-                        PlannerTaskSummaryRibbon(allDayTasks) { onDayClick(dayMs()) }
-                    } else {
-                        rows.getOrNull(index - ribbonCount)?.let { eventRow(it, false) }
+                if (index < ribbonCount) {
+                    when {
+                        index < multiDayEvents.size -> {
+                            PlannerRibbon(multiDayEvents[index], dayCode, showEventEmojis, nowMs, todayDayCode) { onDayClick(dayMs()) }
+                        }
+                        index < multiDayEvents.size + singleDayEventRibbonCount -> {
+                            if (hasSingleDayEventSummary) {
+                                PlannerEventSummaryRibbon(singleDayEvents) { onDayClick(dayMs()) }
+                            } else {
+                                PlannerRibbon(singleDayEvents[index - multiDayEvents.size], dayCode, showEventEmojis, nowMs, todayDayCode) { onDayClick(dayMs()) }
+                            }
+                        }
+                        else -> {
+                            val taskIndex = index - (multiDayEvents.size + singleDayEventRibbonCount)
+                            if (hasTaskSummary) {
+                                PlannerTaskSummaryRibbon(allDayTasks) { onDayClick(dayMs()) }
+                            } else {
+                                PlannerRibbon(allDayTasks[taskIndex], dayCode, showEventEmojis, nowMs, todayDayCode) { onDayClick(dayMs()) }
+                            }
+                        }
                     }
                 } else {
-                    val ribbon = strip.getOrNull(index)
-                    if (ribbon != null) {
-                        PlannerRibbon(ribbon, dayCode, showEventEmojis, nowMs, todayDayCode) { onDayClick(dayMs()) }
-                    } else {
-                        rows.getOrNull(index - strip.size)?.let { eventRow(it, false) }
-                    }
+                    rows.getOrNull(index - ribbonCount)?.let { eventRow(it, false) }
                 }
             }
         }
@@ -729,6 +748,54 @@ private fun PlannerRibbon(
                 color = textColor,
                 textDecoration = declinedTitleDecoration(isDeclined, isCancelled),
                 modifier = Modifier.weight(1f).padding(horizontal = 5.dp, vertical = 2.dp),
+            )
+        }
+    }
+}
+
+// FORK:tasks-org — compact single-line summary of 1-day all-day events in planner day box
+@Composable
+private fun PlannerEventSummaryRibbon(
+    events: List<DisplayEvent>,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val count = events.size
+    val firstEvent = events.first()
+    val baseColor = if (firstEvent.calendarColor != 0) Color(firstEvent.calendarColor) else MaterialTheme.colorScheme.primary
+    val fill = baseColor.copy(alpha = 0.2f)
+    val border = baseColor
+    val shape = RoundedCornerShape(RIBBON_CORNER)
+    val label = stringResource(R.string.label_more_all_day_events_compact, count)
+
+    Box(
+        modifier = modifier
+            .testTag("planner_event_summary")
+            .fillMaxWidth()
+            .padding(vertical = 1.dp)
+            .clip(shape)
+            .background(fill)
+            .border(1.dp, border, shape)
+            .clickable(onClickLabel = stringResource(R.string.cd_planner_show_day_events), onClick = onClick)
+            .semantics(mergeDescendants = true) {},
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.DateRange,
+                contentDescription = null,
+                modifier = Modifier.size(12.dp),
+                tint = border,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

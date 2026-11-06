@@ -29,6 +29,9 @@ sealed interface AllDaySlot {
     data object Empty : AllDaySlot
     data class BarSegment(val span: AllDaySpan) : AllDaySlot
     data class CellEvent(val event: DisplayEvent) : AllDaySlot
+    // FORK:tasks-org — group summaries for single-day all-day events and tasks
+    data class EventGroupSummary(val events: List<DisplayEvent>) : AllDaySlot
+    data class TaskGroupSummary(val tasks: List<DisplayEvent.Task>) : AllDaySlot
 }
 
 /**
@@ -113,13 +116,45 @@ fun computeAllDayStripRender(
             .sortedBy { it.startTs }
         val columnEvents = allEventsForDay.filter { it.stableKey !in layout.placedEventKeys }
 
-        val freeSlots = (0 until maxRows).filter { grid[it][col] === AllDaySlot.Empty }
-        val visibleCount = minOf(columnEvents.size, freeSlots.size)
-        for (i in 0 until visibleCount) {
-            grid[freeSlots[i]][col] = AllDaySlot.CellEvent(columnEvents[i])
+        // FORK:tasks-org — partition into single-day events, all-day tasks, and others (e.g. unlaned multi-day)
+        val singleDayEvents = columnEvents.filter { it !is DisplayEvent.Task && it.isAllDay && it.startDay == it.endDay }
+        val allDayTasks = columnEvents.filterIsInstance<DisplayEvent.Task>().filter { it.isAllDay }
+        val otherEvents = columnEvents.filter { it !in singleDayEvents && it !in allDayTasks }
+
+        val candidateSlots = mutableListOf<AllDaySlot>()
+        if (singleDayEvents.size > 1) {
+            candidateSlots.add(AllDaySlot.EventGroupSummary(singleDayEvents))
+        } else if (singleDayEvents.size == 1) {
+            candidateSlots.add(AllDaySlot.CellEvent(singleDayEvents[0]))
         }
-        val hiddenEvents = columnEvents.drop(visibleCount)
-        if (hiddenEvents.isNotEmpty()) {
+
+        if (allDayTasks.size > 1) {
+            candidateSlots.add(AllDaySlot.TaskGroupSummary(allDayTasks))
+        } else if (allDayTasks.size == 1) {
+            candidateSlots.add(AllDaySlot.CellEvent(allDayTasks[0]))
+        }
+
+        for (other in otherEvents) {
+            candidateSlots.add(AllDaySlot.CellEvent(other))
+        }
+
+        val freeSlots = (0 until maxRows).filter { grid[it][col] === AllDaySlot.Empty }
+        val visibleCount = minOf(candidateSlots.size, freeSlots.size)
+        for (i in 0 until visibleCount) {
+            grid[freeSlots[i]][col] = candidateSlots[i]
+        }
+        val hiddenCandidates = candidateSlots.drop(visibleCount)
+        if (hiddenCandidates.isNotEmpty()) {
+            val hiddenEvents = mutableListOf<DisplayEvent>()
+            for (candidate in hiddenCandidates) {
+                when (candidate) {
+                    is AllDaySlot.EventGroupSummary -> hiddenEvents.addAll(candidate.events)
+                    is AllDaySlot.TaskGroupSummary -> hiddenEvents.addAll(candidate.tasks)
+                    is AllDaySlot.CellEvent -> hiddenEvents.add(candidate.event)
+                    is AllDaySlot.BarSegment -> hiddenEvents.add(candidate.span.displayEvent)
+                    AllDaySlot.Empty -> Unit
+                }
+            }
             overflowByColumn[col] = ColumnOverflow(hiddenEvents.size, hiddenEvents)
         }
     }

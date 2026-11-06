@@ -55,6 +55,7 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -873,6 +874,7 @@ fun HomeScreen(
                                                     }
                                                 }
                                             },
+                                            onTaskCheckedChange = onTaskCheckedChange, // FORK:tasks-org
                                             onEmptyTap = { date, hour, minute ->
                                                 val calendar = JavaCalendar.getInstance().apply {
                                                     set(date.year, date.monthValue - 1, date.dayOfMonth, hour, minute, 0)
@@ -2047,6 +2049,26 @@ private fun DayEventsPage(
             EmptyDayState(epochDay)
         }
         else -> {
+            // FORK:tasks-org — independent inline collapse for all-day events and tasks
+            var isEventsExpanded by rememberSaveable(dateMs) { mutableStateOf(false) }
+            var isTasksExpanded by rememberSaveable(dateMs) { mutableStateOf(false) }
+
+            val allDayEvents = remember(events) { events.filter { it !is DisplayEvent.Task && it.isAllDay } }
+            val allDayTasks = remember(events) { events.filter { it is DisplayEvent.Task && it.isAllDay } }
+
+            val overflowEventsSet = remember(allDayEvents) {
+                if (allDayEvents.size > 1) allDayEvents.drop(1).toSet() else emptySet()
+            }
+            val overflowTasksSet = remember(allDayTasks) {
+                if (allDayTasks.size > 1) allDayTasks.drop(1).toSet() else emptySet()
+            }
+
+            val firstAllDayEvent = allDayEvents.firstOrNull()
+            val firstAllDayTask = allDayTasks.firstOrNull()
+
+            val dayCode = remember(dateMs) { DayPagerUtils.msToDayCode(dateMs) }
+            val isToday = dayCode == todayDayCode
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -2054,7 +2076,8 @@ private fun DayEventsPage(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                events.forEach { displayEvent ->
+                @Composable
+                fun RenderCard(displayEvent: DisplayEvent) {
                     val isPast = DateTimeUtils.isEventPast(
                         endTs = displayEvent.endTs,
                         endDay = displayEvent.endDay,
@@ -2083,6 +2106,64 @@ private fun DayEventsPage(
                             }
                         }
                     )
+                }
+
+                events.forEach { displayEvent ->
+                    if (displayEvent in overflowEventsSet || displayEvent in overflowTasksSet) {
+                        return@forEach
+                    }
+
+                    RenderCard(displayEvent)
+
+                    if (displayEvent === firstAllDayEvent && allDayEvents.size > 1) {
+                        val eventCount = allDayEvents.size - 1
+                        val eventLabel = if (isToday) {
+                            stringResource(R.string.split_agenda_more_all_day_events_today, eventCount)
+                        } else {
+                            stringResource(R.string.split_agenda_more_all_day_events, eventCount)
+                        }
+                        AgendaEventStackCard(
+                            label = eventLabel,
+                            isExpanded = isEventsExpanded,
+                            onClick = { isEventsExpanded = !isEventsExpanded }
+                        )
+                        AnimatedVisibility(
+                            visible = isEventsExpanded,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                allDayEvents.drop(1).forEach { overflowEvent ->
+                                    RenderCard(overflowEvent)
+                                }
+                            }
+                        }
+                    }
+
+                    if (displayEvent === firstAllDayTask && allDayTasks.size > 1) {
+                        val taskCount = allDayTasks.size - 1
+                        val taskLabel = if (isToday) {
+                            stringResource(R.string.split_agenda_more_all_day_tasks_today, taskCount)
+                        } else {
+                            stringResource(R.string.label_more_tasks_compact, taskCount)
+                        }
+                        AgendaTaskStackCard(
+                            label = taskLabel,
+                            isExpanded = isTasksExpanded,
+                            onClick = { isTasksExpanded = !isTasksExpanded }
+                        )
+                        AnimatedVisibility(
+                            visible = isTasksExpanded,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                allDayTasks.drop(1).forEach { overflowTask ->
+                                    RenderCard(overflowTask)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -2322,6 +2403,7 @@ private fun AgendaContent(
     val tomorrowLabel = stringResource(R.string.label_tomorrow)
     val relativeWithDateTemplate = stringResource(R.string.agenda_header_relative_with_date)
     var expandedDays by remember { mutableStateOf(setOf<Int>()) } // FORK:tasks-org
+    var expandedEventDays by remember { mutableStateOf(setOf<Int>()) } // FORK:tasks-org
 
     if (model.groups.isEmpty()) {
         Box(
@@ -2399,17 +2481,21 @@ private fun AgendaContent(
                     }
                 }
 
-                // FORK:tasks-org — group all-day tasks exceeding 1 into expandable stack card
+                // FORK:tasks-org — group all-day events and tasks exceeding 1 into expandable stack cards
+                val allDayEventIndex = if (group.overflowEvents.isNotEmpty()) {
+                    group.items.indexOfFirst { it.displayEvent !is DisplayEvent.Task && it.displayEvent.isAllDay }
+                } else {
+                    -1
+                }
                 val allDayTaskIndex = if (group.overflowTasks.isNotEmpty()) {
                     group.items.indexOfFirst { it.displayEvent is DisplayEvent.Task && it.displayEvent.isAllDay }
                 } else {
                     -1
                 }
 
-                if (allDayTaskIndex >= 0) {
-                    val beforeAndTask = group.items.subList(0, allDayTaskIndex + 1)
+                fun emitAgendaItems(slice: List<AgendaDisplayItem>) {
                     items(
-                        items = beforeAndTask,
+                        items = slice,
                         key = { item ->
                             when (val de = item.displayEvent) {
                                 is DisplayEvent.Room -> "room_${de.event.id}_${de.occurrence.startTs}_${item.displayDay}"
@@ -2421,7 +2507,51 @@ private fun AgendaContent(
                     ) { item ->
                         RenderAgendaItem(item)
                     }
+                }
 
+                fun emitEventStackItem() {
+                    item(key = "overflow_events_$displayDay", contentType = "event_stack") {
+                        val isExpanded = displayDay in expandedEventDays
+                        val count = group.overflowEvents.size
+                        val label = if (displayDay == todayDayCode) {
+                            stringResource(R.string.split_agenda_more_all_day_events_today, count)
+                        } else {
+                            stringResource(R.string.split_agenda_more_all_day_events, count)
+                        }
+                        Column(
+                            modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            AgendaEventStackCard(
+                                label = label,
+                                isExpanded = isExpanded,
+                                onClick = {
+                                    expandedEventDays = if (isExpanded) expandedEventDays - displayDay else expandedEventDays + displayDay
+                                }
+                            )
+                            AnimatedVisibility(
+                                visible = isExpanded,
+                                enter = expandVertically() + fadeIn(),
+                                exit = shrinkVertically() + fadeOut()
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    group.overflowEvents.forEach { overflowItem ->
+                                        val isPast = overflowItem.displayDay < todayDayCode
+                                        AgendaCard(
+                                            item = overflowItem,
+                                            isPast = isPast,
+                                            showEventEmojis = showEventEmojis,
+                                            timePattern = timePattern,
+                                            onClick = { onEventClick(overflowItem.displayEvent) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                fun emitTaskStackItem() {
                     item(key = "overflow_tasks_$displayDay", contentType = "task_stack") {
                         val isExpanded = displayDay in expandedDays
                         val count = group.overflowTasks.size
@@ -2463,39 +2593,99 @@ private fun AgendaContent(
                             }
                         }
                     }
+                }
 
-                    val afterTask = group.items.subList(allDayTaskIndex + 1, group.items.size)
-                    if (afterTask.isNotEmpty()) {
-                        items(
-                            items = afterTask,
-                            key = { item ->
-                                when (val de = item.displayEvent) {
-                                    is DisplayEvent.Room -> "room_${de.event.id}_${de.occurrence.startTs}_${item.displayDay}"
-                                    is DisplayEvent.Device -> "device_${de.instance.instanceId}_${item.displayDay}"
-                                    is DisplayEvent.Task -> "task_${de.task.id}_${item.displayDay}"
-                                }
-                            },
-                            contentType = { "agenda_card" }
-                        ) { item ->
-                            RenderAgendaItem(item)
+                when {
+                    allDayEventIndex >= 0 && allDayTaskIndex >= 0 -> {
+                        if (allDayEventIndex < allDayTaskIndex) {
+                            emitAgendaItems(group.items.subList(0, allDayEventIndex + 1))
+                            emitEventStackItem()
+                            emitAgendaItems(group.items.subList(allDayEventIndex + 1, allDayTaskIndex + 1))
+                            emitTaskStackItem()
+                            if (allDayTaskIndex + 1 < group.items.size) {
+                                emitAgendaItems(group.items.subList(allDayTaskIndex + 1, group.items.size))
+                            }
+                        } else {
+                            emitAgendaItems(group.items.subList(0, allDayTaskIndex + 1))
+                            emitTaskStackItem()
+                            emitAgendaItems(group.items.subList(allDayTaskIndex + 1, allDayEventIndex + 1))
+                            emitEventStackItem()
+                            if (allDayEventIndex + 1 < group.items.size) {
+                                emitAgendaItems(group.items.subList(allDayEventIndex + 1, group.items.size))
+                            }
                         }
                     }
-                } else {
-                    items(
-                        items = group.items,
-                        key = { item ->
-                            when (val de = item.displayEvent) {
-                                is DisplayEvent.Room -> "room_${de.event.id}_${de.occurrence.startTs}_${item.displayDay}"
-                                is DisplayEvent.Device -> "device_${de.instance.instanceId}_${item.displayDay}"
-                                is DisplayEvent.Task -> "task_${de.task.id}_${item.displayDay}"
-                            }
-                        },
-                        contentType = { "agenda_card" }
-                    ) { item ->
-                        RenderAgendaItem(item)
+                    allDayEventIndex >= 0 -> {
+                        emitAgendaItems(group.items.subList(0, allDayEventIndex + 1))
+                        emitEventStackItem()
+                        if (allDayEventIndex + 1 < group.items.size) {
+                            emitAgendaItems(group.items.subList(allDayEventIndex + 1, group.items.size))
+                        }
+                    }
+                    allDayTaskIndex >= 0 -> {
+                        emitAgendaItems(group.items.subList(0, allDayTaskIndex + 1))
+                        emitTaskStackItem()
+                        if (allDayTaskIndex + 1 < group.items.size) {
+                            emitAgendaItems(group.items.subList(allDayTaskIndex + 1, group.items.size))
+                        }
+                    }
+                    else -> {
+                        emitAgendaItems(group.items)
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Compact expandable card indicating stacked all-day events in the Agenda view.
+ */
+// FORK:tasks-org
+@Composable
+private fun AgendaEventStackCard(
+    label: String,
+    isExpanded: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        tonalElevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = if (isExpanded) stringResource(R.string.cd_collapse) else null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

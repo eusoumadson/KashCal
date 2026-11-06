@@ -2,10 +2,13 @@ package org.onekash.kashcal.ui.components.weekview
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.onekash.kashcal.data.tasks_org.TasksOrgTask
 import org.onekash.kashcal.domain.model.DisplayEvent
 import java.time.LocalDate
+import java.time.ZoneOffset
 
 /**
  * Unit tests for the all-day strip's spanning-bar layout, [computeAllDaySpans] and
@@ -202,18 +205,86 @@ class AllDayStripLayoutTest {
     }
 
     @Test
-    fun `overflow is reported out-of-band without consuming a row`() {
-        // 5 single-day events on the same day, cap = 3 rows: overflow reserves no row for a
-        // badge, so all 3 rows show a cell and the remaining 2 are reported in overflowByColumn.
-        // All five in col 1.
+    fun `multiple single-day events consolidate into group summary without consuming extra rows`() {
+        // FORK:tasks-org — 5 single-day events on the same day consolidate into 1 EventGroupSummary
+        // in row 0, leaving rows 1 and 2 empty with null overflow.
         val events = (1..5).map { allDayDisplayEvent(it.toLong(), "e$it", monday.plusDays(1)) }
         val render = computeAllDayStripRender(week, events, maxRows = 3)
         val col1 = render.slots.map { it[1] }
-        val cells = col1.filterIsInstance<AllDaySlot.CellEvent>()
-        assertEquals("all three rows carry a cell now that overflow is out-of-band", 3, cells.size)
+        assertTrue(col1[0] is AllDaySlot.EventGroupSummary)
+        assertEquals(5, (col1[0] as AllDaySlot.EventGroupSummary).events.size)
+        assertTrue(col1[1] is AllDaySlot.Empty)
+        assertTrue(col1[2] is AllDaySlot.Empty)
+        assertNull(render.overflowByColumn[1])
+    }
+
+    @Test
+    fun `column with multi-day span, multiple 1-day events and multiple all-day tasks consolidates into summary slots`() {
+        // 1 multi-day event + 3 1-day events + 2 all-day tasks on col 1 (Tuesday), maxRows = 3:
+        // row 0: BarSegment (span covering col 1)
+        // row 1: EventGroupSummary (count = 3)
+        // row 2: TaskGroupSummary (count = 2)
+        // overflow: null
+        val span = multiDayDisplayEvent(1, "span", monday, monday.plusDays(2))
+        val e1 = allDayDisplayEvent(2, "e1", monday.plusDays(1))
+        val e2 = allDayDisplayEvent(3, "e2", monday.plusDays(1))
+        val e3 = allDayDisplayEvent(4, "e3", monday.plusDays(1))
+        val t1 = taskAllDay(10, monday.plusDays(1), "t1")
+        val t2 = taskAllDay(11, monday.plusDays(1), "t2")
+        val render = computeAllDayStripRender(week, listOf(span, e1, e2, e3, t1, t2), maxRows = 3)
+
+        val col1 = render.slots.map { it[1] }
+        assertTrue("row 0 carries multi-day span", col1[0] is AllDaySlot.BarSegment)
+        assertTrue("row 1 carries event group summary", col1[1] is AllDaySlot.EventGroupSummary)
+        assertEquals(3, (col1[1] as AllDaySlot.EventGroupSummary).events.size)
+        assertTrue("row 2 carries task group summary", col1[2] is AllDaySlot.TaskGroupSummary)
+        assertEquals(2, (col1[2] as AllDaySlot.TaskGroupSummary).tasks.size)
+        assertNull("no overflow when summaries fit within maxRows", render.overflowByColumn[1])
+    }
+
+    @Test
+    fun `column with single 1-day event and single all-day task renders individual cell events`() {
+        // 1 1-day event + 1 all-day task on col 1, maxRows = 3:
+        // row 0: CellEvent (event)
+        // row 1: CellEvent (task)
+        // row 2: Empty
+        // overflow: null
+        val e = allDayDisplayEvent(1, "single-event", monday.plusDays(1))
+        val t = taskAllDay(10, monday.plusDays(1), "single-task")
+        val render = computeAllDayStripRender(week, listOf(e, t), maxRows = 3)
+
+        val col1 = render.slots.map { it[1] }
+        assertTrue("row 0 is single event CellEvent", col1[0] is AllDaySlot.CellEvent)
+        assertEquals(1L, ((col1[0] as AllDaySlot.CellEvent).event as DisplayEvent.Room).event.id)
+        assertTrue("row 1 is single task CellEvent", col1[1] is AllDaySlot.CellEvent)
+        assertEquals("task:10", (col1[1] as AllDaySlot.CellEvent).event.stableKey)
+        assertTrue("row 2 is Empty", col1[2] is AllDaySlot.Empty)
+        assertNull(render.overflowByColumn[1])
+    }
+
+    @Test
+    fun `when maxRows is 1 multi-day span occupies row and group summaries expand into column overflow`() {
+        // maxRows = 1:
+        // 1 multi-day span covering col 1 (occupies row 0)
+        // 3 1-day events + 2 all-day tasks on col 1 cannot fit in row 0
+        // overflowByColumn[1] receives all 5 items (expanded from groups) with count = 5
+        val span = multiDayDisplayEvent(1, "span", monday, monday.plusDays(2))
+        val e1 = allDayDisplayEvent(2, "e1", monday.plusDays(1))
+        val e2 = allDayDisplayEvent(3, "e2", monday.plusDays(1))
+        val e3 = allDayDisplayEvent(4, "e3", monday.plusDays(1))
+        val t1 = taskAllDay(10, monday.plusDays(1), "t1")
+        val t2 = taskAllDay(11, monday.plusDays(1), "t2")
+        val render = computeAllDayStripRender(week, listOf(span, e1, e2, e3, t1, t2), maxRows = 1)
+
+        val col1 = render.slots.map { it[1] }
+        assertTrue("row 0 is BarSegment", col1[0] is AllDaySlot.BarSegment)
         val overflow = render.overflowByColumn[1]
-        assertEquals(2, overflow?.count)
-        assertEquals(setOf(4L, 5L), overflow?.events?.map { (it as DisplayEvent.Room).event.id }?.toSet())
+        assertEquals(5, overflow?.count)
+        val overflowKeys = overflow?.events?.map { it.stableKey }?.toSet()
+        assertEquals(
+            setOf(e1.stableKey, e2.stableKey, e3.stableKey, t1.stableKey, t2.stableKey),
+            overflowKeys
+        )
     }
 
     @Test
@@ -258,5 +329,28 @@ class AllDayStripLayoutTest {
         // Row 0 is the placed bar. The fallback event has no free row, so it goes to
         // overflowByColumn (not asserted here); only the placed bar is asserted.
         assertTrue(render.slots[0][0] is AllDaySlot.BarSegment)
+    }
+
+    private fun taskAllDay(id: Long, date: LocalDate, title: String): DisplayEvent.Task {
+        val dayCode = date.year * 10000 + date.monthValue * 100 + date.dayOfMonth
+        val ms = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        val task = TasksOrgTask(
+            id = id,
+            title = title,
+            notes = "",
+            dueTs = ms,
+            isAllDay = true,
+            startTs = ms,
+            endTs = ms,
+            startDay = dayCode,
+            endDay = dayCode,
+            completedAt = null,
+            recurrence = null,
+            listId = 1L,
+            listTitle = "List",
+            listColor = 0xFF2196F3.toInt(),
+            isReadOnly = false
+        )
+        return DisplayEvent.Task(task, ZoneOffset.UTC)
     }
 }
