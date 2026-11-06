@@ -1,3 +1,13 @@
+## [2026.11.05.1]
+
+### Refine Split Widget Layout
+- **Header da Coluna Esquerda (`SplitDateHeader`)**: Atualizado para exibir dia da semana completo (`QUINTA`) e mês/ano completo (`Novembro 2026`) em disposição horizontal ampla com altura de ~48dp–50dp.
+- **Divisória Central**: Espaçamento lateral da linha vertical ajustado para 8dp de cada lado (harmônico com o container).
+- **Grid de 6 Semanas (`WideSplitLayout`)**:
+- Ancorado na base da coluna esquerda, respeitando o padding inferior de 8dp.
+- Células de dias fora do mês (`InDate` e `OutDate`) passam a ser renderizadas com texto atenuado (`WidgetTheme.adjacentMonthText()`) em vez de caixas vazias, mantendo a grade estável com 6 semanas em qualquer mês do ano.
+- **Interação na Coluna Esquerda**: O container `Column` pai da coluna esquerda inteira recebe o modificador de clique (`.clickable(...)`) direcionando para o KashCal na data de hoje (`ACTION_GO_TO_TODAY`), removendo o clique restrito apenas ao header.
+
 ## [2026.11.05]
 
 ### Identidade Abacate Calendário
