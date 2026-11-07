@@ -1,3 +1,11 @@
+## [2026.11.07]
+
+### Sync Upstream V2026 11 04
+- **Sync Hardening (`ICalEventMapper`, `PullStrategy`, `PushStrategy`, `Event`)**: Limita propriedades extras mapeadas em JSON a `MAX_EXTRA_PROPERTY_VALUE_CHARS` para evitar `SQLiteBlobTooBigException` na janela de 2 MB do Cursor do Android, mantendo anexos inline na cópia `rawIcal` e isolando falhas por evento/operação no pull e no push.
+- **Reconciliação de Lembretes + Coexistência com Travel Time (`ReminderScheduler`, `ScheduledRemindersDao`, `EventCoordinator`)**: Substitui o cancelamento destrutivo em edições por `reconcileRemindersForEvent(event)` (preservando lembretes `SNOOZED` e notificações `FIRED`), adiciona `STARTED_LOOKBACK_MS` (36h) para armar lembretes de dia todo do próprio dia mesmo após meia-noite UTC, e filtra `row.reminderType == ReminderType.TIME_BEFORE` na reconciliação de offsets para proteger lembretes do `TravelReminderScheduler`.
+- **Acessibilidade e Contraste (`DeclinedVisuals`, `HomeScreen`, `MonthFullSpanLayout`, `PlannerView`, `TaskCard`)**: Unifica o alpha de eventos passados/recusados/cancelados, números de datas passadas e tarefas concluídas em `DEEMPHASIZED_ALPHA = 0.65f` (garantindo contraste WCAG AA >= 4.5:1 nos temas claro e escuro).
+- **Ícones do Launcher (`AppIconPreset`, `AndroidManifest.xml`, `LauncherAliasManifestTest`)**: Registra `.MainActivityKash` e `AppIconPreset.KASH`, aplica `@string/app_icon_label_calendar` nos aliases `.MainActivityDay1..31` e adapta `LauncherAliasManifestTest` à identidade `fork_app_name` (`"Calendário"`).
+
 ## [2026.11.06]
 
 ### All Day Stacking Views
