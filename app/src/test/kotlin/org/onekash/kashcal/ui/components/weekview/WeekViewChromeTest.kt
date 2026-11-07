@@ -262,7 +262,7 @@ class WeekViewChromeTest {
         val strip = strip()
         // The far end of the strip: no chip there on a day other than today, unless today is the
         // week's last day, so use whichever end is free.
-        val chips = texts().filter { textOf(it) == "Holiday" || textOf(it) == "Birthday" }.map { it.boundsInRoot }
+        val chips = texts().filter { textOf(it) == "Holiday" || textOf(it) == "Birthday" || textOf(it).contains("all-day") }.map { it.boundsInRoot }
         val blankX = if (chips.all { it.right < strip.right - 20f }) strip.right - 6f else columnWidth() + 6f
         rule.onRoot().performTouchInput { click(Offset(blankX, strip.center.y)) }
         rule.onRoot().performTouchInput { click(Offset(columnWidth() - 2f, strip.top + 4f)) }

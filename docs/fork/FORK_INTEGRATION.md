@@ -109,11 +109,13 @@ A especificação `all-day-stacking-views` introduz agrupamento e empilhamento c
 - **`app/src/main/kotlin/org/onekash/kashcal/MainActivity.kt`**: Integração de sheets de tarefas (`TaskQuickViewSheet`, `TaskEditorSheet`), toggle do FAB de tarefas e interceptação de cliques em `DisplayEvent.Task`.
 - **`app/src/main/kotlin/org/onekash/kashcal/di/RepositoryModule.kt`**: Provisão de `AndroidTasksOrgRepository` via Hilt.
 - **`app/src/main/kotlin/org/onekash/kashcal/ui/viewmodels/HomeViewModel.kt`**: Coordenação de tarefas com o ciclo de vida da tela principal e persistência de preferências de integração.
+- **`app/src/main/kotlin/org/onekash/kashcal/ui/components/TaskCard.kt`**: Card de tarefa com checkbox interativo, badges de prioridade e suporte a opacidade de-enfatizada (`DEEMPHASIZED_ALPHA = 0.65f`) para tarefas concluídas em conformidade com as regras de contraste WCAG AA.
 
 ### 3.2 Departure Alerts / Travel Time (`// FORK:travel-time`)
 - **`app/src/main/kotlin/org/onekash/kashcal/data/db/KashCalDatabase.kt`**: Versão do banco incrementada para 28.
 - **`app/src/main/kotlin/org/onekash/kashcal/data/db/migration/Migrations.kt`**: `MIGRATION_27_28` para colunas `travel_mode`, `travel_depart_buffer_min`, `travel_origin_fixed` e `reminder_type`.
 - **`app/src/main/kotlin/org/onekash/kashcal/data/db/dao/EventsDao.kt`** e **`ScheduledRemindersDao.kt`**: Consultas para lembretes de tempo de viagem.
+- **`app/src/main/kotlin/org/onekash/kashcal/reminder/scheduler/ReminderScheduler.kt`**: Em `reconcileRemindersForEvent`, preserva linhas com `reminderType != ReminderType.TIME_BEFORE` (`TRAVEL_DEPART`, `TRAVEL_BUFFER`), evitando que alarmes de viagem calculados sejam descartados durante reconciliações de sincronização CalDAV ou edições locais.
 
 ### 3.3 Widgets e Auto-Backup (`// FORK:tasks-widget`, `// FORK:auto-backup`)
 - **`app/src/main/kotlin/org/onekash/kashcal/widget/WidgetDataRepository.kt`**: Inclusão opcional de tarefas nos dados fornecidos aos widgets da tela inicial.

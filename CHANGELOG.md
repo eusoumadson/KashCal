@@ -9,6 +9,14 @@
 - **Visão Mês Completo (`MonthFullSpanLayout.kt`, `FullHeightMonthGrid.kt`)**: Em `computeMonthFullWeekRender` e `FullHeightMonthGrid`, mantendo barras contínuas para eventos multi-dia, consolida `> 1` eventos de dia todo de 1 único dia em 1 slot de resumo de eventos e `> 1` tarefas de dia todo em 1 slot de resumo de tarefas por célula (exibindo o snippet individual quando `== 1`). Tocar na célula abre o `DayEventsSheet` com todos os registros do dia aplicando o colapse inline.
 - **Recursos e Documentação de Fork**: Adiciona strings localizadas em `values/strings.xml`, `values-pt/strings.xml` e `values-pt-rBR/strings.xml` e atualiza `docs/fork/FORK_INTEGRATION.md`.
 
+## [2026.11.04]
+
+- Fixed calendars that stopped syncing over one event; events with large attachments or HTML descriptions, up to about 2 MB, now sync and keep their attachment after an edit, and one bad event or failed upload no longer blocks the rest
+- Fixed reminders lost after an event changed; snoozed and showing reminders keep working, and today's all-day reminder is set even when the event arrives after midnight UTC (#425)
+- Changed past, declined and cancelled events to fade less so their text stays readable, in search results too (#426)
+- Fixed an open search and the day sheet keeping the old time zone after a zone change (#422)
+- Added a `Kash` app icon, and the date icon is now labelled `Calendar`
+
 ## [2026.11.05.1]
 
 ### Refine Split Widget Layout

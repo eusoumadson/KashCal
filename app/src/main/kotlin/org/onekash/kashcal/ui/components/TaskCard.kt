@@ -78,6 +78,13 @@ internal fun rememberCanWriteTasksOrg(): Boolean {
 /** Opacity of a later occurrence of a repeating task: shown, but not the one to act on. */
 internal const val FUTURE_OCCURRENCE_ALPHA = 0.45f // FORK:tasks-org
 
+/**
+ * Returns a task card's alpha: [FUTURE_OCCURRENCE_ALPHA] for future recurring occurrences,
+ * [DEEMPHASIZED_ALPHA] when completed (checked), else 1.0f.
+ */
+internal fun taskCardAlpha(isFutureOccurrence: Boolean, checked: Boolean): Float =
+    if (isFutureOccurrence) FUTURE_OCCURRENCE_ALPHA else if (checked) DEEMPHASIZED_ALPHA else 1f
+
 /** How long a [TaskCard] checkbox waits for the re-query after a write before it unlocks. */
 private const val PENDING_TIMEOUT_MS = 3_000L
 
@@ -144,7 +151,7 @@ internal fun TaskCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .alpha(if (task.isFutureOccurrence) FUTURE_OCCURRENCE_ALPHA else if (checked) 0.6f else 1f)
+            .alpha(taskCardAlpha(task.isFutureOccurrence, checked))
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = stripeColor.copy(alpha = displayEvent.cardFillAlpha())),
         shape = RoundedCornerShape(12.dp)

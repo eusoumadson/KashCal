@@ -28,4 +28,20 @@ class TaskCardTimeTest {
         assertEquals("", formatTaskCardTime(day, isAllDay = true, isRecurring = false, timePattern = "HH:mm", zoneId = zone))
         assertEquals("\uD83D\uDD01", formatTaskCardTime(day, isAllDay = true, isRecurring = true, timePattern = "HH:mm", zoneId = zone))
     }
+
+    @Test
+    fun `task card alpha is DEEMPHASIZED_ALPHA when checked`() {
+        assertEquals(DEEMPHASIZED_ALPHA, taskCardAlpha(isFutureOccurrence = false, checked = true))
+    }
+
+    @Test
+    fun `task card alpha is FUTURE_OCCURRENCE_ALPHA when future occurrence`() {
+        assertEquals(FUTURE_OCCURRENCE_ALPHA, taskCardAlpha(isFutureOccurrence = true, checked = false))
+        assertEquals(FUTURE_OCCURRENCE_ALPHA, taskCardAlpha(isFutureOccurrence = true, checked = true))
+    }
+
+    @Test
+    fun `task card alpha is 1 when active non-future`() {
+        assertEquals(1f, taskCardAlpha(isFutureOccurrence = false, checked = false))
+    }
 }
