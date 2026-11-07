@@ -3,10 +3,10 @@
 ## ADDED Requirements
 
 ### Requirement: RF-06 - Sync Hardening for Large Attachments and Per-Operation Isolation
-WHEN synchronizing events via CalDAV in `ICalEventMapper` (verified at `app/src/main/kotlin/org/onekash/kashcal/sync/parser/icaldav/ICalEventMapper.kt:37`), `PullStrategy` (verified at `app/src/main/kotlin/org/onekash/kashcal/sync/strategy/PullStrategy.kt:111`), and `PushStrategy` (verified at `app/src/main/kotlin/org/onekash/kashcal/sync/strategy/PushStrategy.kt:50`), THE SYSTEM SHALL omit extra properties exceeding `MAX_EXTRA_PROPERTY_VALUE_CHARS` (32,768 chars), preserve inline attachments in `rawIcal`, and isolate per-event and per-operation failures.
+WHEN synchronizing events via CalDAV in `ICalEventMapper` (verified at `app/src/main/kotlin/org/onekash/kashcal/sync/parser/icaldav/ICalEventMapper.kt:37`), `PullStrategy` (verified at `app/src/main/kotlin/org/onekash/kashcal/sync/strategy/PullStrategy.kt:111`), and `PushStrategy` (verified at `app/src/main/kotlin/org/onekash/kashcal/sync/strategy/PushStrategy.kt:50`), THE SYSTEM SHALL omit extra properties exceeding `MAX_EXTRA_PROPERTY_VALUE_CHARS` (25,000 chars), preserve inline attachments in `rawIcal`, and isolate per-event and per-operation failures.
 
 #### Scenario: Pulling an event with a large inline attachment or HTML description up to 2 MB
-- **WHEN** `ICalEventMapper.toEntity` maps an iCalendar event containing an `ATTACH` or `X-ALT-DESC` property longer than 32,768 characters
+- **WHEN** `ICalEventMapper.toEntity` maps an iCalendar event containing an `ATTACH` or `X-ALT-DESC` property longer than 25,000 characters
 - **THEN** `Event.extraProperties` MUST exclude that oversized property so the Room row stays readable within the 2 MB `CursorWindow`
 - **AND** `Event.rawIcal` MUST retain the original property so subsequent edits and pushes preserve the attachment.
 
