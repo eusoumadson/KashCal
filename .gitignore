@@ -21,6 +21,7 @@ docs/*
 !docs/fork/
 !docs/fork/**
 !docs/RRULE_ENGINE_PARITY.md
+!docs/agents
 
 # Local planning docs (issue triage, sequences — never shipped)
 .local-docs/
